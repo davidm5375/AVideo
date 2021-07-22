@@ -54,7 +54,7 @@ class Live extends PluginAbstract {
     }
 
     public function getPluginVersion() {
-        return "7.1";
+        return "7.2";
     }
 
     public function updateScript() {
@@ -120,6 +120,13 @@ class Live extends PluginAbstract {
         }
         if (AVideoPlugin::compareVersion($this->getName(), "7.0") < 0) {
             $sqls = file_get_contents($global['systemRootPath'] . 'plugin/Live/install/updateV7.0.sql');
+            $sqlParts = explode(";", $sqls);
+            foreach ($sqlParts as $value) {
+                sqlDal::writeSql(trim($value));
+            }
+        }
+        if (AVideoPlugin::compareVersion($this->getName(), "7.2") < 0) {
+            $sqls = file_get_contents($global['systemRootPath'] . 'plugin/Live/install/updateV7.2.sql');
             $sqlParts = explode(";", $sqls);
             foreach ($sqlParts as $value) {
                 sqlDal::writeSql(trim($value));
@@ -215,7 +222,9 @@ class Live extends PluginAbstract {
         self::addDataObjectHelper('controllButtonsShowOnlyToAdmin_drop_publisher_reset_key', 'Show Drop Publisher and Reset Key Button Only to Admin', 'Regular users will not able to see this button');
         $obj->controllButtonsShowOnlyToAdmin_save_dvr = false;
         self::addDataObjectHelper('controllButtonsShowOnlyToAdmin_save_dvr', 'Show Save DVR Button Only to Admin', 'Regular users will not able to see this button');
-
+        
+        
+        $obj->webRTC_player = 'https://webrtc.ypt.me/player/';
         return $obj;
     }
 
@@ -390,8 +399,8 @@ class Live extends PluginAbstract {
         _error_log("NGINX Live::controlRecordingAsync end {$pid}");
         return $pid;
     }
-    
-    static function userCanRecordLive($users_id){
+
+    static function userCanRecordLive($users_id) {
         if (!AVideoPlugin::isEnabledByName('SendRecordedToEncoder')) {
             return false;
         }
@@ -467,8 +476,8 @@ class Live extends PluginAbstract {
                 }
                 break;
             case "save_dvr":
-                $obj = AVideoPlugin::getDataObjectIfEnabled('SendRecordedToEncoder');
-                if (empty($obj) || empty($obj->saveDVREnable)) {
+                $obj2 = AVideoPlugin::getDataObjectIfEnabled('SendRecordedToEncoder');
+                if (empty($obj2) || empty($obj->saveDVREnable2)) {
                     return '';
                 }
                 if ($obj->controllButtonsShowOnlyToAdmin_save_dvr && !User::isAdmin()) {
@@ -1888,6 +1897,19 @@ class Live extends PluginAbstract {
         unset($_isLiveAndIsReadyFromKey);
     }
 
+    public static function getReverseRestreamObject($m3u8, $users_id, $live_servers_id=-1) {
+        if (!isValidURL($m3u8)) {
+            return false;
+        }
+        $obj = new stdClass();
+        $obj->m3u8 = $m3u8;
+        $obj->restreamerURL = self::getRestreamer($live_servers_id);
+        $obj->restreamsDestinations = array(Live::getRTMPLink($users_id));
+        $obj->token = getToken(60);
+        $obj->users_id = $users_id;
+        return $obj;
+    }
+
     public static function getRestreamObject($liveTransmitionHistory_id) {
 
         if (empty($liveTransmitionHistory_id)) {
@@ -1913,24 +1935,41 @@ class Live extends PluginAbstract {
         return $obj;
     }
 
+    public static function reverseRestream($m3u8, $users_id, $live_servers_id=-1) {
+        _error_log("Live:reverseRestream start");
+        $obj = self::getReverseRestreamObject($m3u8, $users_id, $live_servers_id);
+        _error_log("Live:reverseRestream obj ". _json_encode($obj));
+        return self::sendRestream($obj);
+    }
+
     public static function restream($liveTransmitionHistory_id) {
         outputAndContinueInBackground();
+        $obj = self::getRestreamObject($liveTransmitionHistory_id);
+        return self::sendRestream($obj);
+    }
+
+    private static function sendRestream($obj) {
+        _error_log("Live:sendRestream start");
         try {
-            $obj = self::getRestreamObject($liveTransmitionHistory_id);
             if (empty($obj)) {
+                _error_log("Live:sendRestream object is empty");
                 return false;
             }
             $data_string = json_encode($obj);
-            _error_log("Live:restream ({$obj->restreamerURL}) {$data_string}");
-//open connection
+            _error_log("Live:sendRestream ({$obj->restreamerURL}) {$data_string}");
+            //open connection
             $ch = curl_init();
-//set the url, number of POST vars, POST data
+            //set the url, number of POST vars, POST data
             curl_setopt($ch, CURLOPT_URL, $obj->restreamerURL);
-            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
             curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
+            curl_setopt($ch, CURLOPT_POSTREDIR, 3);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            //curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+            //curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, array(
                 'Content-Type: application/json',
@@ -1938,9 +1977,20 @@ class Live extends PluginAbstract {
             );
             $output = curl_exec($ch);
             curl_close($ch);
-            return _json_decode($output);
+            if(empty($output)){
+                _error_log('Live:sendRestream ERROR '.curl_error($ch));
+                return false;
+            }
+            $json = _json_decode($output);
+            if(empty($output)){
+                _error_log('Live:sendRestream JSON ERROR '.$output);
+                return false;
+            }
+            _error_log('Live:sendRestream complete '.$output);
+            return $json;
         } catch (Exception $exc) {
-            _error_log("Live:restream " . $exc->getTraceAsString());
+            _error_log("Live:sendRestream " . $exc->getTraceAsString());
+            return false;
         }
         return false;
     }
@@ -2219,16 +2269,17 @@ class Live extends PluginAbstract {
         }
         return false;
     }
-    
-    static function getUserHash($users_id){
-        return encryptString(_json_encode(array('users_id'=>$users_id, 'time'=>time())));
+
+    static function getUserHash($users_id) {
+        return encryptString(_json_encode(array('users_id' => $users_id, 'time' => time())));
     }
-    
-    static function decryptHash($hash){
+
+    static function decryptHash($hash) {
         $string = decryptString($hash);
         $json = _json_decode($string);
         return object_to_array($json);
     }
+
 }
 
 class LiveImageType {

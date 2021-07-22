@@ -1,10 +1,13 @@
+<?php
+$myWallet = YPTWallet::getWallet(User::getId());  
+?>
 <div class="panel panel-default">
     <div class="panel-heading"><?php echo __("Configurations"); ?></div>
     <div class="panel-body">
         <form id="form">
             <div class="form-group">
                 <label for="CryptoWallet"><?php echo $walletDataObject->CryptoWalletName; ?>:</label>
-                <input type="text" class="form-control" name="CryptoWallet" value="<?php echo $wallet->getCrypto_wallet_address(); ?>">
+                <input type="text" class="form-control" name="CryptoWallet" value="<?php echo $myWallet->getCrypto_wallet_address(); ?>">
             </div>
             <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> <?php echo __("Save"); ?></button>
         </form>
