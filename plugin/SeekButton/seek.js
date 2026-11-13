@@ -22,6 +22,7 @@ function startTrackDisplay() {
                     $('#forwardLayer').remove();
                 });
             }, 100);
+            console.log('currentTime seek 1');
             player.currentTime(player.currentTime() + playerSeekForward);
         } else if (e.offsetX < 0.33 * playerWidth) {
             $(backLayer).prependTo("#mainVideo");
@@ -31,11 +32,13 @@ function startTrackDisplay() {
                     $('#backLayer').remove();
                 });
             }, 100);
+            console.log('currentTime seek 2');
             player.currentTime((player.currentTime() - playerSeekBack) < 0 ? 0 : (player.currentTime() - playerSeekBack));
         } else {
             if (player.paused()) {
                 player.play();
             } else {
+                console.log("playerPlay: player.pause() dblclick");
                 player.pause();
             }
         }
@@ -50,6 +53,7 @@ function startTrackDisplay() {
             if (player.paused()) {
                 player.play();
             } else {
+                console.log("playerPlay: player.pause() click");
                 player.pause();
             }
         }, 300);

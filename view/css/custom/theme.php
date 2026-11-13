@@ -1,7 +1,7 @@
 <?php
 $theme = "default";
-if(!empty($_REQUEST['theme'])){
-    $theme = $_REQUEST['theme'];
+if (!empty($_REQUEST['theme'])) {
+    $theme = htmlspecialchars($_REQUEST['theme']);
 }
 ?>
 <!DOCTYPE html>
@@ -9,8 +9,8 @@ if(!empty($_REQUEST['theme'])){
     <head>
         <title>Theme <?php echo ucfirst($theme); ?> Test</title>
         <link href="../../css/fontawesome-free-5.5.0-web/css/all.min.css" rel="stylesheet" type="text/css">
-        <link href="../../bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="customCSS">
-        <link href="../../css/custom/<?php echo $theme; ?>.css" rel="stylesheet" type="text/css" id="customCSS">
+        <link href="../../bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+        <link href="../../css/custom/<?php echo $theme; ?>.css" rel="stylesheet" type="text/css" >
         <link href="../../css/main.css" rel="stylesheet" type="text/css">
     </head>
     <body class="" >
@@ -20,7 +20,6 @@ if(!empty($_REQUEST['theme'])){
                     <ul class="left-side">
                         <li style="max-width: 40px;">
                             <button class="btn btn-default navbar-btn pull-left alreadyTooltip" id="buttonMenu" data-toggle="tooltip" title="" data-placement="right" data-original-title="Main Menu"><span class="fa fa-bars"></span></button>
-
                         </li>
                         <li style="width: 100%; text-align: center;">
                             <a class="navbar-brand" id="mainNavbarLogo" href="#">

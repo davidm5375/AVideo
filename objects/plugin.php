@@ -1,85 +1,109 @@
 <?php
-
 global $global, $config;
 if (!isset($global['systemRootPath'])) {
-    require_once '../videos/configuration.php';
+    require_once __DIR__.'/../videos/configuration.php';
 }
-require_once $global['systemRootPath'] . 'objects/user.php';
+require_once __DIR__.'/Object.php';
+require_once __DIR__.'/mysql_dal.php';
+require_once __DIR__.'/user.php';
 
-class Plugin extends ObjectYPT {
+class Plugin extends ObjectYPT
+{
+    protected $id;
+    protected $status;
+    protected $object_data;
+    protected $name;
+    protected $uuid;
+    protected $dirName;
+    protected $pluginversion;
 
-    protected $id, $status, $object_data, $name, $uuid, $dirName, $pluginversion;
-
-    static function getSearchFieldsNames() {
-        return array('name');
+    public static function getSearchFieldsNames()
+    {
+        return ['name'];
     }
 
-    static function getTableName() {
+    public static function getTableName()
+    {
         return 'plugins';
     }
 
-    function getId() {
+    public function getId()
+    {
         return $this->id;
     }
 
-    function getStatus() {
+    public function getStatus()
+    {
         return $this->status;
     }
 
-    function getObject_data() {
+    public function getObject_data()
+    {
         return $this->object_data;
     }
 
-    function getPluginVersion() {
-        return $this->pluginVersion;
+    public function getPluginVersion()
+    {
+        return $this->pluginversion;
     }
 
-    function getName() {
+    public function getName()
+    {
         return $this->name;
     }
 
-    function setId($id) {
+    public function setId($id)
+    {
         $this->id = $id;
     }
 
-    function setStatus($status) {
+    public function setStatus($status)
+    {
         $this->status = $status;
     }
 
-    function setObject_data($object_data) {
+    public function setObject_data($object_data)
+    {
         $this->object_data = $object_data;
     }
 
-    function setName($name) {
+    public function setName($name)
+    {
         $name = preg_replace("/[^A-Za-z0-9 _-]/", '', $name);
         $this->name = $name;
     }
 
-    function getUuid() {
+    public function getUuid()
+    {
         return $this->uuid;
     }
 
-    function getDirName() {
+    public function getDirName()
+    {
         return $this->dirName;
     }
 
-    function setUuid($uuid) {
+    public function setUuid($uuid)
+    {
         $this->uuid = $uuid;
         $this->loadFromUUID($uuid);
     }
 
-    function setDirName($dirName) {
+    public function setDirName($dirName)
+    {
         $dirName = preg_replace("/[^A-Za-z0-9 _-]/", '', $dirName);
         $this->dirName = $dirName;
     }
 
-    function setPluginversion($pluginversion) {
-        $this->pluginversion = $pluginversion;
+    public function setPluginversion($pluginVersion)
+    {
+        $this->pluginversion = $pluginVersion;
     }
 
-    static function setCurrentVersionByUuid($uuid, $currentVersion) {
+    public static function setCurrentVersionByUuid($uuid, $currentVersion)
+    {
         _error_log("plugin::setCurrentVersionByUuid $uuid, $currentVersion");
-        $p = static::getPluginByUUID($uuid);
+        $p = static::getPluginByUUID($uuid, true);
         if (!$p) {
             _error_log("plugin::setCurrentVersionByUuid error on get plugin");
             return false;
@@ -92,13 +116,15 @@ class Plugin extends ObjectYPT {
         $res = sqlDal::writeSql($sql);
     }
 
-    static function getCurrentVersionByUuid($uuid) {
+    public static function getCurrentVersionByUuid($uuid)
+    {
         $p = static::getPluginByUUID($uuid);
-        if (!$p)
+        if (!$p) {
             return false;
+        }
         //pluginversion isn't an object property so we must explicity update it using this function
         $sql = "SELECT pluginversion FROM " . static::getTableName() . " WHERE uuid=? LIMIT 1 ";
-        $res = sqlDAL::readSql($sql, "s", array($uuid));
+        $res = sqlDAL::readSql($sql, "s", [$uuid]);
         $data = sqlDAL::fetchAssoc($res);
         sqlDAL::close($res);
         if (!empty($data)) {
@@ -107,14 +133,15 @@ class Plugin extends ObjectYPT {
         return false;
     }
 
-    static function getPluginByName($name) {
+    public static function getPluginByName($name)
+    {
         global $global, $getPluginByName;
         if (empty($getPluginByName)) {
-            $getPluginByName = array();
+            $getPluginByName = [];
         }
         if (empty($getPluginByName[$name])) {
             $sql = "SELECT * FROM " . static::getTableName() . " WHERE name = ? LIMIT 1";
-            $res = sqlDAL::readSql($sql, "s", array($name), true);
+            $res = sqlDAL::readSql($sql, "s", [$name]);
             $data = sqlDAL::fetchAssoc($res);
             sqlDAL::close($res);
             if (!empty($data)) {
@@ -126,18 +153,19 @@ class Plugin extends ObjectYPT {
         return $getPluginByName[$name];
     }
 
-    static function getPluginByUUID($uuid) {
+    public static function getPluginByUUID($uuid, $refreshCache=false)
+    {
         global $global, $getPluginByUUID, $pluginJustInstalled;
         $name = "plugin$uuid";
         if (!isset($getPluginByUUID)) {
-            $getPluginByUUID = array();
+            $getPluginByUUID = [];
         }
         if (!isset($pluginJustInstalled)) {
-            $pluginJustInstalled = array();
+            $pluginJustInstalled = [];
         }
         if (empty($getPluginByUUID[$uuid])) {
             $sql = "SELECT * FROM " . static::getTableName() . " WHERE uuid = ? LIMIT 1";
-            $res = sqlDAL::readSql($sql, "s", array($uuid));
+            $res = sqlDAL::readSql($sql, "s", [$uuid], $refreshCache);
             $data = sqlDAL::fetchAssoc($res);
             sqlDAL::close($res);
             if (!empty($data)) {
@@ -150,7 +178,7 @@ class Plugin extends ObjectYPT {
                 $getPluginByUUID[$uuid] = $data;
             } else {
                 $name = AVideoPlugin::getPluginsNameOnByDefaultFromUUID($uuid);
-                if ($name !== false && empty($pluginJustInstalled[$uuid])) {
+                if (!sqlDAL::wasSTMTError() && $name !== false && empty($pluginJustInstalled[$uuid])) {
                     $pluginJustInstalled[$uuid] = 1;
                     _error_log("plugin::getPluginByUUID {$name} {$uuid} this plugin is On By Default we will install it ($sql)");
                     self::deleteByUUID($uuid);
@@ -165,7 +193,8 @@ class Plugin extends ObjectYPT {
         return $getPluginByUUID[$uuid];
     }
 
-    function loadFromUUID($uuid) {
+    public function loadFromUUID($uuid)
+    {
         $uuid = preg_replace("/[^A-Za-z0-9 _-]/", '', $uuid);
         $this->uuid = $uuid;
         $row = static::getPluginByUUID($uuid);
@@ -174,7 +203,8 @@ class Plugin extends ObjectYPT {
         }
     }
 
-    static function isEnabledByName($name) {
+    public static function isEnabledByName($name)
+    {
         $row = static::getPluginByName($name);
         if ($row) {
             return $row['status'] == 'active' && AVideoPlugin::isPluginTablesInstalled($name, true);
@@ -182,7 +212,8 @@ class Plugin extends ObjectYPT {
         return false;
     }
 
-    static function isEnabledByUUID($uuid) {
+    public static function isEnabledByUUID($uuid)
+    {
         $row = static::getPluginByUUID($uuid);
         if ($row) {
             return $row['status'] == 'active' && AVideoPlugin::isPluginTablesInstalled($row['name'], true);
@@ -190,13 +221,15 @@ class Plugin extends ObjectYPT {
         return false;
     }
 
-    static function getAvailablePlugins($comparePluginVersion = false) {
+    public static function getAvailablePlugins($comparePluginVersion = false)
+    {
         global $global, $getAvailablePlugins;
-        $pluginsMarketplace = array();
+        $pluginsMarketplace = [];
         if ($comparePluginVersion) {
             $pluginsMarketplace = ObjectYPT::getSessionCache('getAvailablePlugins', 600); // 10 min cache
             if (empty($pluginsMarketplace)) {
-                $pluginsMarketplace = _json_decode(url_get_contents("https://tutorials.avideo.com/info?version=1", "", 2));
+                //$pluginsMarketplace = _json_decode(url_get_contents("https://tutorials.wwbn.net/info?version=1", "", 2));
+                $pluginsMarketplace = _json_decode(url_get_contents("https://streamphp.com/marketplace/plugins.json.php", "", 2));
                 if (!empty($pluginsMarketplace)) {
                     ObjectYPT::setSessionCache('getAvailablePlugins', $pluginsMarketplace);
                 }
@@ -204,15 +237,21 @@ class Plugin extends ObjectYPT {
         }
         if (empty($getAvailablePlugins)) {
             $dir = $global['systemRootPath'] . "plugin";
-            $getAvailablePlugins = array();
+            $getAvailablePlugins = [];
             $cdir = scandir($dir);
             foreach ($cdir as $key => $value) {
-                if (!in_array($value, array(".", ".."))) {
+                if (!in_array($value, [".", ".."])) {
                     if (is_dir($dir . DIRECTORY_SEPARATOR . $value)) {
                         $p = AVideoPlugin::loadPlugin($value);
                         if (!is_object($p) || $p->hidePlugin()) {
                             if ($value !== "Statistics") { // avoid error while this plugin is not ready
-                                _error_log("Plugin Not Found: {$value}");
+                                if (!is_object($p)) {
+                                    _error_log("Plugin Not Found 1: {$value}");
+                                }else{
+                                    _error_log("Plugin Not Found 1 hide: {$value}");
+                                }
+                            }else{
+                                _error_log("Plugin Not loaded: {$value}");
                             }
                             continue;
                         }
@@ -224,15 +263,19 @@ class Plugin extends ObjectYPT {
                         $obj->installedPlugin = static::getPluginByUUID($obj->uuid);
                         $obj->enabled = (!empty($obj->installedPlugin['status']) && $obj->installedPlugin['status'] === "active") ? true : false;
                         $obj->id = (!empty($obj->installedPlugin['id'])) ? $obj->installedPlugin['id'] : 0;
+                        $obj->created = (!empty($obj->installedPlugin['created'])) ? $obj->installedPlugin['created'] : '';
+                        $obj->modified = (!empty($obj->installedPlugin['modified'])) ? $obj->installedPlugin['modified'] : '';
                         $obj->data_object = $p->getDataObject();
                         $obj->data_object_helper = $p->getDataObjectHelper();
+                        $obj->data_object_info = $p->getDataObjectInfo();
                         $obj->databaseScript = !empty(static::getDatabaseFile($value));
                         $obj->pluginMenu = $p->getPluginMenu();
                         $obj->tags = $p->getTags();
+                        $obj->dependencies = static::getDependenciesInfo($p);
                         $obj->pluginversion = $p->getPluginVersion();
-                        $obj->pluginversionMarketPlace = (!empty($pluginsMarketplace->plugins->{$obj->uuid}) ? $pluginsMarketplace->plugins->{$obj->uuid}->pluginversion : 0);
+                        $obj->pluginversionMarketPlace = (!empty($pluginsMarketplace->{$obj->name}) ? $pluginsMarketplace->{$obj->name}->version : 0);
                         $obj->pluginversionCompare = (!empty($obj->pluginversionMarketPlace) ? version_compare($obj->pluginversion, $obj->pluginversionMarketPlace) : 0);
-                        $obj->permissions = $obj->enabled ? Permissions::getPluginPermissions($obj->id) : array();
+                        $obj->permissions = $obj->enabled ? Permissions::getPluginPermissions($obj->id) : [];
                         if (User::isAdmin()) {
                             $obj->isPluginTablesInstalled = AVideoPlugin::isPluginTablesInstalled($obj->name, false);
                         }
@@ -240,6 +283,8 @@ class Plugin extends ObjectYPT {
                             $obj->tags[] = "update";
                         }
                         $getAvailablePlugins[] = $obj;
+                    }else{
+
                     }
                 }
             }
@@ -247,23 +292,48 @@ class Plugin extends ObjectYPT {
         return $getAvailablePlugins;
     }
 
-    static function getAvailablePluginsBasic() {
+    /**
+     * JSON-friendly view of $p->getPluginDependencies(), with each dependency's current enabled
+     * state resolved - so the Plugins admin panel can render a warning without extra requests.
+     */
+    public static function getDependenciesInfo(PluginAbstract $p)
+    {
+        $info = [];
+        foreach ($p->getPluginDependencies() as $dependency) {
+            if (!($dependency instanceof PluginDependency)) {
+                continue;
+            }
+            $info[] = [
+                'pluginName' => $dependency->pluginName,
+                'reason' => $dependency->reason,
+                'required' => $dependency->required,
+                'enabled' => AVideoPlugin::isEnabledByName($dependency->pluginName),
+            ];
+        }
+        return $info;
+    }
+
+    public static function getAvailablePluginsBasic()
+    {
         global $global, $getAvailablePlugins;
         if (empty($getAvailablePlugins)) {
             $dir = $global['systemRootPath'] . "plugin";
-            $getAvailablePlugins = array();
+            $getAvailablePlugins = [];
             $cdir = scandir($dir);
             foreach ($cdir as $key => $value) {
-                if (!in_array($value, array(".", ".."))) {
+                if (!in_array($value, [".", ".."])) {
                     if (is_dir($dir . DIRECTORY_SEPARATOR . $value)) {
                         $p = AVideoPlugin::loadPlugin($value);
                         if (!is_object($p) || $p->hidePlugin()) {
                             if ($value !== "Statistics") { // avoid error while this plugin is not ready
-                                _error_log("Plugin Not Found: {$value}");
+                                _error_log("Plugin Not Found 2: {$value}");
                             }
                             continue;
                         }
                         $row = self::getPluginByUUID($p->getUUID());
+                        if(empty($row)){
+                            continue;
+                        }
                         $obj = new stdClass();
                         $obj->name = $p->getName();
                         $obj->pluginversion = $p->getPluginVersion();
@@ -283,7 +353,8 @@ class Plugin extends ObjectYPT {
         return $getAvailablePlugins;
     }
 
-    static function getDatabaseFile($pluginName) {
+    public static function getDatabaseFile($pluginName)
+    {
         $filename = static::getDatabaseFileName($pluginName);
         if (!$filename) {
             return false;
@@ -291,10 +362,15 @@ class Plugin extends ObjectYPT {
         return url_get_contents($filename);
     }
 
-    static function getDatabaseFileName($pluginName) {
+    public static function getDatabaseFileName($pluginName)
+    {
         global $global;
 
         $pluginName = AVideoPlugin::fixName($pluginName);
+        $pluginName = trim(preg_replace('/[^0-9a-z_]/i', '', $pluginName));
+        if (empty($pluginName)) {
+            return false;
+        }
         $dir = $global['systemRootPath'] . "plugin";
         $filename = $dir . DIRECTORY_SEPARATOR . $pluginName . DIRECTORY_SEPARATOR . "install" . DIRECTORY_SEPARATOR . "install.sql";
         if (!file_exists($filename)) {
@@ -303,9 +379,30 @@ class Plugin extends ObjectYPT {
         return $filename;
     }
 
-    static function getAllEnabled($try = 0) {
+    public static function getAllEnabled($try = 0)
+    {
         global $global, $getAllEnabledRows;
         if (empty($getAllEnabledRows)) {
+            $cacheName = 'plugin::getAllEnabled';
+            $allowPersistentCache = !isCommandLineInterface() || !empty($global['forceGetCache']);
+            if ($allowPersistentCache) {
+                $cachedRows = ObjectYPT::getCache($cacheName, 30, true, false);
+                if (is_array($cachedRows) && !empty($cachedRows)) {
+                    $getAllEnabledRows = [];
+                    foreach ($cachedRows as $row) {
+                        if (is_object($row)) {
+                            $row = (array) $row;
+                        }
+                        if (is_array($row)) {
+                            $getAllEnabledRows[] = $row;
+                        }
+                    }
+                    if (!empty($getAllEnabledRows)) {
+                        return $getAllEnabledRows;
+                    }
+                }
+            }
+
             $sql = "SELECT * FROM  " . static::getTableName() . " WHERE status='active' ";
 
             $defaultEnabledUUIDs = AVideoPlugin::getPluginsOnByDefault(true);
@@ -315,7 +412,7 @@ class Plugin extends ObjectYPT {
             $res = sqlDAL::readSql($sql);
             $fullData = sqlDAL::fetchAllAssoc($res);
             sqlDAL::close($res);
-            $getAllEnabledRows = array();
+            $getAllEnabledRows = [];
             foreach ($fullData as $row) {
                 $getAllEnabledRows[] = $row;
                 if (($key = array_search($row['uuid'], $defaultEnabledUUIDs)) !== false) {
@@ -341,18 +438,26 @@ class Plugin extends ObjectYPT {
             }
 
             uasort($getAllEnabledRows, 'cmpPlugin');
+            $getAllEnabledRows = array_values($getAllEnabledRows);
+            $getAllEnabledRows = array_map(function ($row) {
+                return is_object($row) ? (array) $row : $row;
+            }, $getAllEnabledRows);
+            if ($allowPersistentCache) {
+                ObjectYPT::setCache($cacheName, $getAllEnabledRows, false);
+            }
         }
         return $getAllEnabledRows;
     }
 
-    static function getAllDisabled() {
+    public static function getAllDisabled()
+    {
         global $global, $getAllDisabledRows;
         if (empty($getAllDisabledRows)) {
             $sql = "SELECT * FROM  " . static::getTableName() . " WHERE status='inactive' ";
             $res = sqlDAL::readSql($sql);
             $fullData = sqlDAL::fetchAllAssoc($res);
             sqlDAL::close($res);
-            $getAllDisabledRows = array();
+            $getAllDisabledRows = [];
             foreach ($fullData as $row) {
                 $getAllDisabledRows[] = $row;
             }
@@ -361,10 +466,14 @@ class Plugin extends ObjectYPT {
         return $getAllDisabledRows;
     }
 
-    static function getEnabled($uuid) {
+    public static function getEnabled($uuid)
+    {
         global $global, $getEnabled;
+        if(!class_exists('sqlDAL')){
+            return array();
+        }
         if (empty($getEnabled)) {
-            $getEnabled = array();
+            $getEnabled = [];
         }
 
         if (in_array($uuid, AVideoPlugin::getPluginsOnByDefault())) {
@@ -373,12 +482,12 @@ class Plugin extends ObjectYPT {
         }
 
         if (empty($getEnabled[$uuid])) {
-            $getEnabled[$uuid] = array();
+            $getEnabled[$uuid] = [];
             $sql = "SELECT * FROM  " . static::getTableName() . " WHERE status='active' AND uuid = '" . $uuid . "' ;";
             $res = sqlDAL::readSql($sql);
             $pluginRows = sqlDAL::fetchAllAssoc($res);
             sqlDAL::close($res);
-            if ($pluginRows != false) {
+            if ($pluginRows !== false) {
                 foreach ($pluginRows as $row) {
                     $getEnabled[$uuid][] = $row;
                 }
@@ -388,35 +497,38 @@ class Plugin extends ObjectYPT {
         return $getEnabled[$uuid];
     }
 
-    static function deleteByUUID($uuid) {
+    public static function deleteByUUID($uuid)
+    {
         global $global;
-        $uuid = $global['mysqli']->real_escape_string($uuid);
+        $uuid = ($uuid);
         if (!empty($uuid)) {
             _error_log("Plugin:deleteByUUID {$uuid}");
             $sql = "DELETE FROM " . static::getTableName() . " ";
             $sql .= " WHERE uuid = ?";
             $global['lastQuery'] = $sql;
             //_error_log("Delete Query: ".$sql);
-            return sqlDAL::writeSql($sql, "s", array($uuid));
+            return sqlDAL::writeSql($sql, "s", [$uuid]);
         }
         return false;
     }
 
-    static function deleteByName($name) {
+    public static function deleteByName($name)
+    {
         global $global;
-        $name = $global['mysqli']->real_escape_string($name);
+        $name = ($name);
         if (!empty($name)) {
             _error_log("Plugin:deleteByName {$name}");
             $sql = "DELETE FROM " . static::getTableName() . " ";
             $sql .= " WHERE name = ?";
             $global['lastQuery'] = $sql;
             //_error_log("Delete Query: ".$sql);
-            return sqlDAL::writeSql($sql, "s", array($name));
+            return sqlDAL::writeSql($sql, "s", [$name]);
         }
         return false;
     }
 
-    static function getOrCreatePluginByName($name, $statusIfCreate = 'inactive') {
+    public static function getOrCreatePluginByName($name, $statusIfCreate = 'inactive')
+    {
         global $global;
         if (self::getPluginByName($name) === false) {
             $pluginFile = $global['systemRootPath'] . "plugin/{$name}/{$name}.php";
@@ -437,12 +549,13 @@ class Plugin extends ObjectYPT {
         return self::getPluginByName($name);
     }
 
-    function save() {
+    public function save()
+    {
         if (empty($this->uuid)) {
             return false;
         }
         global $global;
-        $this->object_data = $global['mysqli']->real_escape_string($this->object_data);
+        $this->object_data = ($this->object_data);
         if (empty($this->object_data)) {
             $this->object_data = 'null';
         }
@@ -451,13 +564,15 @@ class Plugin extends ObjectYPT {
         return parent::save();
     }
 
-    static function deletePluginCache($uuid) {
+    public static function deletePluginCache($uuid)
+    {
         $name = "plugin{$uuid}";
         ObjectYPT::deleteCache($name);
-        ObjectYPT::deleteCache("plugin::getAllEnabled");
+        ObjectYPT::deleteCache("plugin::getAllEnabled", false);
     }
 
-    static function encryptIfNeed($object_data) {
+    public static function encryptIfNeed($object_data)
+    {
         $isString = false;
         if (!is_object($object_data)) {
             $object_data = _json_decode($object_data);
@@ -483,7 +598,8 @@ class Plugin extends ObjectYPT {
         }
     }
 
-    static function decryptIfNeed($object_data) {
+    public static function decryptIfNeed($object_data)
+    {
         $isString = false;
         if (!is_object($object_data)) {
             $object_data = _json_decode($object_data);
@@ -507,7 +623,8 @@ class Plugin extends ObjectYPT {
         }
     }
 
-    static function isEncrypted($object_data_element_value) {
+    public static function isEncrypted($object_data_element_value)
+    {
         if (!empty($object_data_element_value)) {
             $object_data_element_value_json = decryptString($object_data_element_value);
             $object_data_element_value_json = _json_decode($object_data_element_value_json);
@@ -517,25 +634,48 @@ class Plugin extends ObjectYPT {
         }
         return false;
     }
-
 }
 
-class PluginTags {
+class PluginTags
+{
+    public static $RECOMMENDED = ['success', 'Recommended', '<i class="fas fa-heart"></i>', 'RECOMMENDED'];
+    public static $SECURITY = ['warning', 'Security', '<i class="fas fa-user-shield"></i>', 'SECURITY'];
+    public static $LIVE = ['primary', 'Live', '<i class="fas fa-broadcast-tower"></i>', 'LIVE'];
+    public static $MONETIZATION = ['primary', 'Monetization', '<i class="fas fa-dollar-sign"></i>', 'MONETIZATION'];
+    public static $ADS = ['primary', 'ADS', '<i class="fas fa-camera-retro"></i>', 'ADS'];
+    public static $STORAGE = ['primary', 'Storage', '<i class="fas fa-archive"></i>', 'STORAGE'];
+    public static $GALLERY = ['primary', 'Gallery', '<i class="fas fa-images"></i>', 'GALLERY'];
+    public static $NETFLIX = ['primary', 'Netflix', '<i class="fas fa-film"></i>', 'NETFLIX'];
+    public static $LAYOUT = ['primary', 'Layout', '<i class="fas fa-sitemap"></i>', 'LAYOUT'];
+    public static $LOGIN = ['primary', 'Login', '<i class="fas fa-lock"></i>', 'LOGIN'];
+    public static $MOBILE = ['primary', 'Mobile', '<i class="fas fa-mobile-alt"></i>', 'MOBILE'];
+    public static $PLAYER = ['primary', 'Player', '<i class="fas fa-play-circle"></i>', 'PLAYER'];
+    public static $FREE = ['info', 'Free', '<i class="fas fa-check"></i>', 'FREE'];
+    public static $PREMIUM = ['info', 'Premium', '<i class="fas fa-thumbs-up"></i>', 'PREMIUM'];
+    public static $DEPRECATED = ['danger', 'Deprecated', '<i class="fas fa-times-circle"></i>', 'DEPRECATED'];
+    public static $UNDERDEVELOPMENT = ['warning', 'Under Development', '<i class="fa-solid fa-terminal"></i>', 'UNDERDEVELOPMENT'];
+}
 
-    static $RECOMMENDED = array('success', 'Recommended', '<i class="fas fa-heart"></i>', 'RECOMMENDED');
-    static $SECURITY = array('warning', 'Security', '<i class="fas fa-user-shield"></i>', 'SECURITY');
-    static $LIVE = array('primary', 'Live', '<i class="fas fa-broadcast-tower"></i>', 'LIVE');
-    static $MONETIZATION = array('primary', 'Monetization', '<i class="fas fa-dollar-sign"></i>', 'MONETIZATION');
-    static $ADS = array('primary', 'ADS', '<i class="fas fa-camera-retro"></i>', 'ADS');
-    static $STORAGE = array('primary', 'Storage', '<i class="fas fa-archive"></i>', 'STORAGE');
-    static $GALLERY = array('primary', 'Gallery', '<i class="fas fa-images"></i>', 'GALLERY');
-    static $NETFLIX = array('primary', 'Netflix', '<i class="fas fa-film"></i>', 'NETFLIX');
-    static $LAYOUT = array('primary', 'Layout', '<i class="fas fa-sitemap"></i>', 'LAYOUT');
-    static $LOGIN = array('primary', 'Login', '<i class="fas fa-lock"></i>', 'LOGIN');
-    static $MOBILE = array('primary', 'Mobile', '<i class="fas fa-mobile-alt"></i>', 'MOBILE');
-    static $PLAYER = array('primary', 'Player', '<i class="fas fa-play-circle"></i>', 'PLAYER');
-    static $FREE = array('info', 'Free', '<i class="fas fa-check"></i>', 'FREE');
-    static $PREMIUM = array('info', 'Premium', '<i class="fas fa-thumbs-up"></i>', 'PREMIUM');
-    static $DEPRECATED = array('danger', 'Deprecated', '<i class="fas fa-times-circle"></i>', 'DEPRECATED');
+/**
+ * Declarative dependency between two plugins, returned from PluginAbstract::getPluginDependencies().
+ * A missing $required=true dependency means the plugin cannot work correctly; $required=false is an
+ * optional/enhanced-feature dependency. $reason is shown to the admin to explain why it's needed.
+ */
+class PluginDependency
+{
+    public $pluginName;
+    public $reason;
+    public $required;
 
+    public function __construct($pluginName, $reason = '', $required = true)
+    {
+        $this->pluginName = $pluginName;
+        $this->reason = $reason;
+        $this->required = $required;
+    }
+
+    public static function create($pluginName, $reason = '', $required = true)
+    {
+        return new self($pluginName, $reason, $required);
+    }
 }

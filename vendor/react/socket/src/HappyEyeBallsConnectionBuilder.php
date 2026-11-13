@@ -7,7 +7,7 @@ use React\Dns\Resolver\ResolverInterface;
 use React\EventLoop\LoopInterface;
 use React\EventLoop\TimerInterface;
 use React\Promise;
-use React\Promise\CancellablePromiseInterface;
+use React\Promise\PromiseInterface;
 
 /**
  * @internal
@@ -65,9 +65,8 @@ final class HappyEyeBallsConnectionBuilder
 
     public function connect()
     {
-        $timer = null;
         $that = $this;
-        return new Promise\Promise(function ($resolve, $reject) use ($that, &$timer) {
+        return new Promise\Promise(function ($resolve, $reject) use ($that) {
             $lookupResolve = function ($type) use ($that, $resolve, $reject) {
                 return function (array $ips) use ($that, $type, $resolve, $reject) {
                     unset($that->resolverPromises[$type]);
@@ -83,33 +82,36 @@ final class HappyEyeBallsConnectionBuilder
             };
 
             $that->resolverPromises[Message::TYPE_AAAA] = $that->resolve(Message::TYPE_AAAA, $reject)->then($lookupResolve(Message::TYPE_AAAA));
-            $that->resolverPromises[Message::TYPE_A] = $that->resolve(Message::TYPE_A, $reject)->then(function (array $ips) use ($that, &$timer) {
+            $that->resolverPromises[Message::TYPE_A] = $that->resolve(Message::TYPE_A, $reject)->then(function (array $ips) use ($that) {
                 // happy path: IPv6 has resolved already (or could not resolve), continue with IPv4 addresses
                 if ($that->resolved[Message::TYPE_AAAA] === true || !$ips) {
                     return $ips;
                 }
 
                 // Otherwise delay processing IPv4 lookup until short timer passes or IPv6 resolves in the meantime
-                $deferred = new Promise\Deferred();
+                $deferred = new Promise\Deferred(function () use (&$ips) {
+                    // discard all IPv4 addresses if cancelled
+                    $ips = array();
+                });
                 $timer = $that->loop->addTimer($that::RESOLUTION_DELAY, function () use ($deferred, $ips) {
                     $deferred->resolve($ips);
                 });
 
-                $that->resolverPromises[Message::TYPE_AAAA]->then(function () use ($that, $timer, $deferred, $ips) {
+                $that->resolverPromises[Message::TYPE_AAAA]->then(function () use ($that, $timer, $deferred, &$ips) {
                     $that->loop->cancelTimer($timer);
                     $deferred->resolve($ips);
                 });
 
                 return $deferred->promise();
             })->then($lookupResolve(Message::TYPE_A));
-        }, function ($_, $reject) use ($that, &$timer) {
-            $reject(new \RuntimeException('Connection to ' . $that->uri . ' cancelled' . (!$that->connectionPromises ? ' during DNS lookup' : '')));
+        }, function ($_, $reject) use ($that) {
+            $reject(new \RuntimeException(
+                'Connection to ' . $that->uri . ' cancelled' . (!$that->connectionPromises ? ' during DNS lookup' : '') . ' (ECONNABORTED)',
+                \defined('SOCKET_ECONNABORTED') ? \SOCKET_ECONNABORTED : 103
+            ));
             $_ = $reject = null;
 
             $that->cleanUp();
-            if ($timer instanceof TimerInterface) {
-                $that->loop->cancelTimer($timer);
-            }
         });
     }
 
@@ -143,7 +145,11 @@ final class HappyEyeBallsConnectionBuilder
             }
 
             if ($that->hasBeenResolved() && $that->ipsCount === 0) {
-                $reject(new \RuntimeException($that->error()));
+                $reject(new \RuntimeException(
+                    $that->error(),
+                    0,
+                    $e
+                ));
             }
 
             // Exception already handled above, so don't throw an unhandled rejection here
@@ -175,11 +181,12 @@ final class HappyEyeBallsConnectionBuilder
 
             $that->failureCount++;
 
+            $message = \preg_replace('/^(Connection to [^ ]+)[&?]hostname=[^ &]+/', '$1', $e->getMessage());
             if (\strpos($ip, ':') === false) {
-                $that->lastError4 = $e->getMessage();
+                $that->lastError4 = $message;
                 $that->lastErrorFamily = 4;
             } else {
-                $that->lastError6 = $e->getMessage();
+                $that->lastError6 = $message;
                 $that->lastErrorFamily = 6;
             }
 
@@ -200,7 +207,11 @@ final class HappyEyeBallsConnectionBuilder
             if ($that->ipsCount === $that->failureCount) {
                 $that->cleanUp();
 
-                $reject(new \RuntimeException($that->error()));
+                $reject(new \RuntimeException(
+                    $that->error(),
+                    $e->getCode(),
+                    $e
+                ));
             }
         });
 
@@ -222,47 +233,7 @@ final class HappyEyeBallsConnectionBuilder
      */
     public function attemptConnection($ip)
     {
-        $uri = '';
-
-        // prepend original scheme if known
-        if (isset($this->parts['scheme'])) {
-            $uri .= $this->parts['scheme'] . '://';
-        }
-
-        if (\strpos($ip, ':') !== false) {
-            // enclose IPv6 addresses in square brackets before appending port
-            $uri .= '[' . $ip . ']';
-        } else {
-            $uri .= $ip;
-        }
-
-        // append original port if known
-        if (isset($this->parts['port'])) {
-            $uri .= ':' . $this->parts['port'];
-        }
-
-        // append orignal path if known
-        if (isset($this->parts['path'])) {
-            $uri .= $this->parts['path'];
-        }
-
-        // append original query if known
-        if (isset($this->parts['query'])) {
-            $uri .= '?' . $this->parts['query'];
-        }
-
-        // append original hostname as query if resolved via DNS and if
-        // destination URI does not contain "hostname" query param already
-        $args = array();
-        \parse_str(isset($this->parts['query']) ? $this->parts['query'] : '', $args);
-        if ($this->host !== $ip && !isset($args['hostname'])) {
-            $uri .= (isset($this->parts['query']) ? '&' : '?') . 'hostname=' . \rawurlencode($this->host);
-        }
-
-        // append original fragment if known
-        if (isset($this->parts['fragment'])) {
-            $uri .= '#' . $this->parts['fragment'];
-        }
+        $uri = Connector::uri($this->parts, $this->host, $ip);
 
         return $this->connector->connect($uri);
     }
@@ -275,14 +246,16 @@ final class HappyEyeBallsConnectionBuilder
         // clear list of outstanding IPs to avoid creating new connections
         $this->connectQueue = array();
 
+        // cancel pending connection attempts
         foreach ($this->connectionPromises as $connectionPromise) {
-            if ($connectionPromise instanceof CancellablePromiseInterface) {
+            if ($connectionPromise instanceof PromiseInterface && \method_exists($connectionPromise, 'cancel')) {
                 $connectionPromise->cancel();
             }
         }
 
-        foreach ($this->resolverPromises as $resolverPromise) {
-            if ($resolverPromise instanceof CancellablePromiseInterface) {
+        // cancel pending DNS resolution (cancel IPv4 first in case it is awaiting IPv6 resolution delay)
+        foreach (\array_reverse($this->resolverPromises) as $resolverPromise) {
+            if ($resolverPromise instanceof PromiseInterface && \method_exists($resolverPromise, 'cancel')) {
                 $resolverPromise->cancel();
             }
         }

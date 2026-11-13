@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "composer"
+    directory: "/"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/"
+    open-pull-requests-limit: 10
+    groups:
+      fullcalendar:
+        patterns:
+          - "@fullcalendar/*"
+    # The calendar uses v6 plugins and global bundles. A major upgrade needs
+    # a coordinated migration; updating only core to v7 breaks npm ci (#10618).
+    ignore:
+      - dependency-name: "@fullcalendar/*"
+        update-types: ["version-update:semver-major"]
+      # The player plugins (chromecast, http-streaming, quality selector,
+      # overlay, playlist, youtube...) require video.js 8; video.js 10 breaks
+      # npm ci until they support it (#10651).
+      - dependency-name: "video.js"
+        update-types: ["version-update:semver-major"]
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"

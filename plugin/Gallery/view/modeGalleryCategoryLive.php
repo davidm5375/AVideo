@@ -9,42 +9,11 @@ if (empty($galleryObj->showCategoryLiveRow)) {
     echo '<!-- empty showCategoryLiveRow on category Live -->';
     return false;
 }
+global $categoryLiveVideos;
+$categoryLiveVideos = getLiveVideosFromCategory($currentCat['id']);
 
-$stats = getStatsNotifications();
-$videos = array();
-foreach ($stats["applications"] as $key => $value) {
-    if (empty($value['categories_id']) || $currentCat['id'] != $value['categories_id']) {
-        continue;
-    }
-    $video = array(
-        'id' => uniqid(),
-        'clean_category' => $currentCat['clean_name'],
-        'description' => '',
-        'users_id' => $value['users_id'],
-        'type' => 'ready',
-        'title' => $value['title'],
-        'poster' => @$value['poster'],
-        'href' => @$value['href'],
-        'link' => @$value['link'],
-        'imgGif' => @$value['imgGif'],
-        'className' => @$value['className'],
-        'galleryCallback' => @$value['callback']
-    );
-    
-    $videos[] = $video;
-}
-/*
-  $videosL = $videosLL = $videos = array();
-  if (AVideoPlugin::isEnabledByName("Live")) {
-  $videosL = Live::getAllVideos();
-  }
-  if (AVideoPlugin::isEnabledByName("LiveLinks")) {
-  $videosLL = LiveLinks::getAllVideos('a');
-  }
-  $videos = array_merge($videosL, $videosLL);
- * 
- */
-if (!empty($videos)) {
+if (!empty($categoryLiveVideos)) {
+    global $contentSearchFound;
     $contentSearchFound = true;
     ?>
     <div class="clear clearfix">
@@ -52,14 +21,16 @@ if (!empty($videos)) {
         if (canPrintCategoryTitle($currentCat['name'])) {
             ?>
             <h3 class="galleryTitle">
-                <a class="btn-default" href="<?php echo $global['webSiteRootURL']; ?>cat/<?php echo $currentCat['clean_name']; ?>">
+                <a href="<?php echo $global['webSiteRootURL']; ?>cat/<?php echo $currentCat['clean_name']; ?>">
                     <i class="<?php echo $currentCat['iconClass']; ?>"></i> <?php echo $currentCat['name']; ?>
                 </a>
             </h3>
             <?php
         }
-        createGalleryLiveSection($videos);
+        createGalleryLiveSection($categoryLiveVideos);
         ?>
     </div>
     <?php
+}else{
+    echo '<!-- Live videos list is empty -->';
 }

@@ -1,6 +1,8 @@
 
 function compress() {
     console.log("compress");
+    $("body").removeClass('ypt-is-expanded');
+    $("body").addClass('ypt-is-compressed');
     $("#modeYoutubeTop").prependTo("#modeYoutubeBottomContent");
     $("#avideoTheaterButton").removeClass('ypt-compress');
     $("#avideoTheaterButton").addClass('ypt-expand');
@@ -15,6 +17,8 @@ function compress() {
 }
 function expand() {
     console.log("expand");
+    $("body").removeClass('ypt-is-compressed');
+    $("body").addClass('ypt-is-expanded');
     $("#modeYoutubeTop").prependTo("#modeYoutubePrincipal");
     $("#avideoTheaterButton").removeClass('ypt-expand');
     $("#avideoTheaterButton").addClass('ypt-compress');
@@ -27,12 +31,25 @@ function expand() {
     });
     isCompressed = false;
 }
+
+function isCompressedVar(){
+    if(typeof isCompressed === 'undefined'){
+        return false;
+    }
+    return !empty(isCompressed);
+}
+
 function toogleEC() {
-    if (isCompressed) {
+    if (isCompressedVar()) {
         expand();
     } else {
         compress();
     }
 }
-$(document).ready(function () {
+$(function () {
+    if (isCompressedVar()) {
+        compress();
+    } else {
+        expand();
+    }
 });

@@ -24,7 +24,7 @@ use Google\Service\Apigee\GoogleCloudApigeeV1ListDeploymentsResponse;
  * Typical usage is:
  *  <code>
  *   $apigeeService = new Google\Service\Apigee(...);
- *   $deployments = $apigeeService->deployments;
+ *   $deployments = $apigeeService->organizations_sharedflows_revisions_deployments;
  *  </code>
  */
 class OrganizationsSharedflowsRevisionsDeployments extends \Google\Service\Resource
@@ -35,9 +35,14 @@ class OrganizationsSharedflowsRevisionsDeployments extends \Google\Service\Resou
    *
    * @param string $parent Required. Name of the API proxy revision for which to
    * return deployment information in the following format:
-   * `organizations/{org}/sharedflows/{sharedflow}/revisions/{rev}`.
+   * `organizations/{org}/sharedflows/{sharedflow}/revisions/{rev}`. If the shared
+   * flow resource has the `space` attribute set, IAM permissions are checked
+   * differently . To learn more, read the [Apigee Spaces
+   * Overview](https://cloud.google.com/apigee/docs/api-platform/system-
+   * administration/spaces/apigee-spaces-overview).
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1ListDeploymentsResponse
+   * @throws \Google\Service\Exception
    */
   public function listOrganizationsSharedflowsRevisionsDeployments($parent, $optParams = [])
   {

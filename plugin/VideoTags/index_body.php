@@ -4,7 +4,7 @@ if (!isset($global['systemRootPath'])) {
     require_once '../../videos/configuration.php';
 }
 if (!User::isAdmin()) {
-    header("Location: {$global['webSiteRootURL']}?error=" . __("You can not do this"));
+    forbiddenPage("You can not do this");
     exit;
 }
 ?>
@@ -38,7 +38,7 @@ if (!User::isAdmin()) {
             <div class="panel panel-default ">
                 <div class="panel-heading"><?php echo __("Tag Types"); ?></div>
                 <div class="panel-body">
-                    <table id="campaignTable" class="display" width="100%" cellspacing="0">
+                    <table id="campaignTable" class="display table table-bordered table-responsive table-striped table-hover table-condensed" width="100%" cellspacing="0">
                         <thead>
                             <tr>
                                 <th><?php echo __("Name"); ?></th>
@@ -72,7 +72,7 @@ if (!User::isAdmin()) {
         </button>
     </div>
 </div>
-<script type="text/javascript" src="<?php echo getCDN(); ?>view/css/DataTables/datatables.min.js"></script>
+<script type="text/javascript" src="<?php echo getURL('view/css/DataTables/datatables.min.js'); ?>"></script>
 
 <script type="text/javascript">
     $(document).ready(function () {
@@ -85,7 +85,7 @@ if (!User::isAdmin()) {
                 {
                     sortable: false,
                     data: null,
-                    defaultContent: $('#btnModelLinks').html(), "width": "60px"
+                    defaultContent: $('#btnModelLinks').html(), "width": "80px"
                 }
             ],
             select: true,
@@ -140,7 +140,7 @@ if (!User::isAdmin()) {
             e.preventDefault();
             modal.showPleaseWait();
             $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>plugin/VideoTags/addTagTypes.php',
+                url: webSiteRootURL+'plugin/VideoTags/addTagTypes.php',
                 data: $('#panelForm').serialize(),
                 type: 'post',
                 success: function (response) {

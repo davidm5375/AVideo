@@ -2,7 +2,6 @@
 
 global $global;
 require_once $global['systemRootPath'] . 'plugin/Plugin.abstract.php';
-
 require_once $global['systemRootPath'] . 'plugin/Permissions/Objects/Users_groups_permissions.php';
 
 class Permissions extends PluginAbstract {
@@ -15,11 +14,13 @@ class Permissions extends PluginAbstract {
     const PERMISSION_CACHE = 40;
     const PERMISSION_SITEMAP = 50;
     const PERMISSION_LOG = 60;
+    const PERMISSION_CAN_UPLOAD_VIDEOS = 70;
+    const PERMISSION_CAN_LIVESTREAM = 80;
 
     public function getDescription() {
         $desc = "Permissions will allow you to add intermediate permisson to usergroups without need to make them Admin, "
                 . " each plugin will have his own permission rules";
-        $help = "<br><small><a href='https://github.com/WWBN/AVideo/wiki/Permissions-Plugin' target='__blank'><i class='fas fa-question-circle'></i> Help</a></small>";
+        $help = "<br><small><a href='https://github.com/WWBN/AVideo/wiki/Permissions-Plugin' target='_blank'><i class='fas fa-question-circle'></i> Help</a></small>";
         //$desc .= $this->isReadyLabel(array('YPTWallet'));
         return $desc.$help;
     }
@@ -42,7 +43,7 @@ class Permissions extends PluginAbstract {
           if (AVideoPlugin::compareVersion($this->getName(), "2.0") < 0) {
           sqlDal::executeFile($global['systemRootPath'] . 'plugin/PayPerView/install/updateV2.0.sql');
           }
-         * 
+         *
          */
         return true;
     }
@@ -72,9 +73,9 @@ class Permissions extends PluginAbstract {
         return '<button onclick="avideoModalIframe(webSiteRootURL +\'plugin/Permissions/View/editor.php\');" class="btn btn-primary btn-sm btn-xs btn-block"><i class="fa fa-edit"></i> Edit</button>';
     }
 
-    static function getForm() {        
+    static function getForm() {
         global $global;
-                
+
         $disabled = "";
         if (!Users_groups_permissions::isTableInstalled()) {
             $disabled = " disabled='disabled' ";
@@ -82,7 +83,7 @@ class Permissions extends PluginAbstract {
             . "<span class=\"fa fa-info-circle\"></span> "
             . __("The Permissions Plugin is not installed. Please install it if you want to customize the permissions.")
             . "</div>";
-        }        
+        }
 
         $plugins = Plugin::getAllEnabled();
         foreach ($plugins as $value) {
@@ -106,35 +107,42 @@ class Permissions extends PluginAbstract {
         return false;
     }
 
-    static function hasPermission($type, $pluginName) {
+    static function hasPermission($type, $pluginName, $users_id = 0) {
         global $hasPermission;
-        if (!User::isLogged()) {
-            return false;
-        }
-
-        if (User::isAdmin()) {
-            return true;
-        }
 
         if (empty($hasPermission)) {
-            $hasPermission = array();
+            $hasPermission = [];
         }
-        if (empty($hasPermission[$pluginName])) {
-            $hasPermission[$pluginName] = array();
+        // only the logged user's checks are cached, keyed by user, so a check for another
+        // user (e.g. a video owner) never answers a later check for the logged user
+        $useCache = empty($users_id);
+        if ($useCache) {
+            if (!User::isLogged()) {
+                return false;
+            }
+
+            if (User::isAdmin()) {
+                return true;
+            }
+
+            $users_id = User::getId();
+            if (isset($hasPermission[$pluginName][$users_id][$type])) {
+                return $hasPermission[$pluginName][$users_id][$type];
+            }
         }
-        if (isset($hasPermission[$pluginName][$type])) {
-            return $hasPermission[$pluginName][$type];
-        }
-        $hasPermission[$pluginName][$type] = false;
-        $groups = UserGroups::getUserGroups(User::getId());
+        $permission = false;
+        $groups = UserGroups::getUserGroups($users_id);
         foreach ($groups as $value) {
             $permissions = Users_groups_permissions::getAllFromUserGorup($value['id']);
             if (!empty($permissions[$pluginName]) && in_array($type, $permissions[$pluginName])) {
-                $hasPermission[$pluginName][$type] = true;
-                return $hasPermission[$pluginName][$type];
+                $permission = true;
+                break;
             }
         }
-        return $hasPermission[$pluginName][$type];
+        if ($useCache) {
+            $hasPermission[$pluginName][$users_id][$type] = $permission;
+        }
+        return $permission;
     }
 
     static function canAdminComment() {
@@ -143,6 +151,28 @@ class Permissions extends PluginAbstract {
 
     static function canAdminVideos() {
         return self::hasPermission(Permissions::PERMISSION_FULLACCESSVIDEOS, 'Permissions');
+    }
+    
+    public function userCanUpload($users_id) {
+        if(empty($users_id)){
+            return -1;
+        }
+
+        if(self::hasPermission(Permissions::PERMISSION_CAN_UPLOAD_VIDEOS, 'Permissions', $users_id)){
+            return 1;// Yes
+        }
+        return 0;// I dont know
+    }
+
+    public function userCanLivestream($users_id) {
+        if(empty($users_id)){
+            return -1; // NO HE CANT
+        }
+
+        if(self::hasPermission(Permissions::PERMISSION_CAN_LIVESTREAM, 'Permissions', $users_id)){
+            return 1;// Yes
+        }
+        return 0;// I dont know
     }
 
     static function canModerateVideos() {
@@ -170,7 +200,6 @@ class Permissions extends PluginAbstract {
     }
 
     /**
-     * 
       const COMMENTS = 1;
       const FULLACCESSVIDEOS = 10;
       const INACTIVATEVIDEOS = 11;
@@ -181,42 +210,55 @@ class Permissions extends PluginAbstract {
       const LOG = 60;
      */
     function getPermissionsOptions() {
-        $permissions = array();
-        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_COMMENTS, __("Comments Admin"), __("Users with this option will be able to edit and delete comments in any video"), 'Permissions');
-        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_FULLACCESSVIDEOS, __("Videos Admin"), __("Just like admin, this user will have permission to edit and delete videos from any user, including videos from admin"), 'Permissions');
-        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_INACTIVATEVIDEOS, __("Videos Moderator"), __("This is a level below the (Videos Admin), this type of user can change the video publicity (Active, Inactive, Unlisted)"), 'Permissions');
-        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_USERS, __("Users Admin"), __("This type of user can edit users, can add or remove users into user groups, but cannot make them admins"), 'Permissions');
-        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_USERGROUPS, __("Users Groups Admin"), __("Can edit and delete user groups"), 'Permissions');
-        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_CACHE, __("Cache Manager"), __("This will give the option to can clear cache (Site and first page)"), 'Permissions');
-        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_SITEMAP, __("Sitemap"), __("This will give the option to generate SiteMap"), 'Permissions');
-        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_LOG, __("Log"), __("This will give the option to see the log file menu"), 'Permissions');
+        $permissions = [];
+        // Video permissions
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_FULLACCESSVIDEOS, __('Videos Admin'), __('Just like admin, this user will have permission to edit and delete videos from any user, including videos from admin'), 'Permissions');
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_INACTIVATEVIDEOS, __('Videos Moderator'), __('This is a level below the (Videos Admin), this type of user can change the video publicity (Active, Inactive, Unlisted)'), 'Permissions');
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_CAN_UPLOAD_VIDEOS, __('Upload Videos'), __('Users with this option will be able to upload videos'), 'Permissions');
+        
+        // Comments permissions
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_COMMENTS, __('Comments Admin'), __('Users with this option will be able to edit and delete comments in any video'), 'Permissions');
+    
+        // User and User Group permissions
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_USERS, __('Users Admin'), __('This type of user can edit users, can add or remove users into user groups, but cannot make them admins'), 'Permissions');
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_USERGROUPS, __('Users Groups Admin'), __('Can edit and delete user groups'), 'Permissions');
+    
+        // Livestream permission
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_CAN_LIVESTREAM, __('Live Stream'), __('Users with this option will be able to live stream'), 'Permissions');
+    
+        // Cache, Log, and Sitemap permissions
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_CACHE, __('Cache Manager'), __('This will give the option to clear cache (Site and first page)'), 'Permissions');
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_SITEMAP, __('Sitemap'), __('This will give the option to generate a SiteMap'), 'Permissions');
+        $permissions[] = new PluginPermissionOption(Permissions::PERMISSION_LOG, __('Log'), __('This will give the option to see the log file menu'), 'Permissions');
+    
         return $permissions;
     }
     
+
     static function getPluginPermissions($plugins_id) {
         global $getPluginPermissions;
         if(empty($getPluginPermissions)){
-            $getPluginPermissions = array();
+            $getPluginPermissions = [];
         }
         if(isset($getPluginPermissions[$plugins_id])){
             return $getPluginPermissions[$plugins_id];
         }
         $plugin = new Plugin($plugins_id);
         if(empty($plugin)){
-            $getPluginPermissions[$plugins_id] = array();
+            $getPluginPermissions[$plugins_id] = [];
             return $getPluginPermissions[$plugins_id];
         }
         $p = AVideoPlugin::loadPlugin($plugin->getName());
         if(empty($p)){
-            $getPluginPermissions[$plugins_id] = array();
+            $getPluginPermissions[$plugins_id] = [];
             return $getPluginPermissions[$plugins_id];
         }
         $options = $p->getPermissionsOptions();
         if(empty($options)){
-            $getPluginPermissions[$plugins_id] = array();
+            $getPluginPermissions[$plugins_id] = [];
             return $getPluginPermissions[$plugins_id];
         }
-        $permissions = array();
+        $permissions = [];
         foreach ($options as $key => $value) {
             $obj = new stdClass();
             $obj->name = $options[$key]->getName();
@@ -229,8 +271,7 @@ class Permissions extends PluginAbstract {
         $getPluginPermissions[$plugins_id] = $permissions;
         return $getPluginPermissions[$plugins_id];
     }
-    
-    
+
     static function getPluginPermissionsFromName($pluginName) {
         $row = Plugin::getPluginByName($pluginName);
         if(empty($row['id'])){
@@ -239,7 +280,7 @@ class Permissions extends PluginAbstract {
         $plugins_id = $row['id'];
         return self::getPluginPermissions($plugins_id);
     }
-    
+
     static function setPermission($users_groups_id, $plugins_id, $type, $isEnabled) {
         //var_dump($users_groups_id, $plugins_id, $type, $isEnabled, $_POST);
         $row = Users_groups_permissions::getFromUserGroupAndPluginAndType($users_groups_id, $plugins_id, $type, false);
@@ -255,5 +296,4 @@ class Permissions extends PluginAbstract {
         $ugp->setStatus($isEnabled?'a':'i');
         return $ugp->save();
     }
-
 }

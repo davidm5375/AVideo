@@ -1,18 +1,45 @@
 <?php
 global $global, $config;
-if(!isset($global['systemRootPath'])){
+$closeSessionEarlyIncludeConfig = 1;
+if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
-session_write_close();
-if(!User::isLogged()){
+if (!User::isLogged()) {
     die();
 }
 require_once $global['systemRootPath'] . 'objects/playlist.php';
 header('Content-Type: application/json');
-$row = PlayList::getAllFromUser(User::getId(), false);
-foreach ($row as $key => $value) {
-    foreach ($row[$key]['videos'] as $key2 => $value2) {
-        unset($row[$key]['videos'][$key2]['description']);
+_session_write_close();
+//mysqlBeginTransaction();
+//var_dump($row);exit;
+setRowCount(10000);
+$obj = new stdClass();
+$obj->error = false;
+$obj->msg = '';
+$obj->videosPlaylistsIds = array();
+$obj->videosPlaylists = array();
+$obj->rows = PlayList::getAllFromUser(User::getId(), false);
+foreach ($obj->rows as $key => $value) {
+    $obj->rows[$key]['videos'] = PlaybackAccess::filterVideoRows($obj->rows[$key]['videos']);
+    foreach ($obj->rows[$key]['videos'] as $key2 => $value2) {
+        unset($obj->rows[$key]['videos'][$key2]['description']);
+        if(!empty($obj->rows[$key]['videos'][$key2]['id'])){
+            $videos_id = $obj->rows[$key]['videos'][$key2]['id'];
+            if(!isset($obj->videosPlaylistsIds[$videos_id])){
+                $obj->videosPlaylistsIds[$videos_id] = array();
+            }
+            if(!in_array($obj->rows[$key]['id'], $obj->videosPlaylistsIds[$videos_id])){
+                $obj->videosPlaylistsIds[$videos_id][] = $obj->rows[$key]['id'];
+                $pl = $obj->rows[$key];
+                unset($pl['videos']);
+                $obj->videosPlaylists[$videos_id][] = $pl;
+            }
+        }
     }
 }
-echo json_encode($row);
+
+$obj->playListGetAllFromUserWasCache = !empty($playListGetAllFromUserWasCache);
+$obj->getVideosFromPlaylistWasCache = !empty($getVideosFromPlaylistWasCache);
+
+//mysqlCommit();
+echo json_encode($obj);

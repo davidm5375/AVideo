@@ -1,363 +1,153 @@
 <?php
-require_once '../objects/functions.php';
-require_once '../locale/function.php';
-
-
-
-//var_dump($_SERVER);exit;
+ini_set('display_errors', '0');
+require_once __DIR__ . '/installer.php';
+$configured = installerConfigured();
+if (!$configured) { installerSession(); }
+header('Cache-Control: no-store');
+header('X-Frame-Options: DENY');
+function h($value) { return htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); }
+$configured = installerConfigured();
+$checks = $configured ? [] : installerChecks();
+$ready = !in_array(false, array_column($checks, 'ok'), true);
+$checklistGroups = [];
+$checklistCounts = array_fill_keys(['passed', 'failed', 'unknown', 'na'], 0);
+$checklistStatuses = ['passed' => ['✓', 'Check passed'], 'failed' => ['✕', 'Needs attention'],
+    'unknown' => ['!', 'Not verified'], 'na' => ['—', 'Not applicable']];
+if (!$configured) {
+    require_once __DIR__ . '/checklist-functions.php';
+    foreach ($checks as $check) {
+        $help = $check['ok'] ? [] : installerRequirementHelp($check);
+        $checklistGroups['Required for installation'][] = ['label' => $check['label'], 'status' => $check['ok'] ? 'passed' : 'failed',
+            'detail' => $check['ok'] ? ($check['label'] === 'PHP 8.2 or later' ? 'Current version: ' . PHP_VERSION : 'Installation requirement available.') : $check['detail'],
+            'help' => $help['text'] ?? '', 'command' => $help['command'] ?? ''];
+    }
+    foreach (installerAdditionalChecks() as $check) { $checklistGroups[$check['group']][] = $check; }
+    foreach ($checklistGroups as $group) {
+        foreach ($group as $check) { ++$checklistCounts[$check['status']]; }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>Install AVideo</title>
-        <script src="../node_modules/jquery/dist/jquery.min.js" type="text/javascript"></script>
-        <link rel="icon" href="../view/img/favicon.png">
-        <link href="../view/bootstrap/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
-
-        <link href="../view/bootstrap/bootstrapSelectPicker/css/bootstrap-select.min.css" rel="stylesheet" type="text/css"/>
-        <link href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"/>
-        <link href="../view/css/flagstrap/css/flags.css" rel="stylesheet" type="text/css"/>
-        <style>
-            .bootstrap-select{
-                width: 100% !important;
-            }
-
-        </style>
-    </head>
-
-    <body>
-        <?php
-        if (file_exists('../videos/configuration.php')) {
-            require_once '../videos/configuration.php';
-            ?>
-            <div class="container">
-                <h3 class="alert alert-success">
-                    <span class="glyphicon glyphicon-ok-circle"></span>
-                    Your system is installed, remove the <code><?php echo $global['systemRootPath']; ?>install</code> directory to continue
-                    <hr>
-                    <a href="<?php echo $global['webSiteRootURL']; ?>" class="btn btn-success btn-lg center-block">Go to the main page</a>
-                </h3>
-            </div>
-            <?php
-        } else {
-            ?>
-            <div class="container">
-                <img src="../view/img/logo.png" alt="Logo" class="img img-responsive center-block"/>
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="panel panel-default">
-                            <div class="panel-heading"><i class="fas fa-tasks"></i> Check list</div>
-                            <div class="panel-body">
-                                <?php
-                                if (isApache()) {
-                                    ?>
-                                    <div class="alert alert-success">
-                                        <span class="glyphicon glyphicon-check"></span>
-                                        <strong><?php echo $_SERVER['SERVER_SOFTWARE']; ?> is Present</strong>
-                                    </div>
-                                    <?php
-                                } else {
-                                    ?>
-                                    <div class="alert alert-danger">
-                                        <span class="glyphicon glyphicon-unchecked"></span>
-                                        <strong>Your server is <?php echo $_SERVER['SERVER_SOFTWARE']; ?>, you must install Apache</strong>
-                                    </div>
-                                    <?php
-                                }
-                                ?>
-                                <?php
-                                if (isPHP("5.6")) {
-                                    ?>
-                                    <div class="alert alert-success">
-                                        <span class="glyphicon glyphicon-check"></span>
-                                        <strong>PHP <?php echo PHP_VERSION; ?> is Present</strong>
-                                    </div>
-                                    <?php
-                                } else {
-                                    ?>
-                                    <div class="alert alert-warning">
-                                        <span class="glyphicon glyphicon-exclamation-sign"></span>
-                                        <strong>Your PHP version is <?php echo PHP_VERSION; ?>, we recommend install PHP 5.6.x or greater</strong>
-                                    </div>                  
-                                    <?php
-                                }
-                                ?>
-
-                                <?php
-                                if (checkVideosDir()) {
-                                    ?>
-                                    <div class="alert alert-success">
-                                        <span class="glyphicon glyphicon-check"></span>
-                                        <strong>Your videos directory is writable</strong>
-                                    </div>
-                                    <?php
-                                } else {
-                                    ?>
-                                    <div class="alert alert-danger">
-                                        <span class="glyphicon glyphicon-unchecked"></span>
-                                        <strong>Your videos directory must be writable</strong>
-                                        <details>
-                                            <?php
-                                            $dir = getPathToApplication() . "videos";
-                                            if (!file_exists($dir)) {
-                                                ?>
-                                                The video directory does not exists, AVideo had no permition to create it, you must create it manualy!
-                                                <br>
-                                                <pre><code>sudo mkdir <?php echo $dir; ?></code></pre>
-                                                <?php
-                                            }
-                                            ?>
-                                            <br>
-                                            Then you can set the permissions (www-data means apache user).
-                                            <br>
-                                            <pre><code>sudo chown www-data:www-data <?php echo $dir; ?> && sudo chmod 755 <?php echo $dir; ?> </code></pre>
-                                        </details>
-                                    </div>
-                                    <?php
-                                }
-                                $pathToPHPini = php_ini_loaded_file();
-                                if (empty($pathToPHPini)) {
-                                    $pathToPHPini = "/etc/php/7.0/cli/php.ini";
-                                }
-                                ?>
-
-                                <?php
-                                if (check_post_max_size()) {
-                                    ?>
-                                    <div class="alert alert-success">
-                                        <span class="glyphicon glyphicon-check"></span>
-                                        <strong>Your post_max_size is <?php echo ini_get('post_max_size'); ?></strong>
-                                    </div>
-                                    <?php
-                                } else {
-                                    ?>
-                                    <div class="alert alert-danger">
-                                        <span class="glyphicon glyphicon-unchecked"></span>
-                                        <strong>Your post_max_size is <?php echo ini_get('post_max_size'); ?>, it must be at least 100M</strong>
-
-                                        <details>
-                                            Edit the <code>php.ini</code> file
-                                            <br>
-                                            <pre><code>sudo nano <?php echo $pathToPHPini; ?></code></pre>
-                                        </details>
-                                    </div>
-                                    <?php
-                                }
-                                ?>
-
-                                <?php
-                                if (check_upload_max_filesize()) {
-                                    ?>
-                                    <div class="alert alert-success">
-                                        <span class="glyphicon glyphicon-check"></span>
-                                        <strong>Your upload_max_filesize is <?php echo ini_get('upload_max_filesize'); ?></strong>
-                                    </div>
-                                    <?php
-                                } else {
-                                    ?>
-                                    <div class="alert alert-danger">
-                                        <span class="glyphicon glyphicon-unchecked"></span>
-                                        <strong>Your upload_max_filesize is <?php echo ini_get('upload_max_filesize'); ?>, it must be at least 100M</strong>
-
-                                        <details>
-                                            Edit the <code>php.ini</code> file
-                                            <br>
-                                            <pre><code>sudo nano <?php echo $pathToPHPini; ?></code></pre>
-                                        </details>
-                                    </div>
-                                    <?php
-                                }
-                                ?>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Setup • AVideo Streamer</title>
+    <link rel="icon" href="assets/favicon.png">
+    <link rel="stylesheet" href="installer.css">
+    <link rel="stylesheet" href="checklist.css">
+    <script src="installer.js" defer></script>
+</head>
+<body>
+<div class="shell">
+    <aside class="sidebar">
+        <a class="brand" href="https://avideo.com/" aria-label="AVideo"><img src="assets/logo.png" alt="AVideo" width="250" height="70"></a>
+        <div class="product">VIDEO PLATFORM</div>
+        <div class="sidebar-heading">Your videos.<br>Ready to<br><span>stream.</span></div>
+        <p class="sidebar-copy">Create your own home for videos, live streams, and your community.</p>
+        <?php if (!$configured): ?>
+        <nav aria-label="Setup steps">
+            <a href="#database"><span>01</span><div>Database<small>Connection and storage</small></div></a>
+            <a href="#network"><span>02</span><div>Your site<small>Address and language</small></div></a>
+            <a href="#streamer"><span>03</span><div>Administrator<small>Your first account</small></div></a>
+        </nav>
+        <?php endif; ?>
+        <div class="sidebar-footer"><span class="signal" aria-hidden="true"></span> GUIDED SETUP<small>MySQL / MariaDB · Windows / Linux</small></div>
+    </aside>
+    <main>
+        <header class="topbar"><span>Initial setup</span><span class="pill">AVideo Streamer</span></header>
+        <div class="content">
+        <?php if ($configured): ?>
+            <section class="complete card">
+                <span class="complete-icon" aria-hidden="true">✓</span>
+                <div class="eyebrow">SETUP COMPLETE</div>
+                <h1>Installation complete.</h1>
+                <p>Setup is locked. Your application is ready to open.</p>
+                <a class="button primary" href="../">Open application</a>
+            </section>
+        <?php else: ?>
+            <div class="eyebrow">GET STARTED</div>
+            <h1>Set up your video platform.</h1>
+            <p class="intro">Enter your details below. We will create the database, install the tables,<br class="desktop"> and generate your configuration file.</p>
+            <section class="environment" aria-labelledby="checklistHeading">
+                <div class="environment-title"><span class="status-dot <?= $ready ? '' : 'bad' ?>" aria-hidden="true"></span><strong><?= $ready ? 'Required checks passed' : 'Required checks need attention' ?></strong><span>Server check</span></div>
+                <h2 id="checklistHeading" class="checklist-heading">Installation checklist</h2>
+                <p class="checklist-summary"><?= $checklistCounts['passed'] ?> passed · <?= $checklistCounts['failed'] ?> need attention · <?= $checklistCounts['unknown'] ?> not verified · <?= $checklistCounts['na'] ?> not applicable.</p>
+                <p class="checklist-summary">Only required checks block installation. Expand the other groups to review recommended settings and optional features. Encoder and Live may run on separate servers. Reload this page after corrections.</p>
+                <?php foreach ($checklistGroups as $heading => $group):
+                    $required = $heading === 'Required for installation';
+                    $counts = array_count_values(array_column($group, 'status'));
+                ?>
+                <details class="checklist-group" <?= $required ? 'open' : '' ?>>
+                    <summary><strong><?= h($heading) ?></strong><span class="checklist-group-counts"><?= $counts['passed'] ?? 0 ?> passed · <?= $counts['failed'] ?? 0 ?> need attention · <?= $counts['unknown'] ?? 0 ?> not verified · <?= $counts['na'] ?? 0 ?> not applicable</span></summary>
+                    <p class="checklist-summary"><?= $required ? 'Required to install this Streamer.' : 'Advisory only. Review the checks for features you plan to use; these do not block Streamer installation.' ?></p>
+                    <ul class="requirement-list">
+                        <?php foreach ($group as $check): $status = $checklistStatuses[$check['status']]; ?>
+                        <li class="requirement-item <?= h($check['status']) ?>">
+                            <span class="requirement-icon" aria-hidden="true"><?= $status[0] ?></span>
+                            <div class="requirement-content"><strong><?= h($check['label']) ?></strong><span class="requirement-status"><?= h($status[1]) ?></span>
+                                <p class="requirement-detail"><?= h($check['detail']) ?></p>
+                                <?php if ($check['help']): ?>
+                                <details class="checklist-help"><summary><?= $check['status'] === 'failed' ? 'How to resolve' : 'How to verify' ?></summary>
+                                    <p><?= h($check['help']) ?></p>
+                                    <?php if ($check['command']): ?><pre><code><?= h($check['command']) ?></code></pre><?php endif; ?>
+                                </details>
+                                <?php endif; ?>
                             </div>
-                        </div>
+                        </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </details>
+                <?php endforeach; ?>
+                <p class="checklist-summary">Database access is checked separately: use <a href="#database">Test connection</a> below with your database details. A passing checklist does not replace an upload, encoding or live playback test.</p>
+            </section>
+            <?php include __DIR__ . '/ubuntu-help.php'; ?>
+            <form id="configurationForm" data-ready="<?= $ready ? '1' : '0' ?>">
+                <input type="hidden" name="install_csrf_token" value="<?= h($_SESSION['install_csrf_token']) ?>">
+                <section class="card" id="database">
+                    <div class="section-heading"><span class="number">01</span><div><h2>Database</h2><p>Where your video platform stores its data.</p></div><span class="tag">MySQL / MariaDB</span></div>
+                    <div class="fields">
+                        <div class="field wide"><label for="databaseHost">Database host</label><input id="databaseHost" name="databaseHost" value="localhost" required maxlength="253" autocomplete="off" spellcheck="false"><small>Use localhost if the database runs on this server.</small></div>
+                        <div class="field narrow"><label for="databasePort">Port</label><input id="databasePort" name="databasePort" type="number" value="3306" min="1" max="65535" required></div>
+                        <div class="field"><label for="databaseUser">Username</label><input id="databaseUser" name="databaseUser" value="root" required maxlength="80" autocomplete="off" spellcheck="false"></div>
+                        <div class="field"><label for="databasePass">Database password <span class="optional">if applicable</span></label><div class="password-field"><input id="databasePass" name="databasePass" type="password" autocomplete="new-password"><button type="button" class="reveal" data-target="databasePass" aria-label="Show database password" aria-pressed="false">Show</button></div></div>
+                        <div class="field full"><label for="databaseName">Database name</label><input id="databaseName" name="databaseName" value="avideo" pattern="[A-Za-z0-9_\-]{1,64}" maxlength="64" required spellcheck="false"><small>We will create this database if it does not exist. An existing database must contain no data.</small></div>
                     </div>
-
-                    <form id="configurationForm">
-                        <div class="col-md-4">
-                            <div class="panel panel-default">
-                                <div class="panel-heading"><i class="fas fa-play-circle"></i> Site Configuration</div>
-                                <div class="panel-body">
-                                    <div class="form-group">
-                                        <label for="webSiteRootURL">Your Site URL</label>
-                                        <input type="text" class="form-control" id="webSiteRootURL" placeholder="Enter your URL (http://yoursite.com)" value="<?php echo getURLToApplication(); ?>" required="required">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="systemRootPath">System Path to Application</label>
-                                        <input type="text" class="form-control" id="systemRootPath" placeholder="System Path to Application (/var/www/[application_path])" value="<?php echo getPathToApplication(); ?>" required="required">
-                                    </div>
-                                    <div class="row">
-                                        <div class="form-group col-md-8">
-                                            <label for="webSiteTitle">Title of your Web Site</label>
-                                            <input type="text" class="form-control" id="webSiteTitle" placeholder="Enter the title of your Web Site" value="AVideo" required="required">
-                                        </div>
-                                        <div class="form-group col-md-4">
-                                            <label for="mainLanguage">Language</label><br>
-                                            <select class="selectpicker" id="mainLanguage">
-                                                <?php
-                                                global $global;
-                                                include_once '../objects/bcp47.php'; 
-                                                $dir = "../locale/";
-                                                $flags = array();
-                                                if ($handle = opendir($dir)) {
-                                                    while (false !== ($entry = readdir($handle))) {
-                                                        if ($entry != '.' && $entry != '..' && $entry != 'index.php' && $entry != 'function.php' && $entry != 'save.php') {
-                                                            $flags[] = str_replace('.php', '', $entry);
-                                                        }
-                                                    }
-                                                    closedir($handle);
-                                                }
-                                                sort($flags);
-
-                                                foreach ($flags as $flag) {
-                                                    //var_dump($global['bcp47'][$flag]);
-                                                    $fileEx = $global['bcp47'][$flag]['flag'];
-                                                    echo "<option data-content='<span class=\"flagstrap-icon flagstrap-$fileEx\"></span> {$global['bcp47'][$flag]['label']}' value=\"$fileEx\" " . (('us' == $fileEx) ? " selected" : "") . ">{$global['bcp47'][$flag]['label']}</option>";
-                                                }
-                                                ?>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="contactEmail">Contact E-mail</label>
-                                        <input type="email" class="form-control" id="contactEmail" placeholder="Enter e-mail contact of your Web Site" required="required">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="systemAdminPass">System Admin password</label>
-                                        <?php
-                                        getInputPassword("systemAdminPass", 'class="form-control" required="required"', __("Enter System Admin password"));
-                                        ?>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="confirmSystemAdminPass">Confirm System Admin password</label>
-                                        <?php
-                                        getInputPassword("confirmSystemAdminPass", 'class="form-control" required="required"', __("Confirm System Admin password"));
-                                        ?>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="panel panel-default">
-                                <div class="panel-heading"><i class="fas fa-database"></i> Database</div>
-                                <div class="panel-body">
-
-                                    <div class="form-group">
-                                        <label for="databaseHost">Database Host</label>
-                                        <input type="text" class="form-control" id="databaseHost" placeholder="Enter Database Host" value="localhost" required="required">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="databasePort">Database Port</label>
-                                        <input type="text" class="form-control" id="databasePort" placeholder="Enter Database Port" value="3306" required="required">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="databaseUser">Database User</label>
-                                        <input type="text" class="form-control" id="databaseUser" placeholder="Enter Database User" value="root" required="required">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="databasePass">Database Password</label>
-                                        <?php
-                                        getInputPassword("databasePass", 'class="form-control"', __("Enter Database Password"));
-                                        ?>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="databaseName">Database Name</label>
-                                        <input type="text" class="form-control" id="databaseName" placeholder="Enter Database Name" value="aVideo" required="required">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="createTables">Do you want to create database and tables?</label><br>
-                                        <select class="selectpicker" id="createTables">
-                                            <option value="2">Create database and tables</option>
-                                            <option value="1">Create only tables (Do not create database)</option>
-                                            <option value="0">Do not create any, I will import the script manually</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
-                            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-cogs"></i> Install now</button>
-                        </div>
-                    </form>
-                </div>
-
-            </div>
-        <?php } ?>
-        <script src="../view/bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
-        <script src="../view/css/flagstrap/js/jquery.flagstrap.min.js" type="text/javascript"></script>
-        <script src="../view/bootstrap/bootstrapSelectPicker/js/bootstrap-select.min.js" type="text/javascript"></script>
-        <script src="../node_modules/sweetalert/dist/sweetalert.min.js" type="text/javascript"></script>
-        <script src="../view/js/jquery.lazy/jquery.lazy.min.js" type="text/javascript"></script>
-        <script src="../view/js/jquery.lazy/jquery.lazy.plugins.min.js" type="text/javascript"></script>
-        <script src="../view/js/js-cookie/js.cookie.js" type="text/javascript"></script>
-        <script src="../view/js/script.js" type="text/javascript"></script>
-
-        <script>
-            $(function () {
-                $('.selectpicker').selectpicker();
-                $('#configurationForm').submit(function (evt) {
-                    evt.preventDefault();
-
-                    var systemAdminPass = $('#systemAdminPass').val();
-                    var confirmSystemAdminPass = $('#confirmSystemAdminPass').val();
-
-                    if (!systemAdminPass) {
-                        avideoAlert("Sorry!", "Your System Admin Password can not be blank!", "error");
-                        return false;
-                    }
-                    if (systemAdminPass != confirmSystemAdminPass) {
-                        avideoAlert("Sorry!", "Your System Admin Password must be confirmed!", "error");
-                        return false;
-                    }
-
-                    modal.showPleaseWait();
-                    var webSiteRootURL = $('#webSiteRootURL').val();
-                    var systemRootPath = $('#systemRootPath').val();
-                    var webSiteTitle = $('#webSiteTitle').val();
-                    var databaseHost = $('#databaseHost').val();
-                    var databasePort = $('#databasePort').val();
-                    var databaseUser = $('#databaseUser').val();
-                    var databasePass = $('#databasePass').val();
-                    var databaseName = $('#databaseName').val();
-                    var mainLanguage = $('#mainLanguage').val();
-                    var contactEmail = $('#contactEmail').val();
-                    var createTables = $('#createTables').val();
-                    $.ajax({
-                        url: webSiteRootURL + 'install/checkConfiguration.php',
-                        data: {
-                            webSiteRootURL: webSiteRootURL,
-                            systemRootPath: systemRootPath,
-                            webSiteTitle: webSiteTitle,
-                            databaseHost: databaseHost,
-                            databasePort: databasePort,
-                            databaseUser: databaseUser,
-                            databasePass: databasePass,
-                            databaseName: databaseName,
-                            mainLanguage: mainLanguage,
-                            systemAdminPass: systemAdminPass,
-                            contactEmail: contactEmail,
-                            createTables: createTables
-                        },
-                        type: 'post',
-                        success: function (response) {
-                            modal.hidePleaseWait();
-                            if (response.error) {
-                                avideoAlert("Sorry!", response.error, "error");
-                            } else {
-                                avideoAlert("Congratulations!", response.error, "success");
-                                window.location.reload(false);
-                            }
-                        },
-                        error: function (xhr, ajaxOptions, thrownError) {
-                            modal.hidePleaseWait();
-                            if (xhr.status == 404) {
-                                avideoAlert("Sorry!", "Your Site URL is wrong!", "error");
-                            } else {
-                                avideoAlert("Sorry!", "Unknow error!", "error");
-                            }
-                        }
-                    });
-                });
-            });
-        </script>
-    </body>
+                    <div class="field full database-mode"><label for="createTables">Database setup</label><select id="createTables" name="createTables">
+                        <option value="2">Create database and tables</option><option value="1">Create tables in an existing empty database</option><option value="0">Use an empty schema imported manually</option>
+                    </select><small>Existing sites must be recovered from their configuration backup.</small></div>
+                    <div class="card-footer"><span>Testing the connection does not change any data.</span><button type="button" class="button secondary" id="testConnection">Test connection <span aria-hidden="true">↗</span></button></div>
+                    <div id="connectionResult" class="inline-result" role="status" hidden></div>
+                </section>
+                <section class="card" id="network">
+                    <div class="section-heading"><span class="number">02</span><div><h2>Your site</h2><p>Give your platform a name and a public address.</p></div></div>
+                    <div class="fields">
+                        <div class="field full"><label for="webSiteRootURL">Site URL</label><input id="webSiteRootURL" name="webSiteRootURL" type="url" value="<?= h(installerURL()) ?>" required maxlength="254" spellcheck="false"><small>The address viewers will use, including any port or subdirectory.</small></div>
+                        <div class="field"><label for="webSiteTitle">Site title</label><input id="webSiteTitle" name="webSiteTitle" value="AVideo" maxlength="45" required></div>
+                        <div class="field"><label for="mainLanguage">Site language</label><select id="mainLanguage" name="mainLanguage"><?php foreach (installerLanguages() as $code => $label): ?><option value="<?= h($code) ?>" <?= $code === 'en_US' ? 'selected' : '' ?>><?= h($label) ?></option><?php endforeach; ?></select></div>
+                        <div class="field full"><label for="contactEmail">Contact email</label><input id="contactEmail" name="contactEmail" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"><small>Used for your administrator account and site contact details.</small></div>
+                    </div>
+                    <details class="path-details"><summary>Automatically detected directory</summary><code><?= h(installerRoot()) ?></code><p>Setup writes the configuration to the videos directory of this installation.</p></details>
+                    <input type="hidden" name="systemRootPath" value="<?= h(installerRoot()) ?>">
+                </section>
+                <section class="card" id="streamer">
+                    <div class="section-heading"><span class="number">03</span><div><h2>Administrator</h2><p>Create the first account for your new platform.</p></div></div>
+                    <div class="fields">
+                        <div class="field full"><label for="adminUsername">Username</label><input id="adminUsername" value="admin" readonly autocomplete="username"><small>Sign in as admin after installation.</small></div>
+                        <div class="field"><label for="systemAdminPass">Administrator password</label><div class="password-field"><input id="systemAdminPass" name="systemAdminPass" type="password" required autocomplete="new-password"><button type="button" class="reveal" data-target="systemAdminPass" aria-label="Show administrator password" aria-pressed="false">Show</button></div></div>
+                        <div class="field"><label for="confirmSystemAdminPass">Confirm password</label><div class="password-field"><input id="confirmSystemAdminPass" name="confirmSystemAdminPass" type="password" required autocomplete="new-password"><button type="button" class="reveal" data-target="confirmSystemAdminPass" aria-label="Show password confirmation" aria-pressed="false">Show</button></div></div>
+                    </div>
+                    <div class="info"><span aria-hidden="true">i</span><p>Keep this password somewhere safe. You will need it to manage your site.</p></div>
+                </section>
+                <section id="result" class="card result" tabindex="-1" aria-live="polite" hidden></section>
+                <div class="submit-row"><p><strong>Everything in one step.</strong><br>Database, tables, and configuration.php.</p><button class="button primary" id="installButton" type="submit" <?= $ready ? '' : 'disabled' ?>>Install AVideo <span aria-hidden="true">→</span></button></div>
+                <p class="install-note">If anything goes wrong, instructions and commands to run on your server will appear here.</p>
+            </form>
+            <noscript><p class="info">Enable JavaScript in your browser to test the connection and run setup.</p></noscript>
+        <?php endif; ?>
+        <footer class="page-footer"><span>AVideo Streamer</span><span>Your videos. Your community.</span></footer>
+        </div>
+    </main>
+</div>
+</body>
 </html>

@@ -1,16 +1,16 @@
 <?php
-header('HTTP/1.0 403 Forbidden');
 if (empty($_REQUEST['403ErrorMsg'])) {
     $_REQUEST['403ErrorMsg'] = __("You are not allowed to enter here");
 }
+$_REQUEST['403ErrorMsg'] = htmlentities(strip_tags($_REQUEST['403ErrorMsg']));
 $_REQUEST['403ErrorMsg'] = "<h1>{$_REQUEST['403ErrorMsg']}</h1>";
 if (class_exists("User") && !User::isLogged()) {
-    $_REQUEST['403ErrorMsg'] .= '<h2><a target="_blank" href="' . $global['webSiteRootURL'] . 'user">' . __("Login") . '</a></h2>';
+    $_REQUEST['403ErrorMsg'] .= '<h2><a target="_blank" href="' . $global['webSiteRootURL'] . 'user" id="loginLink"><i class="fas fa-sign-in-alt"></i> ' . __("Login") . '</a></h2>';
 }
 ?>
 <style>
 
-    @import url("https://fonts.googleapis.com/css?family=Bungee");
+    @import url("<?php echo getURL('view/css/custom/fonts/bungee.css'); ?>");
     #page403 {
         font-family: "Bungee", cursive;
         margin-top: 50px;
@@ -68,7 +68,7 @@ if (class_exists("User") && !User::isLogged()) {
         </g>
     </svg>
     <?php
-    echo $_REQUEST['403ErrorMsg'];
+    echo $_REQUEST['403ErrorMsg'] ?? '';
     ?>
 </div>
 <script>
@@ -98,4 +98,8 @@ if (class_exists("User") && !User::isLogged()) {
         root.style.setProperty("--mouse-x", x);
         root.style.setProperty("--mouse-y", y);
     });
+    $(document).ready(function () {
+        $('#loginLink').attr('target', '');
+    });
+
 </script>

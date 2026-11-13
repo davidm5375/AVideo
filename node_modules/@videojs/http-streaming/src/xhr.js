@@ -10,11 +10,8 @@
  * @return {Request} the xhr request that is going to be made
  */
 import videojs from 'video.js';
-
-const {
-  xhr: videojsXHR,
-  mergeOptions
-} = videojs;
+import window from 'global/window';
+import {merge} from './util/vjs-compat';
 
 const callbackWrapper = function(request, error, response, callback) {
   const reqResponse = request.responseType === 'arraybuffer' ? request.response : request.responseText;
@@ -55,30 +52,77 @@ const callbackWrapper = function(request, error, response, callback) {
   callback(error, request);
 };
 
+/**
+ * Iterates over the request hooks Set and calls them in order
+ *
+ * @param {Set} hooks the hook Set to iterate over
+ * @param {Object} options the request options to pass to the xhr wrapper
+ * @return the callback hook function return value, the modified or new options Object.
+ */
+const callAllRequestHooks = (requestSet, options) => {
+  if (!requestSet || !requestSet.size) {
+    return;
+  }
+  let newOptions = options;
+
+  requestSet.forEach((requestCallback) => {
+    newOptions = requestCallback(newOptions);
+  });
+  return newOptions;
+};
+
+/**
+ * Iterates over the response hooks Set and calls them in order.
+ *
+ * @param {Set} hooks the hook Set to iterate over
+ * @param {Object} request the xhr request object
+ * @param {Object} error the xhr error object
+ * @param {Object} response the xhr response object
+ */
+const callAllResponseHooks = (responseSet, request, error, response) => {
+  if (!responseSet || !responseSet.size) {
+    return;
+  }
+  responseSet.forEach((responseCallback) => {
+    responseCallback(request, error, response);
+  });
+};
+
 const xhrFactory = function() {
   const xhr = function XhrFunction(options, callback) {
     // Add a default timeout
-    options = mergeOptions({
+    options = merge({
       timeout: 45e3
     }, options);
 
     // Allow an optional user-specified function to modify the option
     // object before we construct the xhr request
+    // TODO: Remove beforeRequest in the next major release.
     const beforeRequest = XhrFunction.beforeRequest || videojs.Vhs.xhr.beforeRequest;
+    // onRequest and onResponse hooks as a Set, at either the player or global level.
+    // TODO: new Set added here for beforeRequest alias. Remove this when beforeRequest is removed.
+    const _requestCallbackSet = XhrFunction._requestCallbackSet || videojs.Vhs.xhr._requestCallbackSet || new Set();
+    const _responseCallbackSet = XhrFunction._responseCallbackSet || videojs.Vhs.xhr._responseCallbackSet;
 
     if (beforeRequest && typeof beforeRequest === 'function') {
-      const newOptions = beforeRequest(options);
-
-      if (newOptions) {
-        options = newOptions;
-      }
+      videojs.log.warn('beforeRequest is deprecated, use onRequest instead.');
+      _requestCallbackSet.add(beforeRequest);
     }
 
     // Use the standard videojs.xhr() method unless `videojs.Vhs.xhr` has been overriden
     // TODO: switch back to videojs.Vhs.xhr.name === 'XhrFunction' when we drop IE11
-    const xhrMethod = videojs.Vhs.xhr.original === true ? videojsXHR : videojs.Vhs.xhr;
+    const xhrMethod = videojs.Vhs.xhr.original === true ? videojs.xhr : videojs.Vhs.xhr;
 
-    const request = xhrMethod(options, function(error, response) {
+    // call all registered onRequest hooks, assign new options.
+    const beforeRequestOptions = callAllRequestHooks(_requestCallbackSet, options);
+
+    // Remove the beforeRequest function from the hooks set so stale beforeRequest functions are not called.
+    _requestCallbackSet.delete(beforeRequest);
+
+    // xhrMethod will call XMLHttpRequest.open and XMLHttpRequest.send
+    const request = xhrMethod(beforeRequestOptions || options, function(error, response) {
+      // call all registered onResponse hooks
+      callAllResponseHooks(_responseCallbackSet, request, error, response);
       return callbackWrapper(request, error, response, callback);
     });
     const originalAbort = request.abort;
@@ -88,6 +132,7 @@ const xhrFactory = function() {
       return originalAbort.apply(request, arguments);
     };
     request.uri = options.uri;
+    request.requestType = options.requestType;
     request.requestTime = Date.now();
     return request;
   };
@@ -104,11 +149,17 @@ const xhrFactory = function() {
  * @param {Object} byterange - an object with two values defining the start and end
  *                             of a byte-range
  */
-const byterangeStr = function(byterange) {
+export const byterangeStr = function(byterange) {
   // `byterangeEnd` is one less than `offset + length` because the HTTP range
   // header uses inclusive ranges
-  const byterangeEnd = byterange.offset + byterange.length - 1;
+  let byterangeEnd;
   const byterangeStart = byterange.offset;
+
+  if (typeof byterange.offset === 'bigint' || typeof byterange.length === 'bigint') {
+    byterangeEnd = window.BigInt(byterange.offset) + window.BigInt(byterange.length) - window.BigInt(1);
+  } else {
+    byterangeEnd = byterange.offset + byterange.length - 1;
+  }
 
   return 'bytes=' + byterangeStart + '-' + byterangeEnd;
 };

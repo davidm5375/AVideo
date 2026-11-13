@@ -1,14 +1,17 @@
 <?php
 
-function getEncryptedInfo($timeOut = 0, $send_to_uri_pattern = "") {
+function getEncryptedInfo($timeOut = 0, $send_to_uri_pattern = "", $sentFrom = 'browser') {
     if (empty($timeOut)) {
         $timeOut = 43200; // valid for 12 hours
     }
     $msgObj = new stdClass();
+    $msgObj->isCommandLineInterface = isCommandLineInterface();
+    $msgObj->sentFrom = $sentFrom;
     $msgObj->from_users_id = User::getId();
     $msgObj->isAdmin = User::isAdmin();
     $msgObj->user_name = User::getNameIdentification();
     $msgObj->browser = get_browser_name();
+    $msgObj->os = getOS();
     $msgObj->yptDeviceId = getDeviceID(false);
     $msgObj->token = getToken($timeOut);
     $msgObj->time = time();
@@ -44,6 +47,7 @@ function getEncryptedInfo($timeOut = 0, $send_to_uri_pattern = "") {
 }
 
 function getDecryptedInfo($string) {
+    global $global;
     $decriptedString = decryptString($string);
     $json = _json_decode($decriptedString);
     if (!empty($json) && !empty($json->token)) {
@@ -53,7 +57,7 @@ function getDecryptedInfo($string) {
             _error_log("socket:getDecryptedInfo: token is invalid ");
         }
     } else {
-        _error_log("socket:getDecryptedInfo: json->token is empty ({$decriptedString})");
+        _error_log("socket:getDecryptedInfo: [{$global['webSiteRootURL']}] json->token is empty ({$decriptedString})");
     }
     return false;
 }
@@ -71,20 +75,29 @@ function verifyTokenSocket($token) {
     }
     $time = time();
     if (!($time >= $obj->time && $time <= $obj->timeout)) {
-        _error_log("verifyToken token timout time = $time; obj->time = $obj->time;  obj->timeout = $obj->timeout");
-        //return false;
+        // Localhost (worker.php running via PHPWorker/CLI) is trusted — skip timeout check
+        if (getRealIpAddr() === '127.0.0.1') {
+            return true;
+        }
+        _error_log("Socket:verifyToken token timout time = $time; obj->time = $obj->time;  obj->timeout = $obj->timeout IP: ".getRealIpAddr().' UserAgent: '.$_SERVER['HTTP_USER_AGENT']);
+        return false;
     }
     return true;
 }
 
 class SocketMessageType {
 
+    const MSG_TO_ALL_LOGGED = "MSG_TO_ALL_LOGGED";
+    const MSG_TO_ALL = "MSG_TO_ALL";
+    const OPEN_CONNECTION = "OPEN_CONNECTION";
     const NEW_CONNECTION = "NEW_CONNECTION";
     const NEW_DISCONNECTION = "NEW_DISCONNECTION";
     const DEFAULT_MESSAGE = "DEFAULT_MESSAGE";
     const ON_VIDEO_MSG = "ON_VIDEO_MSG";
     const ON_LIVE_MSG = "ON_LIVE_MSG";
     const TESTING = "TESTING";
+    const UNDEFINED = "UNDEFINED";
+    const MSG_BATCH = "MSG_BATCH";
 
 }
 
@@ -93,7 +106,7 @@ function getTotalViewsLive_key($live_key) {
         return false;
     }
     $live_key = object_to_array($live_key);
-    _mysql_connect();
+    //_mysql_connect();
     $liveUsersEnabled = \AVideoPlugin::isEnabledByName("LiveUsers");
     if ($liveUsersEnabled) {
         $liveUsers = new \LiveOnlineUsers(0);
@@ -130,7 +143,7 @@ function restartServer($kill=true) {
         killProcessOnPort();
         sleep(1);
     }
-    $cmd = "php {$global['systemRootPath']}plugin/YPTSocket/server.php";
+    $cmd = YPTSocket::getStartServerCommand();
     echo 'Starting server with command ' . $cmd . PHP_EOL;
     exec($cmd, $output, $retval);
     echo implode(PHP_EOL,$output);

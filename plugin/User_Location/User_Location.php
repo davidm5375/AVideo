@@ -67,85 +67,72 @@ class User_Location extends PluginAbstract {
     }
 
     static function getThisUserLocation() {
+        static $computing = false;
         $location = self::getSessionLocation();
         if (!empty($location['country_code'])) {
             return $location;
         }
-        return self::getLocationFromIP(getRealIpAddr());
+        // Re-entrancy guard: resolving the location performs a cache lookup, and that
+        // cache path can call back into this method before the first lookup finishes.
+        // Without this guard the calls recurse forever and freeze the whole request.
+        if ($computing) {
+            return false;
+        }
+        $computing = true;
+        try {
+            $result = self::getLocationFromIP(getRealIpAddr());
+        } finally {
+            $computing = false;
+        }
+        return $result;
     }
 
     static function getLocationFromIP($ip) {
         return IP2Location::getLocation($ip);
     }
 
-    static function getLanguageFromBrowser() {
-        if (empty($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-            return false;
-        }
-        $parts = explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']);
-        return str_replace('-', '_', $parts[0]);
-    }
-
-    static function setLanguage($lang) {
+    static function changeLang($force = false) {
         global $global;
-        if (!empty($_SESSION['language'])) {
-            $file = "{$global['systemRootPath']}locale/{$_SESSION['language']}.php";
-            if (file_exists($file)) {
-                include_once $file;
-                return true;
-            }
-        }
-
-        $file = "{$global['systemRootPath']}locale/{$lang}.php";
         _session_start();
-        if (file_exists($file)) {
-            $_SESSION['language'] = $lang;
-            include_once $file;
-            return true;
-        } else {
-            $lang = strtolower($lang);
-            $file = "{$global['systemRootPath']}locale/{$lang}.php";
-            if (file_exists($file)) {
-                $_SESSION['language'] = $lang;
-                include_once $file;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    static function setLanguageFromBrowser() {
-        return self::setLanguage(self::getLanguageFromBrowser());
-    }
-
-    static function setLanguageFromIP() {
-        $User_Location = self::getThisUserLocation();
-        return self::setLanguage($User_Location['country_code']);
-    }
-
-    public function getStart() {
-        global $global, $config;
-        $obj = $this->getDataObject();
-        $User_Location = self::getThisUserLocation();
-        if ($obj->autoChangeLanguage) {
-            if ($obj->useLanguageFrom->value == 'browser') {
-                $changed = self::setLanguageFromBrowser();
-                if (!$changed) {
-                    $changed = self::setLanguageFromIP();
+        if (!empty($force) || empty($_SESSION['language'])) {
+            $obj = AVideoPlugin::getDataObject('User_Location');
+            if ($obj->autoChangeLanguage) {
+                $lang = self::getLanguage();
+                if (!empty($lang)) {
+                    if (!empty($_REQUEST['debug'])) {
+                        _error_log("changeLang line=" . __LINE__ . " " . json_encode(debug_backtrace()));
+                    }
+                    setLanguage($lang);
+                } else {
+                    if (!empty($_REQUEST['debug'])) {
+                        _error_log("changeLang line=" . __LINE__ . " " . json_encode(debug_backtrace()));
+                    }
                 }
             } else {
-                $changed = self::setLanguageFromIP();
-                if (!$changed) {
-                    $changed = self::setLanguageFromBrowser();
+                if (!empty($_REQUEST['debug'])) {
+                    _error_log("changeLang line=" . __LINE__ . " " . json_encode(debug_backtrace()));
                 }
             }
-            if (!$changed) {
-                $_SESSION['language'] = $config->getLanguage();
+        } else {
+            if (!empty($_REQUEST['debug'])) {
+                _error_log("changeLang [{$_SESSION['language']}] line=" . __LINE__ . " " . json_encode(debug_backtrace()));
             }
         }
-        $global['User_Location'] = $User_Location;
-        self::setSessionLocation($global['User_Location']);
-        return false;
+    }
+
+    static function getLanguage() {
+        global $global;
+        $global['User_Location_lang'] = false;
+        if (empty($global['User_Location_lang'])) {
+            $obj = AVideoPlugin::getDataObject('User_Location');
+            if ($obj->useLanguageFrom->value == 'browser') {
+                $global['User_Location_lang'] = getLanguageFromBrowser();
+            } else {
+                $User_Location = self::getThisUserLocation();
+                $global['User_Location_lang'] = $User_Location['country_code'];
+            }
+        }
+        return $global['User_Location_lang'];
     }
 
     public function getPluginMenu() {

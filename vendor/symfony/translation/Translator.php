@@ -43,7 +43,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
     private $locale;
 
     /**
-     * @var array
+     * @var string[]
      */
     private $fallbackLocales = [];
 
@@ -89,7 +89,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
     /**
      * @throws InvalidArgumentException If a locale contains invalid characters
      */
-    public function __construct(string $locale, MessageFormatterInterface $formatter = null, string $cacheDir = null, bool $debug = false, array $cacheVary = [])
+    public function __construct(string $locale, ?MessageFormatterInterface $formatter = null, ?string $cacheDir = null, bool $debug = false, array $cacheVary = [])
     {
         $this->setLocale($locale);
 
@@ -127,7 +127,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
      *
      * @throws InvalidArgumentException If the locale contains invalid characters
      */
-    public function addResource(string $format, $resource, string $locale, string $domain = null)
+    public function addResource(string $format, $resource, string $locale, ?string $domain = null)
     {
         if (null === $domain) {
             $domain = 'messages';
@@ -165,6 +165,8 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
     /**
      * Sets the fallback locales.
      *
+     * @param string[] $locales
+     *
      * @throws InvalidArgumentException If a locale contains invalid characters
      */
     public function setFallbackLocales(array $locales)
@@ -192,7 +194,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
     /**
      * {@inheritdoc}
      */
-    public function trans(?string $id, array $parameters = [], string $domain = null, string $locale = null)
+    public function trans(?string $id, array $parameters = [], ?string $domain = null, ?string $locale = null)
     {
         if (null === $id || '' === $id) {
             return '';
@@ -227,7 +229,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
     /**
      * {@inheritdoc}
      */
-    public function getCatalogue(string $locale = null)
+    public function getCatalogue(?string $locale = null)
     {
         if (!$locale) {
             $locale = $this->getLocale();
@@ -253,7 +255,7 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
     /**
      * Gets the loaders.
      *
-     * @return array LoaderInterface[]
+     * @return LoaderInterface[]
      */
     protected function getLoaders()
     {
@@ -455,7 +457,7 @@ EOF
      */
     protected function assertValidLocale(string $locale)
     {
-        if (!preg_match('/^[a-z0-9@_\\.\\-]*$/i', (string) $locale)) {
+        if (!preg_match('/^[a-z0-9@_\\.\\-]*$/i', $locale)) {
             throw new InvalidArgumentException(sprintf('Invalid "%s" locale.', $locale));
         }
     }

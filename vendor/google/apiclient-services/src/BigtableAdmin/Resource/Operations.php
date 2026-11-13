@@ -38,12 +38,13 @@ class Operations extends \Google\Service\Resource
    * other methods to check whether the cancellation succeeded or whether the
    * operation completed despite cancellation. On successful cancellation, the
    * operation is not deleted; instead, it becomes an operation with an
-   * Operation.error value with a google.rpc.Status.code of 1, corresponding to
+   * Operation.error value with a google.rpc.Status.code of `1`, corresponding to
    * `Code.CANCELLED`. (operations.cancel)
    *
    * @param string $name The name of the operation resource to be cancelled.
    * @param array $optParams Optional parameters.
    * @return BigtableadminEmpty
+   * @throws \Google\Service\Exception
    */
   public function cancel($name, $optParams = [])
   {
@@ -60,6 +61,7 @@ class Operations extends \Google\Service\Resource
    * @param string $name The name of the operation resource to be deleted.
    * @param array $optParams Optional parameters.
    * @return BigtableadminEmpty
+   * @throws \Google\Service\Exception
    */
   public function delete($name, $optParams = [])
   {
@@ -75,6 +77,7 @@ class Operations extends \Google\Service\Resource
    * @param string $name The name of the operation resource.
    * @param array $optParams Optional parameters.
    * @return Operation
+   * @throws \Google\Service\Exception
    */
   public function get($name, $optParams = [])
   {

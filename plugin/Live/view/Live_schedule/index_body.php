@@ -4,7 +4,7 @@ if (!isset($global['systemRootPath'])) {
     require_once '../../videos/configuration.php';
 }
 if (!User::isAdmin()) {
-    header("Location: {$global['webSiteRootURL']}?error=" . __("You can not do this"));
+    forbiddenPage("You can not do this");
     exit;
 }
 ?>
@@ -59,7 +59,11 @@ if (!User::isAdmin()) {
                                 </div>
                                 <div class="form-group col-sm-12">
                                     <label for="Live_schedulescheduled_time"><?php echo __("Scheduled Time"); ?>:</label>
-                                    <input type="text" id="Live_schedulescheduled_time" name="scheduled_time" class="form-control input-sm" placeholder="<?php echo __("Scheduled Time"); ?>" required="true" autocomplete="off">
+                                    <input type="text" id="Live_schedulescheduled_time" name="scheduled_time" class="form-control input-sm" placeholder="<?php echo __("Scheduled Time"); ?>" required="true" autocomplete="off"  readonly="readonly" >
+                                </div>
+                                <div class="form-group col-sm-12">
+                                    <label for="Live_schedulescheduled_password"><?php echo __("Scheduled Password"); ?>:</label>
+                                    <input type="password" id="Live_schedulescheduled_password" name="scheduled_password" class="form-control input-sm" placeholder="<?php echo __("Scheduled Password"); ?>" autocomplete="off"  >
                                 </div>
                                 <div class="form-group col-sm-12">
                                     <label for="Live_scheduletimezone"><?php echo __("Timezone"); ?>:</label>
@@ -163,6 +167,7 @@ if (!User::isAdmin()) {
         $('#Live_scheduleusers_id').val('');
         $('#Live_schedulelive_servers_id').val('');
         $('#Live_schedulescheduled_time').val('');
+        $('#Live_schedulescheduled_password').val('');
         $('#Live_scheduletimezone').val('');
         $('#Live_schedulestatus').val('');
         $('#Live_scheduleposter').val('');
@@ -173,7 +178,7 @@ if (!User::isAdmin()) {
     $(document).ready(function () {
         $('#addLive_scheduleBtn').click(function () {
             $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>plugin/Live/view/addLive_scheduleVideo.php',
+                url: webSiteRootURL+'plugin/Live/view/addLive_scheduleVideo.php',
                 data: $('#panelLive_scheduleForm').serialize(),
                 type: 'post',
                 success: function (response) {
@@ -221,7 +226,7 @@ if (!User::isAdmin()) {
             e.preventDefault();
             modal.showPleaseWait();
             $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>plugin/Live/view/Live_schedule/add.json.php',
+                url: webSiteRootURL+'plugin/Live/view/Live_schedule/add.json.php',
                 data: $('#panelLive_scheduleForm').serialize(),
                 type: 'post',
                 success: function (response) {
@@ -251,6 +256,7 @@ if (!User::isAdmin()) {
                     .then(function (willDelete) {
                         if (willDelete) {
                             modal.showPleaseWait();
+                            data.globalToken = '<?php echo getToken(300); ?>';
                             $.ajax({
                                 type: "POST",
                                 url: "<?php echo $global['webSiteRootURL']; ?>plugin/Live/view/Live_schedule/delete.json.php",
@@ -279,6 +285,7 @@ if (!User::isAdmin()) {
             $('#Live_scheduleusers_id').val(data.users_id);
             $('#Live_schedulelive_servers_id').val(data.live_servers_id);
             $('#Live_schedulescheduled_time').val(data.scheduled_time);
+            $('#Live_schedulescheduled_password').val(data.scheduled_password);
             $('#Live_scheduletimezone').val(data.timezone);
             $('#Live_schedulestatus').val(data.status);
             $('#Live_scheduleposter').val(data.poster);
@@ -289,5 +296,5 @@ if (!User::isAdmin()) {
     });
 </script>
 <script> $(document).ready(function () {
-        $('#Live_schedulescheduled_time').datetimepicker({format: 'yyyy-mm-dd hh:ii', autoclose: true});
+        $('#Live_schedulescheduled_time').datetimepicker({format: 'yyyy-mm-dd hh:ii', autoclose: true, ignoreReadonly: true});
     });</script>

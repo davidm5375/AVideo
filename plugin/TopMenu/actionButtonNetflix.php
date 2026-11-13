@@ -7,13 +7,17 @@ require_once $global['systemRootPath'] . 'plugin/TopMenu/Objects/Menu.php';
 require_once $global['systemRootPath'] . 'plugin/TopMenu/Objects/MenuItem.php';
 
 $menu = Menu::getAllActive(Menu::$typeActionMenu);
+if(empty($videos_id)){
+    $videos_id = getVideos_id();
+}
 ?>
-<!-- action menu start -->
+<!-- action menu flix start videos_id=<?php echo $videos_id; ?> -->
 <?php
 foreach ($menu as $key => $value) {
     $menuItems = MenuItem::getAllFromMenu($value['id'], true);
     foreach ($menuItems as $key2 => $value2) {
         ?>
+        <!-- typeActionMenu videos_id=<?php echo $videos_id; ?> -->
         <a href="<?php echo $value2['finalURL']; ?>" <?php echo $value2['target']; ?> class="btn btn-default no-outline">
             <?php
             if (!empty($value2['icon'])) {
@@ -30,15 +34,19 @@ foreach ($menu as $key => $value) {
     }
 }
 $menu = Menu::getAllActive(Menu::$typeActionMenuCustomURL);
+echo PHP_EOL.'<!-- action menu typeActionMenuCustomURL start count='.count($menu).' videos_id='.$videos_id.'; ?> -->'.PHP_EOL;
 
 foreach ($menu as $key => $value) {
     $menuItems = MenuItem::getAllFromMenu($value['id'], true);
+    //echo PHP_EOL.'<!-- action menuItems typeActionMenuCustomURL start countItens='.count($menuItems).' -->'.PHP_EOL;
     foreach ($menuItems as $key2 => $value2) {
         $url = TopMenu::getVideoMenuURL($videos_id, $value2['id']);
         if (empty($url)) {
+            echo "<!-- actionButtonNetflix there invalid URL $videos_id, {$value2['id']} url=$url -->";
             continue;
         }
         ?>
+        <!-- typeActionMenuCustomURL -->
         <a href="<?php echo $url; ?>" <?php echo $value2['target']; ?> class="btn btn-default no-outline">
             <?php
             if (!empty($value2['icon'])) {
@@ -57,6 +65,7 @@ foreach ($menu as $key => $value) {
 
 if (User::isLogged()) {
     $menu = Menu::getAllActive(Menu::$typeActionMenuCustomURLForLoggedUsers);
+    echo PHP_EOL.'<!-- action menu typeActionMenuCustomURLForLoggedUsers count='.count($menu).' start -->'.PHP_EOL;
     foreach ($menu as $key => $value) {
         $menuItems = MenuItem::getAllFromMenu($value['id'], true);
         foreach ($menuItems as $key2 => $value2) {
@@ -65,7 +74,8 @@ if (User::isLogged()) {
                 continue;
             }
             ?>
-            <a href="<?php echo $url; ?>" <?php echo $value2['target']; ?> class="btn btn-default no-outline">
+            <!-- typeActionMenuCustomURLForLoggedUsers -->
+            <a href="<?php echo $url; ?>" class="btn btn-default no-outline">
                 <?php
                 if (!empty($value2['icon'])) {
                     ?>
@@ -81,6 +91,8 @@ if (User::isLogged()) {
         }
     }
     if (User::canWatchVideo($videos_id)) {
+        echo PHP_EOL.'<!-- action menu typeActionMenuCustomURLForUsersThatCanWatchVideo start -->'.PHP_EOL;
+    
         $menu = Menu::getAllActive(Menu::$typeActionMenuCustomURLForUsersThatCanWatchVideo);
         foreach ($menu as $key => $value) {
             $menuItems = MenuItem::getAllFromMenu($value['id'], true);
@@ -90,7 +102,8 @@ if (User::isLogged()) {
                     continue;
                 }
                 ?>
-                <a href="<?php echo $url; ?>" <?php echo $value2['target']; ?> class="btn btn-default no-outline">
+                <!-- typeActionMenuCustomURLForUsersThatCanWatchVideo -->
+                <a href="<?php echo $url; ?>" target="_blank" class="btn btn-default no-outline">
                     <?php
                     if (!empty($value2['icon'])) {
                         ?>
@@ -109,6 +122,7 @@ if (User::isLogged()) {
 }
 
 if (!User::canWatchVideo($videos_id)) {
+    echo PHP_EOL.'<!-- action menu typeActionMenuCustomURLForUsersThatCanNotWatchVideo start -->'.PHP_EOL;
     $menu = Menu::getAllActive(Menu::$typeActionMenuCustomURLForUsersThatCanNotWatchVideo);
     foreach ($menu as $key => $value) {
         $menuItems = MenuItem::getAllFromMenu($value['id'], true);
@@ -118,6 +132,7 @@ if (!User::canWatchVideo($videos_id)) {
                 continue;
             }
             ?>
+            <!-- typeActionMenuCustomURLForUsersThatCanNotWatchVideo -->
             <a href="<?php echo $url; ?>" <?php echo $value2['target']; ?> class="btn btn-default no-outline">
                 <?php
                 if (!empty($value2['icon'])) {
@@ -135,4 +150,4 @@ if (!User::canWatchVideo($videos_id)) {
     }
 }
 ?>
-<!-- action menu start -->
+<!-- action menu flix end -->

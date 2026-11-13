@@ -39,10 +39,11 @@ class Subscriptions extends \Google\Service\Resource
    * such as for abuse or a pending ToS acceptance, this call will not reactivate
    * the customer subscription. (subscriptions.activate)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param string $subscriptionId This is a required property. The
    * `subscriptionId` is the subscription identifier and is unique for each
    * customer. Since a `subscriptionId` changes when a subscription is updated, we
@@ -51,6 +52,7 @@ class Subscriptions extends \Google\Service\Resource
    * method.
    * @param array $optParams Optional parameters.
    * @return Subscription
+   * @throws \Google\Service\Exception
    */
   public function activate($customerId, $subscriptionId, $optParams = [])
   {
@@ -63,14 +65,15 @@ class Subscriptions extends \Google\Service\Resource
    * trial or a flexible plan subscription to an annual commitment plan with
    * monthly or yearly payments. How a plan is updated differs depending on the
    * plan and the products. For more information, see the description in [manage
-   * subscriptions](/admin-sdk/reseller/v1/how-
+   * subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/manage_subscriptions#update_subscription_plan).
    * (subscriptions.changePlan)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param string $subscriptionId This is a required property. The
    * `subscriptionId` is the subscription identifier and is unique for each
    * customer. Since a `subscriptionId` changes when a subscription is updated, we
@@ -80,6 +83,7 @@ class Subscriptions extends \Google\Service\Resource
    * @param ChangePlanRequest $postBody
    * @param array $optParams Optional parameters.
    * @return Subscription
+   * @throws \Google\Service\Exception
    */
   public function changePlan($customerId, $subscriptionId, ChangePlanRequest $postBody, $optParams = [])
   {
@@ -90,14 +94,16 @@ class Subscriptions extends \Google\Service\Resource
   /**
    * Updates a user license's renewal settings. This is applicable for accounts
    * with annual commitment plans only. For more information, see the description
-   * in [manage subscriptions](/admin-sdk/reseller/v1/how-
+   * in [manage
+   * subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/manage_subscriptions#update_renewal).
    * (subscriptions.changeRenewalSettings)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param string $subscriptionId This is a required property. The
    * `subscriptionId` is the subscription identifier and is unique for each
    * customer. Since a `subscriptionId` changes when a subscription is updated, we
@@ -107,6 +113,7 @@ class Subscriptions extends \Google\Service\Resource
    * @param RenewalSettings $postBody
    * @param array $optParams Optional parameters.
    * @return Subscription
+   * @throws \Google\Service\Exception
    */
   public function changeRenewalSettings($customerId, $subscriptionId, RenewalSettings $postBody, $optParams = [])
   {
@@ -117,14 +124,16 @@ class Subscriptions extends \Google\Service\Resource
   /**
    * Updates a subscription's user license settings. For more information about
    * updating an annual commitment plan or a flexible plan subscription’s
-   * licenses, see [Manage Subscriptions](/admin-sdk/reseller/v1/how-
+   * licenses, see [Manage
+   * Subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/manage_subscriptions#update_subscription_seat).
    * (subscriptions.changeSeats)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param string $subscriptionId This is a required property. The
    * `subscriptionId` is the subscription identifier and is unique for each
    * customer. Since a `subscriptionId` changes when a subscription is updated, we
@@ -134,6 +143,7 @@ class Subscriptions extends \Google\Service\Resource
    * @param Seats $postBody
    * @param array $optParams Optional parameters.
    * @return Subscription
+   * @throws \Google\Service\Exception
    */
   public function changeSeats($customerId, $subscriptionId, Seats $postBody, $optParams = [])
   {
@@ -145,10 +155,11 @@ class Subscriptions extends \Google\Service\Resource
    * Cancels, suspends, or transfers a subscription to direct.
    * (subscriptions.delete)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param string $subscriptionId This is a required property. The
    * `subscriptionId` is the subscription identifier and is unique for each
    * customer. Since a `subscriptionId` changes when a subscription is updated, we
@@ -158,6 +169,7 @@ class Subscriptions extends \Google\Service\Resource
    * @param string $deletionType The `deletionType` query string enables the
    * cancellation, downgrade, or suspension of a subscription.
    * @param array $optParams Optional parameters.
+   * @throws \Google\Service\Exception
    */
   public function delete($customerId, $subscriptionId, $deletionType, $optParams = [])
   {
@@ -167,16 +179,19 @@ class Subscriptions extends \Google\Service\Resource
   }
   /**
    * Gets a specific subscription. The `subscriptionId` can be found using the
-   * [Retrieve all reseller subscriptions](/admin-sdk/reseller/v1/how-
+   * [Retrieve all reseller
+   * subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/manage_subscriptions#get_all_subscriptions) method. For more information
    * about retrieving a specific subscription, see the information descrived in
-   * [manage subscriptions](/admin-sdk/reseller/v1/how-
+   * [manage
+   * subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/manage_subscriptions#get_subscription). (subscriptions.get)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param string $subscriptionId This is a required property. The
    * `subscriptionId` is the subscription identifier and is unique for each
    * customer. Since a `subscriptionId` changes when a subscription is updated, we
@@ -185,6 +200,7 @@ class Subscriptions extends \Google\Service\Resource
    * method.
    * @param array $optParams Optional parameters.
    * @return Subscription
+   * @throws \Google\Service\Exception
    */
   public function get($customerId, $subscriptionId, $optParams = [])
   {
@@ -194,33 +210,43 @@ class Subscriptions extends \Google\Service\Resource
   }
   /**
    * Creates or transfer a subscription. Create a subscription for a customer's
-   * account that you ordered using the [Order a new customer account](/admin-
-   * sdk/reseller/v1/reference/customers/insert.html) method. For more information
-   * about creating a subscription for different payment plans, see [manage
-   * subscriptions](/admin-sdk/reseller/v1/how-
+   * account that you ordered using the [Order a new customer account](https://dev
+   * elopers.google.com/workspace/admin/reseller/v1/reference/customers/insert.htm
+   * l) method. For more information about creating a subscription for different
+   * payment plans, see [manage
+   * subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/manage_subscriptions#create_subscription).\ If you did not order the
    * customer's account using the customer insert method, use the customer's
    * `customerAuthToken` when creating a subscription for that customer. If
    * transferring a G Suite subscription with an associated Google Drive or Google
-   * Vault subscription, use the [batch operation](/admin-sdk/reseller/v1/how-
+   * Vault subscription, use the [batch
+   * operation](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/batch.html) to transfer all of these subscriptions. For more information,
-   * see how to [transfer subscriptions](/admin-sdk/reseller/v1/how-
+   * see how to [transfer
+   * subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/manage_subscriptions#transfer_a_subscription). (subscriptions.insert)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param Subscription $postBody
    * @param array $optParams Optional parameters.
    *
+   * @opt_param string action The intented insert action. Advised to set this when
+   * the customer already has a subscription for a different SKU in the same
+   * product.
    * @opt_param string customerAuthToken The `customerAuthToken` query string is
    * required when creating a resold account that transfers a direct customer's
    * subscription or transfers another reseller customer's subscription to your
    * reseller management. This is a hexadecimal authentication token needed to
    * complete the subscription transfer. For more information, see the
    * administrator help center.
+   * @opt_param string sourceSkuId The sku_id of the existing subscription to be
+   * upgraded or downgraded. This is required when action is SWITCH.
    * @return Subscription
+   * @throws \Google\Service\Exception
    */
   public function insert($customerId, Subscription $postBody, $optParams = [])
   {
@@ -232,9 +258,9 @@ class Subscriptions extends \Google\Service\Resource
    * Lists of subscriptions managed by the reseller. The list can be all
    * subscriptions, all of a customer's subscriptions, or all of a customer's
    * transferable subscriptions. Optionally, this method can filter the response
-   * by a `customerNamePrefix`. For more information, see [manage subscriptions
-   * ](/admin-sdk/reseller/v1/how-tos/manage_subscriptions).
-   * (subscriptions.listSubscriptions)
+   * by a `customerNamePrefix`. For more information, see [manage
+   * subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
+   * tos/manage_subscriptions). (subscriptions.listSubscriptions)
    *
    * @param array $optParams Optional parameters.
    *
@@ -244,10 +270,11 @@ class Subscriptions extends \Google\Service\Resource
    * reseller management. This is a hexadecimal authentication token needed to
    * complete the subscription transfer. For more information, see the
    * administrator help center.
-   * @opt_param string customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @opt_param string customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @opt_param string customerNamePrefix When retrieving all of your
    * subscriptions and filtering for specific customers, you can enter a prefix
    * for a customer name. Using an example customer group that includes
@@ -261,6 +288,7 @@ class Subscriptions extends \Google\Service\Resource
    * you to the next page. The default is 20.
    * @opt_param string pageToken Token to specify next page in the list
    * @return SubscriptionsModel
+   * @throws \Google\Service\Exception
    */
   public function listSubscriptions($optParams = [])
   {
@@ -272,13 +300,15 @@ class Subscriptions extends \Google\Service\Resource
    * Immediately move a 30-day free trial subscription to a paid service
    * subscription. This method is only applicable if a payment plan has already
    * been set up for the 30-day trial subscription. For more information, see
-   * [manage subscriptions](/admin-sdk/reseller/v1/how-
+   * [manage
+   * subscriptions](https://developers.google.com/workspace/admin/reseller/v1/how-
    * tos/manage_subscriptions#paid_service). (subscriptions.startPaidService)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param string $subscriptionId This is a required property. The
    * `subscriptionId` is the subscription identifier and is unique for each
    * customer. Since a `subscriptionId` changes when a subscription is updated, we
@@ -287,6 +317,7 @@ class Subscriptions extends \Google\Service\Resource
    * method.
    * @param array $optParams Optional parameters.
    * @return Subscription
+   * @throws \Google\Service\Exception
    */
   public function startPaidService($customerId, $subscriptionId, $optParams = [])
   {
@@ -306,10 +337,11 @@ class Subscriptions extends \Google\Service\Resource
    * only for short periods of time as suspensions over 60 days may result in the
    * subscription being cancelled. (subscriptions.suspend)
    *
-   * @param string $customerId Either the customer's primary domain name or the
-   * customer's unique identifier. If using the domain name, we do not recommend
-   * using a `customerId` as a key for persistent data. If the domain name for a
-   * `customerId` is changed, the Google system automatically updates.
+   * @param string $customerId This can be either the customer's primary domain
+   * name or the customer's unique identifier. If the domain name for a customer
+   * changes, the old domain name cannot be used to access the customer, but the
+   * customer's unique identifier (as returned by the API) can always be used. We
+   * recommend storing the unique identifier in your systems where applicable.
    * @param string $subscriptionId This is a required property. The
    * `subscriptionId` is the subscription identifier and is unique for each
    * customer. Since a `subscriptionId` changes when a subscription is updated, we
@@ -318,6 +350,7 @@ class Subscriptions extends \Google\Service\Resource
    * method.
    * @param array $optParams Optional parameters.
    * @return Subscription
+   * @throws \Google\Service\Exception
    */
   public function suspend($customerId, $subscriptionId, $optParams = [])
   {

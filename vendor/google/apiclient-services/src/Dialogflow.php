@@ -44,6 +44,7 @@ class Dialogflow extends \Google\Service
 
   public $projects_locations;
   public $projects_locations_agents;
+  public $projects_locations_agents_changelogs;
   public $projects_locations_agents_entityTypes;
   public $projects_locations_agents_environments;
   public $projects_locations_agents_environments_continuousTestResults;
@@ -55,15 +56,22 @@ class Dialogflow extends \Google\Service
   public $projects_locations_agents_flows_pages;
   public $projects_locations_agents_flows_transitionRouteGroups;
   public $projects_locations_agents_flows_versions;
+  public $projects_locations_agents_generators;
   public $projects_locations_agents_intents;
+  public $projects_locations_agents_playbooks;
+  public $projects_locations_agents_playbooks_examples;
+  public $projects_locations_agents_playbooks_versions;
   public $projects_locations_agents_sessions;
   public $projects_locations_agents_sessions_entityTypes;
   public $projects_locations_agents_testCases;
   public $projects_locations_agents_testCases_results;
+  public $projects_locations_agents_tools;
+  public $projects_locations_agents_transitionRouteGroups;
   public $projects_locations_agents_webhooks;
   public $projects_locations_operations;
   public $projects_locations_securitySettings;
   public $projects_operations;
+  public $rootUrlTemplate;
 
   /**
    * Constructs the internal representation of the Dialogflow service.
@@ -76,6 +84,7 @@ class Dialogflow extends \Google\Service
   {
     parent::__construct($clientOrConfig);
     $this->rootUrl = $rootUrl ?: 'https://dialogflow.googleapis.com/';
+    $this->rootUrlTemplate = $rootUrl ?: 'https://dialogflow.UNIVERSE_DOMAIN/';
     $this->servicePath = '';
     $this->batchPath = 'batch';
     $this->version = 'v3';
@@ -105,6 +114,11 @@ class Dialogflow extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'extraLocationTypes' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                  'repeated' => true,
                 ],
                 'filter' => [
                   'location' => 'query',
@@ -169,6 +183,20 @@ class Dialogflow extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'getGenerativeSettings' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
             ],'getValidationResult' => [
               'path' => 'v3/{+name}',
               'httpMethod' => 'GET',
@@ -225,6 +253,20 @@ class Dialogflow extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'updateGenerativeSettings' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'PATCH',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'updateMask' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
             ],'validate' => [
               'path' => 'v3/{+name}:validate',
               'httpMethod' => 'POST',
@@ -233,6 +275,48 @@ class Dialogflow extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_agents_changelogs = new Dialogflow\Resource\ProjectsLocationsAgentsChangelogs(
+        $this,
+        $this->serviceName,
+        'changelogs',
+        [
+          'methods' => [
+            'get' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'list' => [
+              'path' => 'v3/{+parent}/changelogs',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'filter' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
                 ],
               ],
             ],
@@ -273,6 +357,16 @@ class Dialogflow extends \Google\Service
                   'type' => 'boolean',
                 ],
               ],
+            ],'export' => [
+              'path' => 'v3/{+parent}/entityTypes:export',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
             ],'get' => [
               'path' => 'v3/{+name}',
               'httpMethod' => 'GET',
@@ -285,6 +379,16 @@ class Dialogflow extends \Google\Service
                 'languageCode' => [
                   'location' => 'query',
                   'type' => 'string',
+                ],
+              ],
+            ],'import' => [
+              'path' => 'v3/{+parent}/entityTypes:import',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
                 ],
               ],
             ],'list' => [
@@ -627,6 +731,16 @@ class Dialogflow extends \Google\Service
               ],
             ],'matchIntent' => [
               'path' => 'v3/{+session}:matchIntent',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'session' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'serverStreamingDetectIntent' => [
+              'path' => 'v3/{+session}:serverStreamingDetectIntent',
               'httpMethod' => 'POST',
               'parameters' => [
                 'session' => [
@@ -1047,7 +1161,17 @@ class Dialogflow extends \Google\Service
         'versions',
         [
           'methods' => [
-            'create' => [
+            'compareVersions' => [
+              'path' => 'v3/{+baseVersion}:compareVersions',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'baseVersion' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'create' => [
               'path' => 'v3/{+parent}/versions',
               'httpMethod' => 'POST',
               'parameters' => [
@@ -1123,6 +1247,98 @@ class Dialogflow extends \Google\Service
           ]
         ]
     );
+    $this->projects_locations_agents_generators = new Dialogflow\Resource\ProjectsLocationsAgentsGenerators(
+        $this,
+        $this->serviceName,
+        'generators',
+        [
+          'methods' => [
+            'create' => [
+              'path' => 'v3/{+parent}/generators',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'delete' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'DELETE',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'force' => [
+                  'location' => 'query',
+                  'type' => 'boolean',
+                ],
+              ],
+            ],'get' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'list' => [
+              'path' => 'v3/{+parent}/generators',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'patch' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'PATCH',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'updateMask' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
     $this->projects_locations_agents_intents = new Dialogflow\Resource\ProjectsLocationsAgentsIntents(
         $this,
         $this->serviceName,
@@ -1153,6 +1369,16 @@ class Dialogflow extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'export' => [
+              'path' => 'v3/{+parent}/intents:export',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
             ],'get' => [
               'path' => 'v3/{+name}',
               'httpMethod' => 'GET',
@@ -1165,6 +1391,16 @@ class Dialogflow extends \Google\Service
                 'languageCode' => [
                   'location' => 'query',
                   'type' => 'string',
+                ],
+              ],
+            ],'import' => [
+              'path' => 'v3/{+parent}/intents:import',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
                 ],
               ],
             ],'list' => [
@@ -1215,6 +1451,242 @@ class Dialogflow extends \Google\Service
           ]
         ]
     );
+    $this->projects_locations_agents_playbooks = new Dialogflow\Resource\ProjectsLocationsAgentsPlaybooks(
+        $this,
+        $this->serviceName,
+        'playbooks',
+        [
+          'methods' => [
+            'create' => [
+              'path' => 'v3/{+parent}/playbooks',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'delete' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'DELETE',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'export' => [
+              'path' => 'v3/{+name}:export',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'get' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'import' => [
+              'path' => 'v3/{+parent}/playbooks:import',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'list' => [
+              'path' => 'v3/{+parent}/playbooks',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'patch' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'PATCH',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'updateMask' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_agents_playbooks_examples = new Dialogflow\Resource\ProjectsLocationsAgentsPlaybooksExamples(
+        $this,
+        $this->serviceName,
+        'examples',
+        [
+          'methods' => [
+            'create' => [
+              'path' => 'v3/{+parent}/examples',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'delete' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'DELETE',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'get' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'list' => [
+              'path' => 'v3/{+parent}/examples',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'patch' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'PATCH',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'updateMask' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_agents_playbooks_versions = new Dialogflow\Resource\ProjectsLocationsAgentsPlaybooksVersions(
+        $this,
+        $this->serviceName,
+        'versions',
+        [
+          'methods' => [
+            'create' => [
+              'path' => 'v3/{+parent}/versions',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'delete' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'DELETE',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'get' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'list' => [
+              'path' => 'v3/{+parent}/versions',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'restore' => [
+              'path' => 'v3/{+name}:restore',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
     $this->projects_locations_agents_sessions = new Dialogflow\Resource\ProjectsLocationsAgentsSessions(
         $this,
         $this->serviceName,
@@ -1243,6 +1715,26 @@ class Dialogflow extends \Google\Service
               ],
             ],'matchIntent' => [
               'path' => 'v3/{+session}:matchIntent',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'session' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'serverStreamingDetectIntent' => [
+              'path' => 'v3/{+session}:serverStreamingDetectIntent',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'session' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'submitAnswerFeedback' => [
+              'path' => 'v3/{+session}:submitAnswerFeedback',
               'httpMethod' => 'POST',
               'parameters' => [
                 'session' => [
@@ -1491,6 +1983,174 @@ class Dialogflow extends \Google\Service
                   'type' => 'integer',
                 ],
                 'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_agents_tools = new Dialogflow\Resource\ProjectsLocationsAgentsTools(
+        $this,
+        $this->serviceName,
+        'tools',
+        [
+          'methods' => [
+            'create' => [
+              'path' => 'v3/{+parent}/tools',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'delete' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'DELETE',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'force' => [
+                  'location' => 'query',
+                  'type' => 'boolean',
+                ],
+              ],
+            ],'get' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'list' => [
+              'path' => 'v3/{+parent}/tools',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'patch' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'PATCH',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'updateMask' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],
+          ]
+        ]
+    );
+    $this->projects_locations_agents_transitionRouteGroups = new Dialogflow\Resource\ProjectsLocationsAgentsTransitionRouteGroups(
+        $this,
+        $this->serviceName,
+        'transitionRouteGroups',
+        [
+          'methods' => [
+            'create' => [
+              'path' => 'v3/{+parent}/transitionRouteGroups',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'delete' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'DELETE',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'force' => [
+                  'location' => 'query',
+                  'type' => 'boolean',
+                ],
+              ],
+            ],'get' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'list' => [
+              'path' => 'v3/{+parent}/transitionRouteGroups',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'parent' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'pageSize' => [
+                  'location' => 'query',
+                  'type' => 'integer',
+                ],
+                'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'patch' => [
+              'path' => 'v3/{+name}',
+              'httpMethod' => 'PATCH',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'languageCode' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+                'updateMask' => [
                   'location' => 'query',
                   'type' => 'string',
                 ],

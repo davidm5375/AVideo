@@ -1,2 +1,2 @@
-<link href="<?php echo getCDN(); ?>view/js/webui-popover/jquery.webui-popover.min.css" rel="stylesheet" type="text/css" />
-<link href="<?php echo getCDN(); ?>plugin/YouPHPFlix2/view/js/flickity/flickity.min.css" rel="stylesheet" type="text/css" />
+<link href="<?php echo getURL('view/js/webui-popover/jquery.webui-popover.min.css'); ?>" rel="stylesheet" type="text/css" />
+<link href="<?php echo getURL('node_modules/flickity/dist/flickity.min.css'); ?>" rel="stylesheet" type="text/css" />

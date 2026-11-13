@@ -6,6 +6,12 @@ require_once $global['systemRootPath'] . 'plugin/BlockonomicsYPT/Objects/Blockon
 
 class BlockonomicsYPT extends PluginAbstract {
 
+    public function getPluginDependencies() {
+        return array(
+            PluginDependency::create('YPTWallet', 'Credits confirmed Bitcoin payments to the user wallet balance'),
+        );
+    }
+
     static $BASE_URL = "https://www.blockonomics.co/";
 
     static function getPRICE_URL() {
@@ -20,6 +26,13 @@ class BlockonomicsYPT extends PluginAbstract {
         $return = "<a href='https://www.blockonomics.co'>Blockonomics</a> is a decentralized and permissionless bitcoin payment solution.";
         $return .= "<br>HTTP Callback URL: <br><code>{$global['webSiteRootURL']}plugin/BlockonomicsYPT/callback.php?secret={$obj->Secret}</code>";
         return $return;
+    }
+
+    public function getTags()
+    {
+        return array(
+            PluginTags::$DEPRECATED
+        );
     }
 
     public function getName() {
@@ -51,23 +64,23 @@ class BlockonomicsYPT extends PluginAbstract {
         $currency = $objWallet->currency;
         //return here if total is empty
         if (empty($total_cost)) {
-            echo $json_response = json_encode(array("error" => "Total Is Empty"));
-            return;
+            echo json_encode(array("error" => "Total Is Empty"));
+            return false;
         }
 
         if (!User::isLogged()) {
-            echo $json_response = json_encode(array("error" => "Must be logged in"));
-            return;
-        }
-
-        //Generate new address for this invoice        
-        $new_address = $this->getNewAddress($obj->APIKey);
-        
-        if (empty($new_address)) {
-            _error_log('Blockonomics ERROR 1: ' . $contents . ' ' . json_last_error_msg(), AVideoLog::$ERROR);
+            echo json_encode(array("error" => "Must be logged in"));
             return false;
         }
-        
+
+        //Generate new address for this invoice
+        $new_address = $this->getNewAddress($obj->APIKey);
+
+        if (empty($new_address)) {
+            _error_log('Blockonomics ERROR 1: ' . json_last_error_msg(), AVideoLog::$ERROR);
+            return false;
+        }
+
         //Getting price
         $options = array('http' => array('method' => 'GET'));
         $context = stream_context_create($options);

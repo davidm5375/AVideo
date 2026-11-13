@@ -1,5 +1,4 @@
 <?php
-
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
@@ -25,15 +24,15 @@ if (!empty($_GET['type'])) {
                         "id" => trim($obj->id),
                         "team_id" => trim($obj->team_id),
                         "key_id" => trim($obj->key_id),
-                        "key_content" => trim($obj->key_content->value)
+                        "key_content" => trim($obj->key_content->value),
                     ],
                     "scope" => "name email",
-                    "verifyTokenSignature" => true
-                ]
+                    "verifyTokenSignature" => true,
+                ],
             ],
                 /* optional : set debug mode
                   'debug_mode' => true,
-                  // Path to file writeable by the web server. Required if 'debug_mode' is not false
+                  // Path to file writable by the web server. Required if 'debug_mode' is not false
                   'debug_file' => __FILE__ . '.log', */
         ];
     } else {
@@ -56,7 +55,7 @@ if (!empty($_GET['type'])) {
 
         $scope = 'email';
         if ($_GET['type'] === 'LinkedIn') {
-            $scope = array('r_emailaddress');
+            $scope = ['r_emailaddress'];
         }
 
         $configOauth = [
@@ -67,12 +66,12 @@ if (!empty($_GET['type'])) {
                     'keys' => ['id' => $id, 'secret' => $key, 'key' => $id],
                     "includeEmail" => true,
                     'scope' => $scope,
-                    'trustForwarded' => false
-                ]
+                    'trustForwarded' => false,
+                ],
             ],
                 /* optional : set debug mode
                   'debug_mode' => true,
-                  // Path to file writeable by the web server. Required if 'debug_mode' is not false
+                  // Path to file writable by the web server. Required if 'debug_mode' is not false
                   'debug_file' => __FILE__ . '.log', */
         ];
     }
@@ -88,19 +87,19 @@ if (!empty($_GET['type'])) {
 
         //print_r($tokens);
         //print_r($userProfile);
-        if (!empty($userProfile->email)) {
-            $user = $userProfile->email;
-        } else {
-            $user = $userProfile->displayName;
+        // without an email the account is bound to the provider's user id, never chosen by display name (GHSA-9rvm-cfc4-q9g9)
+        // SECURITY REVIEW (2026-11-12, GHSA-286v-rxqx-v42r): the omitted $emailVerified argument only sets the account's
+        // emailVerified flag; it is not the provider's verification. That check is inside getSocialLoginUserId() for both callers.
+        $users_id = User::getSocialLoginUserId($_GET['type'], $userProfile);
+        if (empty($users_id)) {
+            throw new Exception(__('Permission denied'));
         }
-        $name = $userProfile->displayName;
-        $photoURL = $userProfile->photoURL;
-        $email = $userProfile->email;
-        $pass = rand();
-        $users_id = User::createUserIfNotExists($user, $pass, $name, $email, $photoURL);
-        $adapter->disconnect();
         $userObject = new User($users_id);
-        header("Location: oauth2Success.php?user=" . $userObject->getUser() . "&pass=" . $userObject->getPassword());
+        // Log in by user ID and keep credentials out of URLs/logs/history.
+        $userObject->login(true);
+        $adapter->disconnect();
+        header("Location: oauth2Success.php");
+        exit;
     } catch (\Exception $e) {
         header("Location: oauth2Error.php?message=" . $e->getMessage());
     }

@@ -24,11 +24,18 @@ class Proto2DescriptorProto extends \Google\Collection
   protected $enumTypeDataType = 'array';
   protected $fieldType = Proto2FieldDescriptorProto::class;
   protected $fieldDataType = 'array';
+  /**
+   * @var string
+   */
   public $name;
   protected $nestedTypeType = Proto2DescriptorProto::class;
   protected $nestedTypeDataType = 'array';
   protected $oneofDeclType = Proto2OneofDescriptorProto::class;
   protected $oneofDeclDataType = 'array';
+  /**
+   * @var string
+   */
+  public $visibility;
 
   /**
    * @param Proto2EnumDescriptorProto[]
@@ -58,10 +65,16 @@ class Proto2DescriptorProto extends \Google\Collection
   {
     return $this->field;
   }
+  /**
+   * @param string
+   */
   public function setName($name)
   {
     $this->name = $name;
   }
+  /**
+   * @return string
+   */
   public function getName()
   {
     return $this->name;
@@ -93,6 +106,20 @@ class Proto2DescriptorProto extends \Google\Collection
   public function getOneofDecl()
   {
     return $this->oneofDecl;
+  }
+  /**
+   * @param string
+   */
+  public function setVisibility($visibility)
+  {
+    $this->visibility = $visibility;
+  }
+  /**
+   * @return string
+   */
+  public function getVisibility()
+  {
+    return $this->visibility;
   }
 }
 

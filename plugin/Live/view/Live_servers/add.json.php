@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json');
 require_once '../../../../videos/configuration.php';
 require_once $global['systemRootPath'] . 'plugin/Live/Objects/Live_servers.php';
@@ -8,10 +9,14 @@ $obj->error = true;
 $obj->msg = "";
 
 $plugin = AVideoPlugin::loadPluginIfEnabled('Live');
-                                                
-if(!User::isAdmin()){
+
+if (!User::isAdmin()) {
     $obj->msg = "You cant do this";
     die(json_encode($obj));
+}
+// The server URLs are fetched by the server and sent to the Encoder (see getDangerousPluginSettings()).
+if (!empty($global['disableAdvancedConfigurations'])) {
+    forbiddenPage('Live servers cannot be changed on this site', true);
 }
 
 $o = new Live_servers(@$_POST['id']);
@@ -28,9 +33,8 @@ $o->setProtectLive(@$_POST['protectLive']);
 $o->setGetRemoteFile($_POST['getRemoteFile']);
 $o->setRestreamerURL($_POST['restreamerURL']);
 $o->setControlURL($_POST['controlURL']);
-$o->setwebRTC_server($_POST['webRTC_server']);
 
-if($id = $o->save()){
+if ($id = $o->save()) {
     $obj->error = false;
 }
 

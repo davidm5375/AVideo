@@ -19,13 +19,49 @@ namespace Google\Service\Spanner;
 
 class TransactionOptions extends \Google\Model
 {
+  /**
+   * @var bool
+   */
+  public $excludeTxnFromChangeStreams;
+  /**
+   * @var string
+   */
+  public $isolationLevel;
   protected $partitionedDmlType = PartitionedDml::class;
   protected $partitionedDmlDataType = '';
-  protected $readOnlyType = ReadOnly::class;
+  protected $readOnlyType = SpannerReadOnly::class;
   protected $readOnlyDataType = '';
   protected $readWriteType = ReadWrite::class;
   protected $readWriteDataType = '';
 
+  /**
+   * @param bool
+   */
+  public function setExcludeTxnFromChangeStreams($excludeTxnFromChangeStreams)
+  {
+    $this->excludeTxnFromChangeStreams = $excludeTxnFromChangeStreams;
+  }
+  /**
+   * @return bool
+   */
+  public function getExcludeTxnFromChangeStreams()
+  {
+    return $this->excludeTxnFromChangeStreams;
+  }
+  /**
+   * @param string
+   */
+  public function setIsolationLevel($isolationLevel)
+  {
+    $this->isolationLevel = $isolationLevel;
+  }
+  /**
+   * @return string
+   */
+  public function getIsolationLevel()
+  {
+    return $this->isolationLevel;
+  }
   /**
    * @param PartitionedDml
    */
@@ -41,14 +77,14 @@ class TransactionOptions extends \Google\Model
     return $this->partitionedDml;
   }
   /**
-   * @param ReadOnly
+   * @param SpannerReadOnly
    */
-  public function setReadOnly(ReadOnly $readOnly)
+  public function setReadOnly(SpannerReadOnly $readOnly)
   {
     $this->readOnly = $readOnly;
   }
   /**
-   * @return ReadOnly
+   * @return SpannerReadOnly
    */
   public function getReadOnly()
   {

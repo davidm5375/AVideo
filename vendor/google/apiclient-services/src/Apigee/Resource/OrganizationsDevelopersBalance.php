@@ -17,6 +17,7 @@
 
 namespace Google\Service\Apigee\Resource;
 
+use Google\Service\Apigee\GoogleCloudApigeeV1AdjustDeveloperBalanceRequest;
 use Google\Service\Apigee\GoogleCloudApigeeV1CreditDeveloperBalanceRequest;
 use Google\Service\Apigee\GoogleCloudApigeeV1DeveloperBalance;
 
@@ -25,11 +26,30 @@ use Google\Service\Apigee\GoogleCloudApigeeV1DeveloperBalance;
  * Typical usage is:
  *  <code>
  *   $apigeeService = new Google\Service\Apigee(...);
- *   $balance = $apigeeService->balance;
+ *   $balance = $apigeeService->organizations_developers_balance;
  *  </code>
  */
 class OrganizationsDevelopersBalance extends \Google\Service\Resource
 {
+  /**
+   * Adjust the prepaid balance for the developer. This API will be used in
+   * scenarios where the developer has been under-charged or over-charged.
+   * (balance.adjust)
+   *
+   * @param string $name Required. Account balance for the developer. Use the
+   * following structure in your request:
+   * `organizations/{org}/developers/{developer}/balance`
+   * @param GoogleCloudApigeeV1AdjustDeveloperBalanceRequest $postBody
+   * @param array $optParams Optional parameters.
+   * @return GoogleCloudApigeeV1DeveloperBalance
+   * @throws \Google\Service\Exception
+   */
+  public function adjust($name, GoogleCloudApigeeV1AdjustDeveloperBalanceRequest $postBody, $optParams = [])
+  {
+    $params = ['name' => $name, 'postBody' => $postBody];
+    $params = array_merge($params, $optParams);
+    return $this->call('adjust', [$params], GoogleCloudApigeeV1DeveloperBalance::class);
+  }
   /**
    * Credits the account balance for the developer. (balance.credit)
    *
@@ -39,6 +59,7 @@ class OrganizationsDevelopersBalance extends \Google\Service\Resource
    * @param GoogleCloudApigeeV1CreditDeveloperBalanceRequest $postBody
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1DeveloperBalance
+   * @throws \Google\Service\Exception
    */
   public function credit($name, GoogleCloudApigeeV1CreditDeveloperBalanceRequest $postBody, $optParams = [])
   {

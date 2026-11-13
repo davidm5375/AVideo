@@ -21,8 +21,19 @@ class GoogleCloudContactcenterinsightsV1Analysis extends \Google\Model
 {
   protected $analysisResultType = GoogleCloudContactcenterinsightsV1AnalysisResult::class;
   protected $analysisResultDataType = '';
+  protected $annotatorSelectorType = GoogleCloudContactcenterinsightsV1AnnotatorSelector::class;
+  protected $annotatorSelectorDataType = '';
+  /**
+   * @var string
+   */
   public $createTime;
+  /**
+   * @var string
+   */
   public $name;
+  /**
+   * @var string
+   */
   public $requestTime;
 
   /**
@@ -39,26 +50,58 @@ class GoogleCloudContactcenterinsightsV1Analysis extends \Google\Model
   {
     return $this->analysisResult;
   }
+  /**
+   * @param GoogleCloudContactcenterinsightsV1AnnotatorSelector
+   */
+  public function setAnnotatorSelector(GoogleCloudContactcenterinsightsV1AnnotatorSelector $annotatorSelector)
+  {
+    $this->annotatorSelector = $annotatorSelector;
+  }
+  /**
+   * @return GoogleCloudContactcenterinsightsV1AnnotatorSelector
+   */
+  public function getAnnotatorSelector()
+  {
+    return $this->annotatorSelector;
+  }
+  /**
+   * @param string
+   */
   public function setCreateTime($createTime)
   {
     $this->createTime = $createTime;
   }
+  /**
+   * @return string
+   */
   public function getCreateTime()
   {
     return $this->createTime;
   }
+  /**
+   * @param string
+   */
   public function setName($name)
   {
     $this->name = $name;
   }
+  /**
+   * @return string
+   */
   public function getName()
   {
     return $this->name;
   }
+  /**
+   * @param string
+   */
   public function setRequestTime($requestTime)
   {
     $this->requestTime = $requestTime;
   }
+  /**
+   * @return string
+   */
   public function getRequestTime()
   {
     return $this->requestTime;

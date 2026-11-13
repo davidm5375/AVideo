@@ -2,17 +2,29 @@
 if (empty($crc)) {
     $crc = uniqid();
 }
+$suggestedOrPinnedFound = false;
 if ($obj->BigVideo && empty($_GET['showOnly'])) {
 
-    if (!empty($obj->useSuggestedVideosAsCarouselInBigVideo)) {
-        //getAllVideos($status = "viewable", $showOnlyLoggedUserVideos = false, $ignoreGroup = false, $videosArrayId = array(), $getStatistcs = false, $showUnlisted = false, $activeUsersOnly = true)
-        //$videoRows = Video::getAllVideosLight("viewable", !$obj->hidePrivateVideos, false, true);
-        $_REQUEST['rowCount'] = 20;
-        $_REQUEST['current'] = 1;
-        $videoRows = Video::getAllVideos("viewable", false, !$obj->hidePrivateVideos, array(), false, false, true, true);
+    $_REQUEST['rowCount'] = 20;
+    unsetCurrentPage();
+    if(!empty($global['isChannel'])){
+        $videoRows = Video::getAllVideos(Video::SORT_TYPE_CHANNELSUGGESTED, $global['isChannel'], !isToHidePrivateVideos());
     }
+
+    if (empty($videoRows) && !empty($obj->useSuggestedVideosAsCarouselInBigVideo)) {
+        //getAllVideos($status = Video::SORT_TYPE_VIEWABLE, $showOnlyLoggedUserVideos = false, $ignoreGroup = false, $videosArrayId = array(), $getStatistcs = false, $showUnlisted = false, $activeUsersOnly = true)
+        //$videoRows = Video::getAllVideosLight(Video::SORT_TYPE_VIEWABLE, !isToHidePrivateVideos(), false, true);
+        //$_REQUEST['rowCount'] = 20;
+        //unsetCurrentPage();
+        // SECURITY REVIEW (2026-08-21): !hidePrivateVideos intentionally bypasses the group
+        // restriction for this listing (see Gallery.php hidePrivateVideos default) - not a bug.
+        $videoRows = Video::getAllVideos(Video::SORT_TYPE_VIEWABLE, false, !isToHidePrivateVideos(), [], false, false, true, true);
+    }
+    resetCurrentPage();
     if (empty($videoRows)) {
-        $videoRows = array($video);
+        $videoRows = [$video];
+    } else {
+        $suggestedOrPinnedFound = true;
     }
     $class = '';
     $classInner = '';
@@ -20,29 +32,9 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
         $class = 'carousel slide';
         $classInner = 'carousel-inner';
     }
-    ?>
-    <style>
-        #bigVideoCarousel .carousel-indicators .active {
-            border-color: #777 !important;
-        }
-    </style>
-
-    <div class="clearfix" style="margin: 10px 0;">
-        <div id="bigVideoCarousel" class="<?php echo $class; ?> " data-ride="carousel">
-            <?php
-            if (count($videoRows) > 1) {
-                ?>
-                <!-- Indicators -->
-                <ol class="carousel-indicators" style="bottom: -25px;">
-                    <?php
-                    for ($i = 0; $i < count($videoRows); $i++) {
-                        ?><li data-target="#bigVideoCarousel" data-slide-to="<?php echo $i; ?>" class="<?php echo $i === 0 ? "active" : ""; ?>" style="border-color: #DDD;"></li><?php
-                    }
-                    ?>
-                </ol>
-                <?php
-            }
-            ?>
+?>
+    <div class="clearfix gallery-featured-wrap">
+        <div id="bigVideoCarousel" class="gallery-featured <?php echo $class; ?>" data-ride="carousel"<?php echo !empty($global['isChannel']) ? ' data-interval="false"' : ''; ?> aria-label="<?php echo __('Featured'); ?>">
             <!-- Wrapper for slides -->
             <div class="<?php echo $classInner; ?>">
                 <?php
@@ -57,7 +49,7 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                     $videoRow['videoCreation'] = $videoRow['created'];
                     $name = User::getNameIdentificationById($videoRow['users_id']);
                     if (empty($get)) {
-                        $get = array();
+                        $get = [];
                     }
                     $bigVideoAd = getAdsLeaderBoardBigVideo();
                     $colClass1 = "col-sm-5";
@@ -74,93 +66,39 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                     if ($isserie) {
                         $isserieClass = "isserie";
                     }
-                    ?>
+                ?>
                     <div class="item <?php echo $count === 1 ? "active" : ""; ?>">
                         <div class="clear clearfix">
-                            <div class="row thumbsImage">
-                                <div class="<?php echo $colClass1; ?> galleryVideo">
-                                    <a class="galleryLink <?php echo $isserieClass; ?>" videos_id="<?php echo $videoRow['id']; ?>" 
-                                       href="<?php echo Video::getLink($videoRow['id'], $videoRow['clean_title'], false, $get); ?>" 
-                                       embed="<?php echo Video::getLink($videoRow['id'], $videoRow['clean_title'], true, $get); ?>" 
-                                       title="<?php echo $videoRow['title']; ?>" style="">
-                                           <?php
-                                           $images = Video::getImageFromFilename($videoRow['filename'], $videoRow['type']);
-                                           $imgGif = $images->thumbsGif;
-                                           $poster = isMobile() ? $images->thumbsJpg : $images->poster;
-                                           ?>
-                                        <div class="aspectRatio16_9">
-                                            <img src="<?php echo $images->thumbsJpgSmall; ?>" data-src="<?php echo $poster; ?>" alt="<?php echo $videoRow['title']; ?>" class="thumbsJPG img img-responsive <?php echo ($poster != $images->thumbsJpgSmall && !empty($advancedCustom->usePreloadLowResolutionImages)) ? "blur" : ""; ?>" style="height: auto; width: 100%;" id="thumbsJPG<?php echo $videoRow['id']; ?>" />
-                                            <?php if (!empty($obj->GifOnBigVideo) && !empty($imgGif)) { ?>
-                                                <img src="<?php echo getCDN(); ?>view/img/loading-gif.png" data-src="<?php echo $imgGif; ?>" style="position: absolute; top: 0; display: none;" alt="<?php echo $videoRow['title']; ?>" id="thumbsGIF<?php echo $videoRow['id']; ?>" class="thumbsGIF img-responsive <?php echo @$img_portrait; ?>  rotate<?php echo $videoRow['rotation']; ?>" height="130" />
-                                            <?php } ?>
+                            <div class="row thumbsImage gallery-featured-layout">
+                                <div class="<?php echo $colClass1; ?> gallery-featured-media">
+                                    <?php
+                                    echo Video::getVideoImagewithHoverAnimationFromVideosId($videoRow, true, true, false, true, empty($obj->GifOnBigVideo));
+                                    ?>
+                                    <?php
+                                    if (!empty($program) && $videoRow['type'] == 'serie' && !empty($videoRow['serie_playlists_id'])) {
+                                    ?>
+                                        <div class="gallerySerieOverlay"
+                                        style="pointer-events: none;" >
+                                        <!-- BigVideo -->
+                                            <div class="gallerySerieOverlayTotal">
+                                                <?php
+                                                $plids = PlayList::getVideosIDFromPlaylistLight($videoRow['serie_playlists_id']);
+                                                echo count($plids);
+                                                ?>
+                                                <br><i class="fas fa-list"></i>
+                                            </div>
+                                            <i class="fas fa-play"></i>
+                                            <?php
+                                            echo __("Play All");
+                                            ?>
                                         </div>
-                                        <?php
-                                        if (isToShowDuration($videoRow['type'])) {
-                                            ?>
-                                            <span class="duration"><?php echo Video::getCleanDuration($videoRow['duration']); ?></span>
-                                            <div class="progress" style="height: 3px; margin-bottom: 2px;">
-                                                <div class="progress-bar progress-bar-danger" role="progressbar" style="width: <?php echo $videoRow['progress']['percent'] ?>%;" aria-valuenow="<?php echo $videoRow['progress']['percent'] ?>" aria-valuemin="0" aria-valuemax="100"></div>
-                                            </div>
-                                            <?php
-                                        }
-
-                                        if (!empty($program) && $videoRow['type'] == 'serie' && !empty($videoRow['serie_playlists_id'])) {
-                                            ?>
-                                            <div class="gallerySerieOverlay">
-                                                <div class="gallerySerieOverlayTotal">
-                                                    <?php
-                                                    $plids = PlayList::getVideosIDFromPlaylistLight($videoRow['serie_playlists_id']);
-                                                    echo count($plids);
-                                                    ?>
-                                                    <br><i class="fas fa-list"></i>
-                                                </div>
-                                                <i class="fas fa-play"></i>
-                                                <?php
-                                                echo __("Play All");
-                                                ?>
-                                            </div>
-                                            <?php
-                                        } else
-                                        if (User::isLogged() && !empty($program)) {
-                                            ?>
-                                            <div class="galleryVideoButtons" style="margin-right: 20px;">
-                                                <?php
-                                                //var_dump($value['isWatchLater'], $value['isFavorite']);
-                                                if ($videoRow['isWatchLater']) {
-                                                    $watchLaterBtnAddedStyle = "";
-                                                    $watchLaterBtnStyle = "display: none;";
-                                                } else {
-                                                    $watchLaterBtnAddedStyle = "display: none;";
-                                                    $watchLaterBtnStyle = "";
-                                                }
-                                                if ($videoRow['isFavorite']) {
-                                                    $favoriteBtnAddedStyle = "";
-                                                    $favoriteBtnStyle = "display: none;";
-                                                } else {
-                                                    $favoriteBtnAddedStyle = "display: none;";
-                                                    $favoriteBtnStyle = "";
-                                                }
-                                                ?>
-
-                                                <button onclick="addVideoToPlayList(<?php echo $videoRow['id']; ?>, false, <?php echo $videoRow['watchLaterId']; ?>);return false;" class="btn btn-dark btn-xs watchLaterBtnAdded watchLaterBtnAdded<?php echo $videoRow['id']; ?>" title="<?php echo __("Added On Watch Later"); ?>" style="color: #4285f4;<?php echo $watchLaterBtnAddedStyle; ?>" ><i class="fas fa-check"></i></button> 
-                                                <button onclick="addVideoToPlayList(<?php echo $videoRow['id']; ?>, true, <?php echo $videoRow['watchLaterId']; ?>);return false;" class="btn btn-dark btn-xs watchLaterBtn watchLaterBtn<?php echo $videoRow['id']; ?>" title="<?php echo __("Watch Later"); ?>" style="<?php echo $watchLaterBtnStyle; ?>" ><i class="fas fa-clock"></i></button>
-                                                <br>
-                                                <button onclick="addVideoToPlayList(<?php echo $videoRow['id']; ?>, false, <?php echo $videoRow['favoriteId']; ?>);return false;" class="btn btn-dark btn-xs favoriteBtnAdded favoriteBtnAdded<?php echo $videoRow['id']; ?>" title="<?php echo __("Added On Favorite"); ?>" style="color: #4285f4; <?php echo $favoriteBtnAddedStyle; ?>"><i class="fas fa-check"></i></button>  
-                                                <button onclick="addVideoToPlayList(<?php echo $videoRow['id']; ?>, true, <?php echo $videoRow['favoriteId']; ?>);return false;" class="btn btn-dark btn-xs favoriteBtn favoriteBtn<?php echo $videoRow['id']; ?>" title="<?php echo __("Favorite"); ?>" style="<?php echo $favoriteBtnStyle; ?>" ><i class="fas fa-heart" ></i></button>    
-
-                                            </div>
-                                            <?php
-                                        }
-                                        ?>
-                                    </a>
+                                    <?php }
+                                    ?>
                                 </div>
-                                <div class="<?php echo $colClass2; ?>">
+                                <div class="<?php echo $colClass2; ?> gallery-featured-body">
                                     <div class="<?php echo $colClass3; ?>">
-                                        <a class="h6 galleryLink <?php echo $isserieClass; ?>" videos_id="<?php echo $videoRow['id']; ?>" 
-                                           href="<?php echo Video::getLink($videoRow['id'], $videoRow['clean_title'], false, $get); ?>" 
-                                           embed="<?php echo Video::getLink($videoRow['id'], $videoRow['clean_title'], true, $get); ?>" 
-                                           title="<?php echo $videoRow['title']; ?>">
-                                            <strong><?php echo $videoRow['title']; ?></strong>
+                                        <a class="h6 galleryLink <?php echo $isserieClass; ?>" videos_id="<?php echo $videoRow['id']; ?>" href="<?php echo Video::getLink($videoRow['id'], $videoRow['clean_title'], false, $get); ?>" embed="<?php echo Video::getLink($videoRow['id'], $videoRow['clean_title'], true, $get); ?>" title="<?php echo htmlentities(getSEOTitle($videoRow['title'], 200)); ?>">
+                                            <h2 class="gallery-featured-title"><?php echo getSEOTitle($videoRow['title']); ?></h2>
                                         </a>
                                         <div class="descriptionArea">
                                             <div class="descriptionAreaPreContent">
@@ -175,15 +113,22 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                                                 <span class="showLess"><i class="fas fa-caret-up"></i> <?php echo __("Show Less"); ?></span>
                                             </button>
                                         </div>
+                                        <?php if (!empty($global['isChannel'])) { ?>
+                                            <a class="btn btn-primary gallery-featured-watch" href="<?php echo Video::getLink($videoRow['id'], $videoRow['clean_title'], false, $get); ?>">
+                                                <i class="fas fa-play" aria-hidden="true"></i> <?php echo __('Play'); ?>
+                                            </a>
+                                        <?php } ?>
                                         <div class="galeryDetails">
                                             <div class="galleryTags">
-                                                <?php if (empty($_GET['catName'])) { ?>
-                                                    <a class="label label-default" href="<?php echo Video::getLink($videoRow['id'], $videoRow['clean_title'], false, $get); ?>">
+                                                <?php
+                                                if (empty($_REQUEST['catName']) && !empty($obj->showCategoryTag)) {
+                                                ?>
+                                                    <a class="label label-default" href="<?php echo "{$global['webSiteRootURL']}cat/{$videoRow['clean_category']}"; ?>" data-toggle="tooltip" title="<?php echo $videoRow['category']; ?>">
                                                         <?php
                                                         if (!empty($videoRow['iconClass'])) {
-                                                            ?>
+                                                        ?>
                                                             <i class="<?php echo $videoRow['iconClass']; ?>"></i>
-                                                            <?php
+                                                        <?php
                                                         }
                                                         ?>
                                                         <?php echo $videoRow['category']; ?>
@@ -195,12 +140,12 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                                                     if (!empty($videoRow['tags'])) {
                                                         foreach ($videoRow['tags'] as $value2) {
                                                             if (!empty($value2->label) && $value2->label === __("Group")) {
-                                                                ?><span class="label label-<?php echo $value2->type; ?>"><?php echo $value2->text; ?></span><?php
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                ?>
+                                                ?><span class="label label-<?php echo $value2->type; ?>"><?php echo $value2->text; ?></span><?php
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                                            ?>
                                             </div>
 
                                             <?php
@@ -208,40 +153,46 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                                                 if (AVideoPlugin::isEnabledByName('LiveUsers')) {
                                                     echo getLiveUsersLabelVideo($videoRow['id'], $videoRow['views_count'], "", "");
                                                 } else {
-                                                    ?>
+                                            ?>
                                                     <div>
                                                         <i class="fa fa-eye"></i>
                                                         <span itemprop="interactionCount">
                                                             <?php echo number_format($videoRow['views_count'], 0); ?> <?php echo __("Views"); ?>
                                                         </span>
                                                     </div>
-                                                    <?php
+                                            <?php
                                                 }
                                             }
                                             ?>
-                                            <div>
-                                                <i class="far fa-clock"></i>
-                                                <?php echo humanTiming(strtotime($videoRow['videoCreation'])), " ", __('ago'); ?>
-                                            </div>
-                                            <div>
-                                                <a href="<?php echo User::getChannelLink($videoRow['users_id']); ?>">
-                                                    <i class="fa fa-user"></i>
-                                                    <?php echo $name; ?>
-                                                </a>
-                                            </div>
-                                            <?php if (Video::canEdit($videoRow['id'])) { ?>
-                                                <div>
-                                                    <a href="#" onclick="avideoModalIframe('<?php echo $global['webSiteRootURL']; ?>mvideos?video_id=<?php echo $videoRow['id']; ?>');return false;"><i class="fa fa-edit"></i> <?php echo __("Edit Video"); ?></a>
-                                                </div>
-                                            <?php } ?>
-                                            <?php if (!empty($videoRow['trailer1'])) { ?>
-                                                <div>
-                                                    <span onclick="showTrailer('<?php echo parseVideos($videoRow['trailer1'], 1); ?>'); return false;" class="cursorPointer" >
-                                                        <i class="fa fa-video"></i> <?php echo __("Trailer"); ?>
-                                                    </span>
-                                                </div>
-                                            <?php }
+                                            <?php
+                                            if (!empty($advancedCustom->showCreationTimeOnVideoItem)) {
                                             ?>
+                                                <div>
+                                                    <i class="far fa-clock"></i>
+                                                    <?php echo humanTimingOrDate(strtotime($videoRow['videoCreation']), 0, true, true); ?>
+                                                </div>
+                                            <?php
+                                            } else {
+                                                echo '<!-- empty showCreationTimeOnVideoItem '.basename(__FILE__).' line='.__LINE__.'-->';
+                                            }
+                                            ?>
+                                            <?php
+                                            if (!empty($advancedCustom->showChannelNameOnVideoItem)) {
+                                            ?>
+                                                <div>
+                                                    <a href="<?php echo User::getChannelLink($videoRow['users_id']); ?>">
+                                                        <i class="fa fa-user"></i>
+                                                        <?php echo $name; ?>
+                                                    </a>
+                                                </div>
+                                            <?php
+                                            }
+                                            ?>
+                                            <?php if (Video::canEdit($videoRow['id'])) { ?>
+                                                <button type="button" class="btn-link" onclick="avideoModalIframe(webSiteRootURL + 'view/managerVideosLight.php?avideoIframe=1&videos_id=<?php echo $videoRow['id']; ?>');return false;">
+                                                    <i class="fa fa-edit"></i> <?php echo __("Edit Video"); ?>
+                                                </button>
+                                            <?php } ?>
                                             <?php
                                             echo AVideoPlugin::getGalleryActionButton($videoRow['id']);
                                             ?>
@@ -254,10 +205,10 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                                                 @$timesG[__LINE__] += microtime(true) - $startG;
                                                 $startG = microtime(true);
                                                 if (!empty($files['mp4']) || !empty($files['mp3'])) {
-                                                    ?>
+                                            ?>
                                                     <div style="position: relative; overflow: visible;">
-                                                        <button type="button" class="btn btn-default btn-sm btn-xs"  data-toggle="dropdown">
-                                                            <i class="fa fa-download"></i> <?php echo!empty($advancedCustom->uploadButtonDropdownText) ? $advancedCustom->uploadButtonDropdownText : ""; ?> <span class="caret"></span>
+                                                        <button type="button" class="btn btn-default btn-sm btn-xs" data-toggle="dropdown">
+                                                            <i class="fa fa-download"></i> <?php echo __('Download'); ?> <span class="caret"></span>
                                                         </button>
                                                         <ul class="dropdown-menu" role="menu">
                                                             <?php
@@ -267,7 +218,7 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                                                                     continue;
                                                                 }
                                                                 $path_parts = pathinfo($theLink['filename']);
-                                                                ?>
+                                                            ?>
                                                                 <li>
                                                                     <a href="<?php echo $theLink['url']; ?>?download=1&title=<?php echo urlencode($videoRow['title'] . "_{$key}_.{$path_parts['extension']}"); ?>">
                                                                         <?php echo __("Download"); ?> <?php echo $key; ?>
@@ -277,7 +228,7 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                                                             ?>
                                                         </ul>
                                                     </div>
-                                                    <?php
+                                            <?php
                                                 }
                                             }
                                             ?>
@@ -290,15 +241,26 @@ if ($obj->BigVideo && empty($_GET['showOnly'])) {
                             </div>
                         </div>
                     </div>
-                    <?php
+                <?php
                 }
                 ?>
             </div>
+            <?php if (count($videoRows) > 1) { ?>
+                <nav class="gallery-featured-navigation" aria-label="<?php echo __('Videos'); ?>">
+                    <button type="button" class="btn btn-default gallery-featured-arrow" data-target="#bigVideoCarousel" data-slide="prev" aria-label="<?php echo __('Previous'); ?>"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
+                    <ol class="carousel-indicators">
+                        <?php for ($i = 0; $i < count($videoRows); $i++) { ?>
+                            <li class="<?php echo $i === 0 ? 'active' : ''; ?>"><button type="button" data-target="#bigVideoCarousel" data-slide-to="<?php echo $i; ?>" aria-label="<?php echo __('Video') . ' ' . ($i + 1); ?>"></button></li>
+                        <?php } ?>
+                    </ol>
+                    <button type="button" class="btn btn-default gallery-featured-arrow" data-target="#bigVideoCarousel" data-slide="next" aria-label="<?php echo __('Next'); ?>"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                </nav>
+            <?php } ?>
         </div>
     </div>
-    <?php
-} else if (!empty($_GET['showOnly'])) {
-    ?>
-    <a href="<?php echo $global['webSiteRootURL']; ?>" class="btn btn-default"><i class="fa fa-arrow-left"></i> <?php echo __("Go Back"); ?></a>
-    <?php
+<?php
+} elseif (!empty($_GET['showOnly'])) {
+?>
+    <a href="<?php echo getHomePageURL(); ?>" class="btn btn-default"><i class="fa fa-arrow-left"></i> <?php echo __('Go Back'); ?></a>
+<?php
 }

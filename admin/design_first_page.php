@@ -7,9 +7,10 @@ $channelListSwitch = Plugin::isEnabledByName('FirstPageChannelList');
 if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && empty($channelListSwitch)) {
     $defaultSwitch = true;
 }
+$delay = 0.5;
 ?>
 <div class="row">
-    <div class="col-sm-6 col-md-3 col-lg-3">
+    <div class="col-sm-6 col-md-3 col-lg-3 <?php echo getCSSAnimationClassAndStyle('animate__flipInY', 'layout', $delay); ?>">
         <div class="panel panel-default">
             <div class="panel-heading">
                 Default
@@ -23,7 +24,7 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-md-3 col-lg-3">
+    <div class="col-sm-6 col-md-3 col-lg-3 <?php echo getCSSAnimationClassAndStyle('animate__flipInY', 'layout', $delay); ?>">
         <div class="panel panel-default">
             <div class="panel-heading">
                 Netflix
@@ -38,7 +39,7 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
         </div>
     </div>
     <div class="clearfix hidden-md hidden-lg"></div>
-    <div class="col-sm-6 col-md-3 col-lg-3">
+    <div class="col-sm-6 col-md-3 col-lg-3 <?php echo getCSSAnimationClassAndStyle('animate__flipInY', 'layout', $delay); ?>">
         <div class="panel panel-default">
             <div class="panel-heading">
                 Channel
@@ -52,7 +53,7 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-md-3 col-lg-3">
+    <div class="col-sm-6 col-md-3 col-lg-3 <?php echo getCSSAnimationClassAndStyle('animate__flipInY', 'layout', $delay); ?>">
         <div class="panel panel-default">
             <div class="panel-heading">
                 Gallery
@@ -68,6 +69,17 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
     </div>
 </div>
 <script>
+    var globalToken = '<?php echo getToken(); ?>';
+
+    $.ajaxPrefilter(function (options, originalOptions) {
+        if (options.url !== webSiteRootURL + 'objects/pluginSwitch.json.php') {
+            return;
+        }
+        options.data = $.param($.extend({}, originalOptions.data || {}, {
+            "globalToken": globalToken
+        }));
+    });
+
     function checkSwitch() {
         var defaultSwitch = $('#defaultSwitch').is(":checked");
         var netflixSwitch = $('#netflixSwitch').is(":checked");
@@ -94,28 +106,28 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
 
             modal.showPleaseWait();
             $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                 data: {"uuid": "a06505bf-3570-4b1f-977a-fd0e5cab205d", "name": "Gallery", "dir": "Gallery", "enable": false},
                 type: 'post',
                 success: function (response) {
                     $.ajax({
-                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                         data: {"uuid": "e3a568e6-ef61-4dcc-aad0-0109e9be8e36", "name": "YouPHPFlix2", "dir": "YouPHPFlix2", "enable": false},
                         type: 'post',
                         success: function (response) {
                             $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                 data: {"uuid": "youu05bf-3570-4b1f-977a-fd0e5cabtube", "name": "YouTube", "dir": "YouTube", "enable": false},
                                 type: 'post',
                                 success: function (response) {
                                     $.ajax({
-                                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                         data: {"uuid": "channel-first-page-977a-fd0e5cab205d", "name": "FirstPageChannelList", "dir": "FirstPageChannelList", "enable": false},
                                         type: 'post',
                                         success: function (response) {
                                             $.ajax({
-                                                url: '<?php echo $global['webSiteRootURL']; ?>admin/themeUpdate.json.php',
-                                                data: {"theme": 'default'},
+                                                url: webSiteRootURL+'admin/themeUpdate.json.php',
+                                                data: {"theme": 'default', "globalToken": '<?php echo getToken(300); ?>'},
                                                 type: 'post',
                                                 success: function (response) {
                                                     modal.hidePleaseWait();
@@ -141,28 +153,28 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
 
             modal.showPleaseWait();
             $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                 data: {"uuid": "a06505bf-3570-4b1f-977a-fd0e5cab205d", "name": "Gallery", "dir": "Gallery", "enable": false},
                 type: 'post',
                 success: function (response) {
                     $.ajax({
-                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                         data: {"uuid": "youu05bf-3570-4b1f-977a-fd0e5cabtube", "name": "YouTube", "dir": "YouTube", "enable": false},
                         type: 'post',
                         success: function (response) {
                             $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                 data: {"uuid": "e3a568e6-ef61-4dcc-aad0-0109e9be8e36", "name": "YouPHPFlix2", "dir": "YouPHPFlix2", "enable": true},
                                 type: 'post',
                                 success: function (response) {
                                     $.ajax({
-                                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                         data: {"uuid": "channel-first-page-977a-fd0e5cab205d", "name": "FirstPageChannelList", "dir": "FirstPageChannelList", "enable": false},
                                         type: 'post',
                                         success: function (response) {
                                             $.ajax({
-                                                url: '<?php echo $global['webSiteRootURL']; ?>admin/themeUpdate.json.php',
-                                                data: {"theme": 'netflix'},
+                                                url: webSiteRootURL+'admin/themeUpdate.json.php',
+                                                data: {"theme": 'netflix', "globalToken": '<?php echo getToken(300); ?>'},
                                                 type: 'post',
                                                 success: function (response) {
                                                     modal.hidePleaseWait();
@@ -188,28 +200,28 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
 
             modal.showPleaseWait();
             $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                 data: {"uuid": "a06505bf-3570-4b1f-977a-fd0e5cab205d", "name": "Gallery", "dir": "Gallery", "enable": true},
                 type: 'post',
                 success: function (response) {
                     $.ajax({
-                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                         data: {"uuid": "youu05bf-3570-4b1f-977a-fd0e5cabtube", "name": "YouTube", "dir": "YouTube", "enable": false},
                         type: 'post',
                         success: function (response) {
                             $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                 data: {"uuid": "e3a568e6-ef61-4dcc-aad0-0109e9be8e36", "name": "YouPHPFlix2", "dir": "YouPHPFlix2", "enable": false},
                                 type: 'post',
                                 success: function (response) {
                                     $.ajax({
-                                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                         data: {"uuid": "channel-first-page-977a-fd0e5cab205d", "name": "FirstPageChannelList", "dir": "FirstPageChannelList", "enable": false},
                                         type: 'post',
                                         success: function (response) {
                                             $.ajax({
-                                                url: '<?php echo $global['webSiteRootURL']; ?>admin/themeUpdate.json.php',
-                                                data: {"theme": 'default'},
+                                                url: webSiteRootURL+'admin/themeUpdate.json.php',
+                                                data: {"theme": 'default', "globalToken": '<?php echo getToken(300); ?>'},
                                                 type: 'post',
                                                 success: function (response) {
                                                     modal.hidePleaseWait();
@@ -235,28 +247,28 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
 
             modal.showPleaseWait();
             $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                 data: {"uuid": "a06505bf-3570-4b1f-977a-fd0e5cab205d", "name": "Gallery", "dir": "Gallery", "enable": false},
                 type: 'post',
                 success: function (response) {
                     $.ajax({
-                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                         data: {"uuid": "e3a568e6-ef61-4dcc-aad0-0109e9be8e36", "name": "YouPHPFlix2", "dir": "YouPHPFlix2", "enable": false},
                         type: 'post',
                         success: function (response) {
                             $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                 data: {"uuid": "youu05bf-3570-4b1f-977a-fd0e5cabtube", "name": "YouTube", "dir": "YouTube", "enable": true},
                                 type: 'post',
                                 success: function (response) {
                                     $.ajax({
-                                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                         data: {"uuid": "channel-first-page-977a-fd0e5cab205d", "name": "FirstPageChannelList", "dir": "FirstPageChannelList", "enable": false},
                                         type: 'post',
                                         success: function (response) {
                                             $.ajax({
-                                                url: '<?php echo $global['webSiteRootURL']; ?>admin/themeUpdate.json.php',
-                                                data: {"theme": 'default'},
+                                                url: webSiteRootURL+'admin/themeUpdate.json.php',
+                                                data: {"theme": 'default', "globalToken": '<?php echo getToken(300); ?>'},
                                                 type: 'post',
                                                 success: function (response) {
                                                     modal.hidePleaseWait();
@@ -271,8 +283,8 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
                 }
             });
         });
-        
-        
+
+
         $('#channelListSwitch').change(function (e) {
             if ($(this).is(":checked")) {
                 $('#gallerySwitch').prop('checked', false);
@@ -284,28 +296,28 @@ if (empty($netflixSwitch) && empty($gallerySwitch) && empty($youtubeSwitch) && e
 
             modal.showPleaseWait();
             $.ajax({
-                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                 data: {"uuid": "a06505bf-3570-4b1f-977a-fd0e5cab205d", "name": "Gallery", "dir": "Gallery", "enable": false},
                 type: 'post',
                 success: function (response) {
                     $.ajax({
-                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                         data: {"uuid": "e3a568e6-ef61-4dcc-aad0-0109e9be8e36", "name": "YouPHPFlix2", "dir": "YouPHPFlix2", "enable": false},
                         type: 'post',
                         success: function (response) {
                             $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                 data: {"uuid": "youu05bf-3570-4b1f-977a-fd0e5cabtube", "name": "YouTube", "dir": "YouTube", "enable": false},
                                 type: 'post',
                                 success: function (response) {
                                     $.ajax({
-                                        url: '<?php echo $global['webSiteRootURL']; ?>objects/pluginSwitch.json.php',
+                                        url: webSiteRootURL+'objects/pluginSwitch.json.php',
                                         data: {"uuid": "channel-first-page-977a-fd0e5cab205d", "name": "FirstPageChannelList", "dir": "FirstPageChannelList", "enable": true},
                                         type: 'post',
                                         success: function (response) {
                                             $.ajax({
-                                                url: '<?php echo $global['webSiteRootURL']; ?>admin/themeUpdate.json.php',
-                                                data: {"theme": 'default'},
+                                                url: webSiteRootURL+'admin/themeUpdate.json.php',
+                                                data: {"theme": 'default', "globalToken": '<?php echo getToken(300); ?>'},
                                                 type: 'post',
                                                 success: function (response) {
                                                     modal.hidePleaseWait();

@@ -9,6 +9,10 @@ if (!User::isAdmin()) {
     die('{"error":"' . __("Permission denied") . '"}');
 }
 
+if (!isGlobalTokenValid()) {
+    die('{"error":"' . __("Invalid Token") . '"}');
+}
+
 $pluginName = 'PlayerSkins';
 
 $pluginDO = AVideoPlugin::getObjectData($pluginName);
@@ -22,4 +26,4 @@ $p->setObject_data(json_encode($pluginDO));
 $obj = new stdClass();
 $obj->save = $p->save();
 
-echo (json_encode($obj));
+echo(json_encode($obj));

@@ -1,451 +1,353 @@
 <?php
 require_once '../../videos/configuration.php';
-if (!User::isLogged()) {
-    header("Location: {$global['webSiteRootURL']}?error=" . __("You can not do this"));
-    exit;
+
+if(!BulkEmbed::canBulkEmbed()){
+    forbiddenPage('You cannot do this');
 }
-$obj = AVideoPlugin::getObjectData("BulkEmbed");
+
+$hasAPIKey = BulkEmbed::hasValidAPIKey();
+
+$_page = new Page(array('Search'));
 ?>
-<!DOCTYPE html>
-<html lang="<?php echo $_SESSION['language']; ?>">
-    <head>
-        <?php 
-        echo getHTMLTitle( __("Search"));
+<style>
+    #custom-search-input {
+        padding: 3px;
+        border: solid 1px #E4E4E4;
+        border-radius: 6px;
+        background-color: #fff;
+    }
+
+    #custom-search-input input {
+        border: 0;
+        box-shadow: none;
+    }
+
+    #custom-search-input button {
+        margin: 2px 0 0 0;
+        background: none;
+        box-shadow: none;
+        border: 0;
+        color: #666666;
+        padding: 0 8px 0 10px;
+        border-left: solid 1px #ccc;
+    }
+
+    #custom-search-input button:hover {
+        border: 0;
+        box-shadow: none;
+        border-left: solid 1px #ccc;
+    }
+
+    #custom-search-input .glyphicon-search {
+        font-size: 23px;
+    }
+
+    #results li {
+        padding: 10px 0;
+        border-bottom: 1px dotted #ccc;
+        list-style: none;
+        overflow: auto;
+    }
+
+    .list-left {
+        float: left;
+        width: 20%;
+    }
+
+    .list-left img {
+        width: 100%;
+        padding: 3px;
+        border: 1px solid #ccc;
+    }
+
+    .list-right {
+        float: right;
+        width: 78%;
+    }
+
+    .list-right h3 {
+        margin: 0;
+    }
+
+    .list-right p {
+        margin: 0;
+    }
+
+    .cTitle {
+        color: #dd2826;
+    }
+
+    .button-container {
+        margin-top: 25px;
+
+    }
+
+    .paging-button {
+        background: #f4f4f4;
+        padding: 0 13px;
+        border: #ccc 1px solid;
+        border-radius: 5px;
+        color: #333;
+        margin: 10px;
+        cursor: pointer;
+    }
+</style>
+<div class="container">
+
+    <?php
+    if (!$hasAPIKey) {
         ?>
+        <div class="alert alert-warning">
+            <?php echo BulkEmbed::getMissingAPIKeyMessage(); ?>
+        </div>
         <?php
-        include $global['systemRootPath'] . 'view/include/head.php';
-        ?>
-        <style>
-            #custom-search-input{
-                padding: 3px;
-                border: solid 1px #E4E4E4;
-                border-radius: 6px;
-                background-color: #fff;
-            }
+    }
+    ?>
 
-            #custom-search-input input{
-                border: 0;
-                box-shadow: none;
-            }
-
-            #custom-search-input button{
-                margin: 2px 0 0 0;
-                background: none;
-                box-shadow: none;
-                border: 0;
-                color: #666666;
-                padding: 0 8px 0 10px;
-                border-left: solid 1px #ccc;
-            }
-
-            #custom-search-input button:hover{
-                border: 0;
-                box-shadow: none;
-                border-left: solid 1px #ccc;
-            }
-
-            #custom-search-input .glyphicon-search{
-                font-size: 23px;
-            }
-            #results li {
-                padding: 10px 0;
-                border-bottom: 1px dotted #ccc;
-                list-style: none;
-                overflow: auto;
-            }
-            .list-left {
-                float: left;
-                width: 20%;
-            }
-            .list-left img {
-                width: 100%;
-                padding: 3px;
-                border: 1px solid #ccc;
-            }
-            .list-right {
-                float: right;
-                width: 78%;
-            }
-            .list-right h3 {
-                margin: 0;
-            }
-            .list-right p {
-                margin: 0;
-            }
-
-            .cTitle {
-                color: #dd2826;
-            }
-
-            .button-container {
-                margin-top: 25px;
-
-            }
-
-            .paging-button {
-                background: #f4f4f4;
-                padding: 0 13px;
-                border: #ccc 1px solid;
-                border-radius: 5px;
-                color: #333;
-                margin: 10px;
-                cursor: pointer;
-            }
-        </style>
-    </head>
-    <body class="<?php echo $global['bodyClass']; ?>">
-        <?php
-        include $global['systemRootPath'] . 'view/include/navbar.php';
-        ?>
-        <div class="container">
-
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <form id="search-form" name="search-form" onsubmit="return search()">
-                        <div id="custom-search-input">
-                            <div class="input-group col-md-12">
-                                <input type="search" id="query" class="form-control input-lg" placeholder="Search YouTube / PlayList URL" />
-                                <span class="input-group-btn">
-                                    <button class="btn btn-info btn-lg" type="submit">
-                                        <i class="glyphicon glyphicon-search"></i>
-                                    </button>
-                                </span>
-                            </div>
-                        </div>
-                    </form>
-                    <br>
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <button class="btn btn-info btn-block" id="getAll"><?php echo __('Embed All'); ?></button>
-                        </div>
-                        <div class="col-sm-6">
-                            <button class="btn btn-success btn-block" id="getSelected"><?php echo __('Embed Selected'); ?></button>
-                        </div>
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <form id="search-form" name="search-form">
+                <div id="custom-search-input">
+                    <div class="input-group col-md-12">
+                        <input type="search" id="query" class="form-control input-lg" placeholder="Search YouTube / PlayList URL" <?php echo $hasAPIKey ? '' : 'disabled="disabled"'; ?> />
+                        <span class="input-group-btn">
+                            <button class="btn btn-info btn-lg" type="submit" <?php echo $hasAPIKey ? '' : 'disabled="disabled"'; ?>>
+                                <i class="glyphicon glyphicon-search"></i>
+                            </button>
+                        </span>
                     </div>
                 </div>
-                <div class="panel-body">
-                    <ul id="results"></ul>
-                    <div id="buttons"></div>
+            </form>
+            <br>
+            <div class="row">
+                <div class="col-sm-6">
+                    <button class="btn btn-info btn-block" id="getAll" <?php echo $hasAPIKey ? '' : 'disabled="disabled"'; ?>><?php echo __('Embed All'); ?></button>
+                </div>
+                <div class="col-sm-6">
+                    <button class="btn btn-success btn-block" id="getSelected" <?php echo $hasAPIKey ? '' : 'disabled="disabled"'; ?>><?php echo __('Embed Selected'); ?></button>
                 </div>
             </div>
         </div>
-        <?php
-        include $global['systemRootPath'] . 'view/include/footer.php';
-        ?>
-        <script>
+        <div class="panel-body">
+            <ul id="results"></ul>
+            <div id="buttons"></div>
+        </div>
+    </div>
+</div>
+<script>
+    var playListName = '';
 
-            var gapikey = '<?php echo $obj->API_KEY; ?>';
-            var playListName = '';
+    var searchResults = {}; // Global variable to store the search results
 
-            $(function () {
-                $('#search-form').submit(function (e) {
-                    e.preventDefault();
-                });
+    $(function() {
+        $('#search-form').submit(function(e) {
+            e.preventDefault();
+            search(); // Call the search function
+        });
 
-                $('#getAll').click(function () {
-                    var videoLink = new Array();
-                    $("input:checkbox[name=videoCheckbox]").each(function () {
-                        videoLink.push($(this).val());
-                    });
-                    saveIt(videoLink);
-                });
-                $('#getSelected').click(function () {
-                    var videoLink = new Array();
-                    $("input:checkbox[name=videoCheckbox]:checked").each(function () {
-                        videoLink.push($(this).val());
-                    });
-                    saveIt(videoLink);
-                });
+        $('#getAll').click(function() {
+            var videoLink = [];
+            $("input:checkbox[name=videoCheckbox]").each(function() {
+                videoLink.push($(this).val());
             });
+            saveIt(videoLink);
+        });
 
-            function saveIt(videoLink) {
-                modal.showPleaseWait();
-                setTimeout(function () {
-                    var itemsToSave = [];
-                    for (x in videoLink) {
-                        if (typeof videoLink[x] === 'function') {
-                            continue;
-                        }
-                        $.ajax({
-                            url: "https://www.googleapis.com/youtube/v3/videos?id=" + videoLink[x] + "&part=id,snippet,contentDetails&key=" + gapikey,
-                            async: false,
-                            success: function (data) {
-                                var item = {};
-                                item.link = "https://youtube.com/embed/" + data.items[0].id;
-                                item.title = data.items[0].snippet.title;
-                                item.description = data.items[0].snippet.description;
-                                item.duration = data.items[0].contentDetails.duration;
-                                console.log(data.items[0].snippet);
-                                item.thumbs = data.items[0].snippet.thumbnails.high.url;
-                                itemsToSave.push(item);
-                            }
-                        });
-                    }
-                    $.ajax({
-                        url: '<?php echo $global['webSiteRootURL']; ?>plugin/BulkEmbed/save.json.php',
-                        data: {"itemsToSave": itemsToSave, playListName: playListName},
-                        type: 'post',
-                        success: function (response) {
-                            if (!response.error) {
-                                avideoAlert("<?php echo __("Congratulations!"); ?>", "<?php echo __("Your videos have been saved!"); ?>", "success");
-                            } else {
-                                avideoAlert("<?php echo __("Sorry!"); ?>", response.msg.join("<br>"), "error");
-                            }
-                            modal.hidePleaseWait();
-                        }
-                    });
-                }, 500);
-            }
+        $('#getSelected').click(function() {
+            var videoLink = [];
+            $("input:checkbox[name=videoCheckbox]:checked").each(function() {
+                videoLink.push($(this).val());
+            });
+            saveIt(videoLink);
+        });
+    });
 
-            function validURL(str) {
-                var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
-                        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
-                        '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
-                        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
-                        '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-                        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
-                return !!pattern.test(str);
-            }
+    function validURL(str) {
+        var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
+            '((([a-z\\d]([a-z\\d-]*[a-z\\d])?)\\.)+[a-z]{2,}|' + // domain name (see validURL in view/js/script.js)
+            '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
+            '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
+            '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
+            '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+        return !!pattern.test(str);
+    }
 
-            function getFromUrl(url) {
-                if (!validURL(url)) {
-                    return false;
-                }
+    function getFromUrl(url) {
+        if (!validURL(url)) {
+            return false;
+        }
 
-                var regex = /[?&]([^=#]+)=([^&#]*)/g,
-                        params = {},
-                        match;
-                while (match = regex.exec(url)) {
-                    params[match[1]] = match[2];
-                }
-                return params;
-            }
+        var regex = /[?&]([^=#]+)=([^&#]*)/g,
+            params = {},
+            match;
+        while (match = regex.exec(url)) {
+            params[match[1]] = match[2];
+        }
+        return params;
+    }
 
-            function getPlayListId(url) {
-                var result = getFromUrl(url);
-                if (result && typeof result.list !== 'undefined') {
-                    return result.list;
-                }
-                return false;
-            }
+    function getPlayListId(url) {
+        var result = getFromUrl(url);
+        if (result && typeof result.list !== 'undefined') {
+            return result.list;
+        }
+        return false;
+    }
 
-            function search() {
-                // clear 
-                $('#results').html('');
-                $('#buttons').html('');
+    // Function to handle search and store results globally
+    function search(pageToken = '') {
+        $('#results').html('');
+        $('#buttons').html('');
 
-                // get form input
-                q = $('#query').val();  // this probably shouldn't be created as a global
+        var query = $('#query').val();
 
-                var playListId = getPlayListId(q);
-
-                if (playListId) {
-                    $.get(
-                            "https://www.googleapis.com/youtube/v3/playlists", {
-                                part: 'snippet',
-                                key: gapikey,
-                                id: playListId
-                            }, function (data) {
-                        playListName = data.items[0].snippet.title;
-                        $.get(
-                                "https://www.googleapis.com/youtube/v3/playlistItems", {
-                                    part: 'snippet, id',
-                                    q: q,
-                                    type: 'video',
-                                    key: gapikey,
-                                    maxResults: 50,
-                                    videoEmbeddable: "true",
-                                    videoSyndicated: "true",
-                                    playlistId: playListId
-                                }, function (data) {
-                            processData(data);
-                        });
-                    });
+        $.ajax({
+            url: webSiteRootURL + 'plugin/BulkEmbed/search.json.php',
+            type: 'POST',
+            data: {
+                query: query,
+                pageToken: pageToken
+            },
+            success: function(response) {
+                if (response.error) {
+                    avideoAlertError(response.msg);
                 } else {
-                    playListName = '';
-                    // run get request on API
-                    $.get(
-                            "https://www.googleapis.com/youtube/v3/search", {
-                                part: 'snippet, id',
-                                q: q,
-                                type: 'video',
-                                key: gapikey,
-                                maxResults: 50,
-                                videoSyndicated: "true",
-                                videoEmbeddable: "true"
-                            }, function (data) {
-                        processData(data);
-                    });
+                    processData(response.data);
+                    // Store search results globally
+                    searchResults = response.data.items.reduce(function(map, item) {
+                        map[item.link] = item;
+                        return map;
+                    }, {});
                 }
-
+            },
+            error: function(xhr, status, error) {
+                console.log("An error occurred: " + error);
             }
+        });
+    }
 
-            function processData(data) {
-                var nextPageToken = data.nextPageToken;
-                var prevPageToken = data.prevPageToken;
+    function processData(data) {
+        // Check if items array exists
+        if (!data || !data.items || !Array.isArray(data.items)) {
+            console.error('Invalid data format received from the server:', data);
+            avideoAlertError("Invalid data format received from the server");
+            return;
+        }
 
-                // Log data
-                //console.log(data);
+        // Clear previous data
+        $('#results').html('');
+        $('#buttons').html('');
 
-                $.each(data.items, function (i, item) {
-                    // Get Output
-                    var output = getOutput(item);
+        // Process each item
+        $.each(data.items, function(i, item) {
+            var output = getOutput(item);
+            $('#results').append(output);
+        });
 
-                    // display results
-                    $('#results').append(output);
-                });
+        // Handle pagination buttons
+        var buttons = getButtons(data.prevPageToken, data.nextPageToken);
+        $('#buttons').append(buttons);
+    }
 
-                var buttons = getButtons(prevPageToken, nextPageToken);
 
-                // Display buttons
-                $('#buttons').append(buttons);
+    function nextPage(token) {
+        var query = $('#query').val();
+        search(token);
+    }
+
+    function prevPage(token) {
+        var query = $('#query').val();
+        search(token);
+    }
+
+    function getOutput(item) {
+        var output = '<li>' +
+            '<div class="list-left">';
+
+        if (item.isEmbedded) {
+            // Apply grayscale effect to the image for embedded videos
+            output += '<img src="' + item.thumbs + '" style="filter: grayscale(100%);">';
+        } else {
+            // Regular image for non-embedded videos
+            output += '<img src="' + item.thumbs + '">';
+        }
+
+        output += '</div>' +
+            '<div class="list-right">' +
+            '<h3>';
+
+        if (item.isEmbedded) {
+            // If the video is embedded, show only the title and indicate it's already embedded
+            output += '<i class="fa-regular fa-square-check"></i> <a target="_blank" href="' + item.link + '" target="_blank">' + item.title + '</a>';
+            output += '<p><a class="btn btn-danger" href="' + webSiteRootURL + 'video/' + item.embeddedVideos_Id + '">' + __('Already embedded') + '</strong></a>';
+        } else {
+            // If the video is not embedded, include a checkbox for embedding
+            output += '<input type="checkbox" value="' + item.link + '" name="videoCheckbox"> ';
+            output += '<a target="_blank" href="' + item.link + '">' + item.title + '</a>';
+        }
+
+        output += '</h3>' +
+            '<small>Published on ' + item.date + '</small>' +
+            '<p>' + item.description + '</p>' +
+            '</div>' +
+            '<div class="clearfix"></div>' +
+            '</li>';
+
+        return output;
+    }
+
+
+    function getButtons(prevPageToken, nextPageToken) {
+        var buttons = '';
+
+        if (prevPageToken) {
+            buttons += '<div class="button-container">' +
+                '<button id="prev-button" class="paging-button" data-token="' + prevPageToken + '" onclick="prevPage(\'' + prevPageToken + '\')">Prev Page</button>' +
+                '</div>';
+        }
+
+        if (nextPageToken) {
+            buttons += '<div class="button-container">' +
+                '<button id="next-button" class="paging-button" data-token="' + nextPageToken + '" onclick="nextPage(\'' + nextPageToken + '\')">Next Page</button>' +
+                '</div>';
+        }
+
+        return buttons;
+    }
+
+
+    // Function to save selected videos
+    function saveIt(videoLink) {
+        modal.showPleaseWait();
+
+        // Collect the video details for the selected videos
+        var itemsToSave = [];
+        $.each(videoLink, function(index, link) {
+            if (searchResults[link]) {
+                itemsToSave.push(searchResults[link]); // Push the video details from the search results
             }
+        });
 
-// Next page function
-            function nextPage() {
-                var token = $('#next-button').data('token');
-                var q = $('#next-button').data('query');
-
-
-                // clear 
-                $('#results').html('');
-                $('#buttons').html('');
-
-                // get form input
-                q = $('#query').val();  // this probably shouldn't be created as a global
-
-                // run get request on API
-                $.get(
-                        "https://www.googleapis.com/youtube/v3/search", {
-                            part: 'snippet, id',
-                            q: q,
-                            pageToken: token,
-                            type: 'video',
-                            key: gapikey,
-                            maxResults: 50,
-                            videoEmbeddable: "true"
-                        }, function (data) {
-
-                    var nextPageToken = data.nextPageToken;
-                    var prevPageToken = data.prevPageToken;
-
-                    // Log data
-                    console.log(data);
-
-                    $.each(data.items, function (i, item) {
-
-                        // Get Output
-                        var output = getOutput(item);
-
-                        // display results
-                        $('#results').append(output);
-                    });
-
-                    var buttons = getButtons(prevPageToken, nextPageToken);
-
-                    // Display buttons
-                    $('#buttons').append(buttons);
-                });
-            }
-
-// Previous page function
-            function prevPage() {
-                var token = $('#prev-button').data('token');
-                var q = $('#prev-button').data('query');
-
-
-                // clear 
-                $('#results').html('');
-                $('#buttons').html('');
-
-                // get form input
-                q = $('#query').val();  // this probably shouldn't be created as a global
-
-                // run get request on API
-                $.get(
-                        "https://www.googleapis.com/youtube/v3/search", {
-                            part: 'snippet, id',
-                            q: q,
-                            pageToken: token,
-                            type: 'video',
-                            key: gapikey,
-                            maxResults: 50,
-                            videoEmbeddable: "true"
-                        }, function (data) {
-
-                    var nextPageToken = data.nextPageToken;
-                    var prevPageToken = data.prevPageToken;
-
-                    // Log data
-                    console.log(data);
-
-                    $.each(data.items, function (i, item) {
-
-                        // Get Output
-                        var output = getOutput(item);
-
-                        // display results
-                        $('#results').append(output);
-                    });
-
-                    var buttons = getButtons(prevPageToken, nextPageToken);
-
-                    // Display buttons
-                    $('#buttons').append(buttons);
-                });
-            }
-
-// Build output
-            function getOutput(item) {
-                console.log(item);
-                var videoID;
-                if(typeof item.snippet.thumbnails === 'undefined'){
-                    return true;
-                }
-                if(item.id.videoId){
-                    videoID = item.id.videoId;
-                }else{
-                    videoID = item.snippet.resourceId.videoId;
-                }
-                var title = item.snippet.title;
-                var description = item.snippet.description;
-                var thumb = item.snippet.thumbnails.high.url;
-                var channelTitle = item.snippet.channelTitle;
-                var videoDate = item.snippet.publishedAt;
-
-                // Build output string
-                var output = '<li>' +
-                        '<div class="list-left">' +
-                        '<img src="' + thumb + '">' +
-                        '</div>' +
-                        '<div class="list-right">' +
-                        '<h3><input type="checkbox" value="' + videoID + '" name="videoCheckbox"><a target="_blank" href="https://youtube.com/embed/' + videoID + '?rel=0">' + title + '</a></h3>' +
-                        '<small>By <span class="cTitle">' + channelTitle + '</span> on ' + videoDate + '</small>' +
-                        '<p>' + description + '</p>' +
-                        '</div>' +
-                        '</li>' +
-                        '<div class="clearfix"></div>' +
-                        '';
-                return output;
-            }
-
-            function getButtons(prevPageToken, nextPageToken) {
-                if (!prevPageToken) {
-                    var btnoutput = '<div class="button-container">' +
-                            '<button id="next-button" class="paging-button" data-token="' + nextPageToken + '" data-query="' + q + '"' +
-                            'onclick = "nextPage();">Next Page</button>' +
-                            '</div>';
+        // Send the data to save.json.php
+        $.ajax({
+            url: webSiteRootURL + 'plugin/BulkEmbed/save.json.php',
+            type: 'POST',
+            data: {
+                "itemsToSave": itemsToSave,
+                playListName: playListName
+            },
+            success: function(response) {
+                if (!response.error) {
+                    avideoAlertSuccess(__("Your videos have been saved!"));
                 } else {
-                    var btnoutput = '<div class="button-container">' +
-                            '<button id="prev-button" class="paging-button" data-token="' + prevPageToken + '" data-query="' + q + '"' +
-                            'onclick = "prevPage();">Prev Page</button>' +
-                            '<button id="next-button" class="paging-button" data-token="' + nextPageToken + '" data-query="' + q + '"' +
-                            'onclick = "nextPage();">Next Page</button>' +
-                            '</div>';
+                    avideoAlertError(response.msg.join("<br>"));
                 }
-
-                return btnoutput;
+                modal.hidePleaseWait();
             }
-        </script>
-    </body>
-</html>
+        });
+    }
+</script>
+
+<?php
+$_page->print();
+?>

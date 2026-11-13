@@ -19,17 +19,31 @@ namespace Google\Service\Reports;
 
 class Activity extends \Google\Collection
 {
-  protected $collection_key = 'events';
+  protected $collection_key = 'resourceDetails';
   protected $actorType = ActivityActor::class;
   protected $actorDataType = '';
+  /**
+   * @var string
+   */
   public $etag;
   protected $eventsType = ActivityEvents::class;
   protected $eventsDataType = 'array';
   protected $idType = ActivityId::class;
   protected $idDataType = '';
+  /**
+   * @var string
+   */
   public $ipAddress;
+  /**
+   * @var string
+   */
   public $kind;
+  /**
+   * @var string
+   */
   public $ownerDomain;
+  protected $resourceDetailsType = ResourceDetails::class;
+  protected $resourceDetailsDataType = 'array';
 
   /**
    * @param ActivityActor
@@ -45,10 +59,16 @@ class Activity extends \Google\Collection
   {
     return $this->actor;
   }
+  /**
+   * @param string
+   */
   public function setEtag($etag)
   {
     $this->etag = $etag;
   }
+  /**
+   * @return string
+   */
   public function getEtag()
   {
     return $this->etag;
@@ -81,29 +101,61 @@ class Activity extends \Google\Collection
   {
     return $this->id;
   }
+  /**
+   * @param string
+   */
   public function setIpAddress($ipAddress)
   {
     $this->ipAddress = $ipAddress;
   }
+  /**
+   * @return string
+   */
   public function getIpAddress()
   {
     return $this->ipAddress;
   }
+  /**
+   * @param string
+   */
   public function setKind($kind)
   {
     $this->kind = $kind;
   }
+  /**
+   * @return string
+   */
   public function getKind()
   {
     return $this->kind;
   }
+  /**
+   * @param string
+   */
   public function setOwnerDomain($ownerDomain)
   {
     $this->ownerDomain = $ownerDomain;
   }
+  /**
+   * @return string
+   */
   public function getOwnerDomain()
   {
     return $this->ownerDomain;
+  }
+  /**
+   * @param ResourceDetails[]
+   */
+  public function setResourceDetails($resourceDetails)
+  {
+    $this->resourceDetails = $resourceDetails;
+  }
+  /**
+   * @return ResourceDetails[]
+   */
+  public function getResourceDetails()
+  {
+    return $this->resourceDetails;
   }
 }
 

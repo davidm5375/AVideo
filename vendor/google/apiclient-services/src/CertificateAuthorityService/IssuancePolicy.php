@@ -24,10 +24,17 @@ class IssuancePolicy extends \Google\Collection
   protected $allowedIssuanceModesDataType = '';
   protected $allowedKeyTypesType = AllowedKeyType::class;
   protected $allowedKeyTypesDataType = 'array';
+  /**
+   * @var string
+   */
+  public $backdateDuration;
   protected $baselineValuesType = X509Parameters::class;
   protected $baselineValuesDataType = '';
   protected $identityConstraintsType = CertificateIdentityConstraints::class;
   protected $identityConstraintsDataType = '';
+  /**
+   * @var string
+   */
   public $maximumLifetime;
   protected $passthroughExtensionsType = CertificateExtensionConstraints::class;
   protected $passthroughExtensionsDataType = '';
@@ -61,6 +68,20 @@ class IssuancePolicy extends \Google\Collection
     return $this->allowedKeyTypes;
   }
   /**
+   * @param string
+   */
+  public function setBackdateDuration($backdateDuration)
+  {
+    $this->backdateDuration = $backdateDuration;
+  }
+  /**
+   * @return string
+   */
+  public function getBackdateDuration()
+  {
+    return $this->backdateDuration;
+  }
+  /**
    * @param X509Parameters
    */
   public function setBaselineValues(X509Parameters $baselineValues)
@@ -88,10 +109,16 @@ class IssuancePolicy extends \Google\Collection
   {
     return $this->identityConstraints;
   }
+  /**
+   * @param string
+   */
   public function setMaximumLifetime($maximumLifetime)
   {
     $this->maximumLifetime = $maximumLifetime;
   }
+  /**
+   * @return string
+   */
   public function getMaximumLifetime()
   {
     return $this->maximumLifetime;

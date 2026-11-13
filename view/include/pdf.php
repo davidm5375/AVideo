@@ -15,15 +15,39 @@ $sources = getVideosURLPDF($video['filename']);
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <video playsinline webkit-playsinline="webkit-playsinline"  id="mainVideo" style="display: none; height: 0;width: 0;" ></video>
+            <video id="mainVideo" style="display: none; height: 0;width: 0;" ></video>
             <div id="main-video" class="embed-responsive embed-responsive-16by9">
-                <iframe class="embed-responsive-item" scrolling="no" allowfullscreen="true" src="<?php
-                echo $sources["pdf"]['url']
-                ?>"></iframe>
+                <?php
+                $url = $sources["pdf"]['url'];
+                ?>
+                <iframe id="pdfIframe" class="embed-responsive-item" scrolling="no" <?php echo Video::$iframeAllowAttributes; ?> type="application/pdf" src="<?php echo $url; ?>"></iframe>
                 <script>
                     $(document).ready(function () {
+                        addCloseButtonInPage();
                         addView(<?php echo $video['id']; ?>, 0);
+                        
+                        $('#pdfIframe').on('load', function(){
+                            checkIfPDFWasConvertedIntoImage();
+                        });
                     });
+                    function checkIfPDFWasConvertedIntoImage(){
+                        var iframe = $('#pdfIframe');
+                        var iframeContent = iframe.contents();
+                        if($('body > img', iframeContent).length){
+                            var oldurl = iframe.attr('src');
+                            /*
+                            var parts = oldurl.split('?');
+                            if(!empty(parts[0])){
+                                oldurl = parts[0];
+                            }
+                            */
+                            var newurl = 'https://docs.google.com/viewerng/viewer?embedded=true';
+                            newurl = addQueryStringParameter(newurl, 'url', oldurl);
+                            console.log('checkIfPDFWasConvertedIntoImage load new URL',newurl, oldurl);
+                            iframe.attr('oldsrc', oldurl);
+                            iframe.attr('src', newurl);
+                        }
+                    }
                 </script>
 
             </div>

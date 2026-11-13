@@ -1,4 +1,3 @@
-
 <div class="panel panel-default">
     <div class="panel-body">
         <div class="row">
@@ -13,7 +12,7 @@
             </div>
             <div class="col-md-7">
                 <h3>
-                    <i class="fas fa-key"></i> <?php echo __('Public Key') ?> 
+                    <i class="fas fa-key"></i> <?php echo __('Public Key') ?>
                     <button class="btn btn-default pull-right btn-xs" onclick="copyToClipboard($('#publicKey').val());"><i class="fas fa-copy"></i> <?php echo __('Copy to clipboard') ?></button>
                     <button class="btn btn-default pull-right btn-xs" onclick="download('public.pgp.key.txt', $('#publicKey').val());"><i class="fas fa-download"></i> <?php echo __('Download') ?></button>
                 </h3>
@@ -47,7 +46,8 @@
             data: {
                 'keyName': $('#keyName').val(),
                 'keyEmail': $('#keyEmail').val(),
-                'keyPassword': $('#keyPassword').val()
+                'keyPassword': $('#keyPassword').val(),
+                'globalToken': '<?php echo getToken(300); ?>'
             },
             success: function (response) {
                 if (response.error) {

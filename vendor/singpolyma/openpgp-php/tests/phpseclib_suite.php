@@ -33,10 +33,15 @@ class MessageVerification extends TestCase {
 
   public function testSigningMessages() {
     $wkey = OpenPGP_Message::parse(file_get_contents(dirname(__FILE__) . '/data/helloKey.gpg'));
+    if (function_exists('uopz_set_return')) uopz_set_return('time', 0);
     $data = new OpenPGP_LiteralDataPacket('This is text.', array('format' => 'u', 'filename' => 'stuff.txt'));
     $sign = new OpenPGP_Crypt_RSA($wkey);
     $m = $sign->sign($data)->to_bytes();
     $reparsedM = OpenPGP_Message::parse($m);
+    if (function_exists('uopz_unset_return')) {
+      uopz_unset_return('time');
+      $this->assertSame(4871, $reparsedM[0]->hash_head);
+    }
     $this->assertSame($sign->verify($reparsedM), $reparsedM->signatures());
   }
 
@@ -64,8 +69,19 @@ class KeyVerification extends TestCase {
   }
 }
 
+abstract class LibTestCase extends TestCase {
+  public function assertCast5Support() {
+    if(in_array('mcrypt', get_loaded_extensions())) {
+       return;
+    }
+    if(in_array('cast5-cfb', openssl_get_cipher_methods()) || in_array('CAST5-CFB', openssl_get_cipher_methods())) {
+      return;
+    }
+    $this->markTestSkipped('Not supported');
+  }
+}
 
-class Decryption extends TestCase {
+class Decryption extends LibTestCase {
   public function oneSymmetric($pass, $cnt, $path) {
     $m = OpenPGP_Message::parse(file_get_contents(dirname(__FILE__) . '/data/' . $path));
     $m2 = OpenPGP_Crypt_Symmetric::decryptSymmetric($pass, $m);
@@ -82,6 +98,7 @@ class Decryption extends TestCase {
   }
 
   public function testDecryptCAST5() { // Requires mcrypt or openssl
+    $this->assertCast5Support();
     $this->oneSymmetric("hello", "PGP\n", "symmetric-cast5.gpg");
   }
 
@@ -159,7 +176,7 @@ class Decryption extends TestCase {
   }
 }
 
-class Encryption extends TestCase {
+class Encryption extends LibTestCase {
   public function oneSymmetric($algorithm) {
     $data = new OpenPGP_LiteralDataPacket('This is text.', array('format' => 'u', 'filename' => 'stuff.txt'));
     $encrypted = OpenPGP_Crypt_Symmetric::encrypt('secret', new OpenPGP_Message(array($data)), $algorithm);
@@ -173,6 +190,7 @@ class Encryption extends TestCase {
   }
 
   public function testEncryptSymmetricCAST5() {
+    $this->assertCast5Support();
     $this->oneSymmetric(3);
   }
 

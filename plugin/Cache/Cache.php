@@ -1,22 +1,31 @@
 <?php
 
 require_once $global['systemRootPath'] . 'plugin/Plugin.abstract.php';
-require_once $global['systemRootPath'] . 'plugin/Cache/Objects/CachesInDB.php';
+require_once $global['systemRootPath'] . 'plugin/Cache/Objects/CacheDB.php';
+require_once $global['systemRootPath'] . 'plugin/Cache/Objects/Cache_schedule_delete.php';
 
 class Cache extends PluginAbstract {
 
-    public function getTags() {
+    private $skipCurrentRequest = false;
+
+    public function getPluginDependencies() {
         return array(
-            PluginTags::$RECOMMENDED,
-            PluginTags::$FREE
+            PluginDependency::create('User_Location', 'Optional per-location cache variants', false),
         );
+    }
+
+    public function getTags() {
+        return [
+            PluginTags::$RECOMMENDED,
+            PluginTags::$FREE,
+        ];
     }
 
     public function getDescription() {
         global $global;
         $txt = "AVideo application accelerator to cache pages.<br>Your website has 10,000 visitors who are online, and your dynamic page has to send 10,000 times the same queries to database on every page load. With this plugin, your page only sends 1 query to your DB, and uses the cache to serve the 9,999 other visitors.";
         $txt .= "<br>To auto delete the old cache files you can use this crontab command <code>0 2 * * * php {$global['systemRootPath']}plugin/Cache/crontab.php</code> this will delete cache files that are 3 days old everyday at 2 AM";
-        $help = "<br><small><a href='https://github.com/WWBN/AVideo/wiki/Cache-Plugin' target='__blank'><i class='fas fa-question-circle'></i> Help</a></small>";
+        $help = "<br><small><a href='https://github.com/WWBN/AVideo/wiki/Cache-Plugin' target='_blank'><i class='fas fa-question-circle'></i> Help</a></small>";
         return $txt . $help;
     }
 
@@ -29,7 +38,21 @@ class Cache extends PluginAbstract {
     }
 
     public function getPluginVersion() {
-        return "2.0";
+        return "10.0";
+    }
+
+    public function updateScript() {
+        global $global;
+
+        parent::updateScript();
+
+        if (AVideoPlugin::compareVersion($this->getName(), "8.1") < 0) {
+            $file = $global['systemRootPath'] . 'plugin/Cache/install/memTable.sql';
+            sqlDal::executeFile($file);
+            _error_log('Cache::updateScript recreated CachesInDB_Memory from memTable.sql');
+        }
+
+        return true;
     }
 
     public function getEmptyDataObject() {
@@ -42,6 +65,12 @@ class Cache extends PluginAbstract {
         $obj->logPageLoadTime = false;
         $obj->stopBotsFromNonCachedPages = false;
         $obj->deleteStatisticsDaysOld = 180; // 6 months
+        // CachesInDB safeguards (see plugin/Cache/Objects/CachesInDB.php)
+        $obj->maxCachePayloadSizeBytes = CachesInDB::DEFAULT_MAX_PAYLOAD_BYTES; // skip caching payloads bigger than this
+        $obj->cacheFallbackRetentionDays = CachesInDB::DEFAULT_FALLBACK_RETENTION_DAYS; // 0/empty disables fallback retention for rows with expires IS NULL
+        $obj->cacheDeleteBatchSize = CachesInDB::DEFAULT_DELETE_BATCH_SIZE;
+        $obj->cacheDeleteMaxBatchesHttp = CachesInDB::DEFAULT_DELETE_MAX_BATCHES_HTTP;
+        $obj->cacheDeleteMaxBatchesCli = CachesInDB::DEFAULT_DELETE_MAX_BATCHES_CLI;
         return $obj;
     }
 
@@ -50,8 +79,17 @@ class Cache extends PluginAbstract {
         $obj = $this->getDataObject();
         if (!$ignoreFirstPage && $this->isFirstPage()) {
             $obj->cacheDir .= "firstPage" . DIRECTORY_SEPARATOR;
-        }
-        if (User::isLogged()) {
+            /*
+            if(isMobile()){
+                $obj->cacheDir .= "mobile" . DIRECTORY_SEPARATOR;
+            }else{
+                $obj->cacheDir .= "desktop" . DIRECTORY_SEPARATOR;
+            }
+            */
+            if (User::isLogged()) {
+                $obj->cacheDir .= 'users_id_' . md5(User::getId() . $global['salt']) . DIRECTORY_SEPARATOR;
+            }
+        } else if (User::isLogged()) {
             if (User::isAdmin()) {
                 $obj->cacheDir .= 'admin_' . md5("admin" . $global['salt']) . DIRECTORY_SEPARATOR;
             } else {
@@ -60,21 +98,18 @@ class Cache extends PluginAbstract {
         } else {
             $obj->cacheDir .= 'notlogged_' . md5("notlogged" . $global['salt']) . DIRECTORY_SEPARATOR;
         }
-
+        if(!empty($_COOKIE['forKids'])){
+            $obj->cacheDir .= 'forkids' . DIRECTORY_SEPARATOR;
+        }
         $obj->cacheDir = fixPath($obj->cacheDir, true);
         if (!file_exists($obj->cacheDir)) {
-            $obj->cacheDir = $global['systemRootPath'] . 'videos' . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR;
-            $this->setDataObject($obj);
-            if (!file_exists($obj->cacheDir)) {
-                mkdir($obj->cacheDir, 0777, true);
-            }
+            mkdir($obj->cacheDir, 0777, true);
         }
-
-
         return $obj->cacheDir;
     }
 
     private function getFileName() {
+        global $global;
         if (empty($_SERVER['REQUEST_URI'])) {
             $_SERVER['REQUEST_URI'] = "";
         }
@@ -87,25 +122,32 @@ class Cache extends PluginAbstract {
         if (!empty($_SERVER['HTTP_USER_AGENT']) && get_browser_name($_SERVER['HTTP_USER_AGENT']) === 'Safari') {
             $compl .= "safari_";
         }
-
+        $compl .= getValueOrBlank(['ads_app_store_url']);
         $dir = "";
         $plugin = AVideoPlugin::loadPluginIfEnabled('User_Location');
         if (!empty($plugin)) {
             $location = User_Location::getThisUserLocation();
-            if (!empty($location['country_code'])) {
-                $dir = $location['country_code'] . "/";
+            if (!empty($location['country_code']) && $location['country_code'] != '-') {
+                $dir = $location['country_code'] . DIRECTORY_SEPARATOR;
             }
         }
-
-        return $dir . User::getId() . "_{$compl}" . md5(@$_SESSION['channelName'] . $_SERVER['REQUEST_URI'] . $_SERVER['HTTP_HOST']) . "_" . $session_id . "_" . (!empty($_SERVER['HTTPS']) ? 'a' : '') . (@$_SESSION['language']) . '.cache';
+        if ($this->isFirstPage()) {
+            $dir .= (isMobile() ? 'mobile' : 'desktop') . DIRECTORY_SEPARATOR;
+        }
+        return $dir . User::getId() . "_{$compl}" . md5(@$_SESSION['channelName'] . $_SERVER['REQUEST_URI'] . @$_SERVER['HTTP_HOST']) . "_" . $session_id . "_" . (!empty($_SERVER['HTTPS']) ? 'a' : ''). (!empty($_COOKIE['forKids']) ? 'k' : '') . (@$_SESSION['language']) . '.cache';
     }
 
     private function isFirstPage() {
         return isFirstPage();
     }
 
+
     public function getStart() {
         global $global;
+        if ($this->shouldSkipPageCacheForCurrentRequest()) {
+            $this->skipCurrentRequest = true;
+            return true;
+        }
         // ignore cache if it is command line
         //var_dump($this->isFirstPage());exit;
         $obj = $this->getDataObject();
@@ -116,22 +158,43 @@ class Cache extends PluginAbstract {
         if (isCommandLineInterface()) {
             return true;
         }
-
-        $whitelistedFiles = array('user.php', 'status.php', 'canWatchVideo.json.php', '/login', '/status');
-        $blacklistedFiles = array('videosAndroid.json.php');
-        $baseName = basename($_SERVER["SCRIPT_FILENAME"]);
-        if (getVideos_id() || isVideo() || isLive() || isLiveLink() || in_array($baseName, $whitelistedFiles) || in_array($_SERVER['REQUEST_URI'], $whitelistedFiles)) {
+        $whitelistedFiles = ['user.php', 'status.php', 'canWatchVideo.json.php', '/login', '/status'];
+        $whitelistedScriptName = ['/plugin/Live/index.php'];
+        $blacklistedFiles = ['videosAndroid.json.php'];
+        $baseName = basename($_SERVER["SCRIPT_NAME"]);
+        if (getVideos_id() || isVideo() || isLive() || isLiveLink() || in_array($baseName, $whitelistedFiles) || in_array($_SERVER['REQUEST_URI'], $whitelistedFiles) || in_array($_SERVER['SCRIPT_NAME'], $whitelistedScriptName)) {
             return true;
         }
 
         $isBot = isBot();
         if ($this->isBlacklisted() || $this->isFirstPage() || !class_exists('User') || !User::isLogged() || !empty($obj->enableCacheForLoggedUsers)) {
-            $cacheName = 'firstPage' . DIRECTORY_SEPARATOR . $this->getFileName();
+            $cacheName = $this->getFileName();
+            if ($this->isFirstPage()) {
+                if (isMobile()) {
+                    $cacheName = "mobile_{$cacheName}";
+                }
+                $cacheName = 'firstPage' . DIRECTORY_SEPARATOR . $cacheName;
+
+                if (isIframe()) {
+                    $cacheName .= '_iframe';
+                }
+            }
+            //var_dump(__LINE__, $cacheName);exit;
+            /*
             $lifetime = $obj->cacheTimeInSeconds;
             if ($isBot && $lifetime < 3600) {
                 $lifetime = 3600;
             }
-            $firstPageCache = ObjectYPT::getCache($cacheName, $lifetime, true);
+            */
+            if (isBot()) {
+                return 0; // 1 week
+            }else{
+                $lifetime = cacheExpirationTime();
+            }
+            if (empty($_REQUEST['debug_cache'])) {
+                $firstPageCache = ObjectYPT::getCache($cacheName, $lifetime, true);
+                //var_dump($cacheName, $firstPageCache);exit;
+            }
             if (!empty($firstPageCache) && strtolower($firstPageCache) != 'false') {
                 if ($isBot && $_SERVER['REQUEST_URI'] !== '/login') {
                     //_error_log("Bot Detected, showing the cache ({$_SERVER['REQUEST_URI']}) FROM: {$_SERVER['REMOTE_ADDR']} Browser: {$_SERVER['HTTP_USER_AGENT']}");
@@ -142,13 +205,13 @@ class Cache extends PluginAbstract {
                 }
 
                 if ($isBot) {
-                    $firstPageCache = strip_specific_tags($firstPageCache);
+                    $firstPageCache = strip_specific_tags($firstPageCache, ['script', 'style', 'iframe', 'object', 'applet', 'link'], true);
                     $firstPageCache = strip_render_blocking_resources($firstPageCache);
                 } else {
                     $firstPageCache = optimizeHTMLTags($firstPageCache);
                 }
 
-                echo $firstPageCache . PHP_EOL . '<!-- Cached Page Generated in ' . getScriptRunMicrotimeInSeconds() . ' Seconds -->';
+                echo $firstPageCache . PHP_EOL . '<!-- Cached Page Generated in ' . getScriptRunMicrotimeInSeconds() . ' Seconds [' . User::getId() . '] '.$_SERVER["SCRIPT_NAME"].' -->';
                 if ($obj->logPageLoadTime) {
                     $this->end("Cache");
                 }
@@ -167,16 +230,19 @@ class Cache extends PluginAbstract {
             }
         }
         //ob_start('sanitize_output');
-        ob_start();
+        _ob_start();
     }
 
     public function getEnd() {
         global $global;
+        if ($this->skipCurrentRequest) {
+            return true;
+        }
         $obj = $this->getDataObject();
         echo PHP_EOL . '<!--        Page Generated in ' . getScriptRunMicrotimeInSeconds() . ' Seconds -->';
-        $c = ob_get_clean();
+        $c = _ob_get_clean();
         $c = optimizeHTMLTags($c);
-        ob_start();
+        _ob_start();
         echo $c;
         if (!headers_sent()) {
             header_remove('Set-Cookie');
@@ -185,24 +251,40 @@ class Cache extends PluginAbstract {
           if (!file_exists($this->getCacheDir())) {
           mkdir($this->getCacheDir(), 0777, true);
           }
-         * 
+         *
          */
 
         if ($this->isBlacklisted() || $this->isFirstPage() || !class_exists('User') || !User::isLogged() || !empty($obj->enableCacheForLoggedUsers)) {
-            $cacheName = 'firstPage' . DIRECTORY_SEPARATOR . $this->getFileName();
+            $cacheName = $this->getFileName();
+
+            if ($this->isFirstPage()) {
+                if (isMobile()) {
+                    $cacheName = "mobile_{$cacheName}";
+                }
+                $cacheName = 'firstPage' . DIRECTORY_SEPARATOR . $cacheName;
+            }
 
             $c = preg_replace('/<script id="infoForNonCachedPages">[^<]+<\/script>/', '', $c);
 
-            $r = ObjectYPT::setCache($cacheName, $c);
+            global $cache_pageCacheLifetimes;
+            $pageLifetime = cacheExpirationTime();
+            if ($pageLifetime > 0) {
+                $cache_pageCacheLifetimes[$cacheName] = $pageLifetime;
+            }
+            if (http_response_code() < 400) {
+                $r = ObjectYPT::setCache($cacheName, $c);
+            }
             //var_dump($r);
         }
         if ($obj->logPageLoadTime) {
             $this->end();
         }
+
+        //self::saveCache();
     }
 
     private function isREQUEST_URIWhitelisted() {
-        $cacheBotWhitelist = array(
+        $cacheBotWhitelist = [
             'aVideoEncoder',
             'plugin/Live/on_',
             'plugin/YPTStorage',
@@ -215,7 +297,10 @@ class Cache extends PluginAbstract {
             'mrss',
             '/sitemap.xml',
             'plugin/Live/verifyToken.json.php',
-            'control.json.php');
+            'control.json.php',
+            'robots.txt',
+            'Live_restreams'
+        ];
         foreach ($cacheBotWhitelist as $value) {
             if (strpos($_SERVER['REQUEST_URI'], $value) !== false) {
                 _error_log("Cache::isREQUEST_URIWhitelisted: ($value) is whitelisted");
@@ -226,9 +311,44 @@ class Cache extends PluginAbstract {
     }
 
     private function isBlacklisted() {
-        $blacklistedFiles = array('videosAndroid.json.php');
+        $blacklistedFiles = ['videosAndroid.json.php'];
         $baseName = basename($_SERVER["SCRIPT_FILENAME"]);
         return in_array($baseName, $blacklistedFiles);
+    }
+
+    private function shouldSkipPageCacheForCurrentRequest()
+    {
+        // Admin HTML contains a live PHP-runtime observation. Shared page caches
+        // must not let one updated node hide another node's outdated runtime.
+        if (class_exists('User', false) && User::isLogged() && User::isAdmin()) {
+            return true;
+        }
+        // Previously generated unescaped links can carry repeated currency
+        // entities inside this numeric field. Serve them normally, but do not
+        // allocate a separate full-page cache entry for each malformed value.
+        if (isset($_GET['isInfiniteScroll']) &&
+            (!is_scalar($_GET['isInfiniteScroll']) || !preg_match('/^[0-9]+$/D', (string) $_GET['isInfiniteScroll']))) {
+            return true;
+        }
+        $script = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME'] ?? '');
+        // These pages expose current certificate validity or gift entitlements.
+        // Serve authorization and revocation checks before any previously cached HTML.
+        foreach (['/plugin/CertifyComplete/', '/plugin/Gift/'] as $directory) {
+            if (strpos($script, $directory) !== false) { return true; }
+        }
+        $dynamicEndpoints = [
+            '/objects/videoAddViewCount.json.php',
+            '/plugin/AD_Server/log.php',
+            '/plugin/UserNotifications/getNotifications.json.php',
+        ];
+        foreach ($dynamicEndpoints as $endpoint) {
+            if (substr($script, -strlen($endpoint)) === $endpoint) {
+                // These endpoints are side-effecting or user-specific and do not
+                // use location in their response, so page-cache metadata is wasted.
+                return true;
+            }
+        }
+        return false;
     }
 
     private function start() {
@@ -256,7 +376,7 @@ class Cache extends PluginAbstract {
         }
         $t = (floatval($finish) - floatval($global['cachePluginStart']));
         $total_time = round($t, 4);
-        _error_log("Page generated in {$total_time} seconds. {$type} ({$_SERVER['REQUEST_URI']}) FROM: {$_SERVER['REMOTE_ADDR']} Browser: {$_SERVER['HTTP_USER_AGENT']}");
+        //_error_log("Page generated in {$total_time} seconds. {$type} ({$_SERVER['REQUEST_URI']}) FROM: {$_SERVER['REMOTE_ADDR']} Browser: {$_SERVER['HTTP_USER_AGENT']}");
     }
 
     public function getPluginMenu() {
@@ -273,9 +393,9 @@ class Cache extends PluginAbstract {
         }
     }
 
-    public static function getCacheMetaData(){
+    public static function getCacheMetaData() {
         global $_getCacheMetaData;
-        if(!empty($_getCacheMetaData)){
+        if (!empty($_getCacheMetaData)) {
             return $_getCacheMetaData;
         }
         $domain = getDomain();
@@ -287,46 +407,101 @@ class Cache extends PluginAbstract {
                 $user_location = $loc['country_code'];
             }
         }
-        $loggedType = CachesInDB::$loggedType_NOT_LOGGED;
+        $loggedType = CacheDB::$loggedType_NOT_LOGGED;
         if (User::isLogged()) {
             if (User::isAdmin()) {
-                $loggedType = CachesInDB::$loggedType_ADMIN;
+                $loggedType = CacheDB::$loggedType_ADMIN;
             } else {
-                $loggedType = CachesInDB::$loggedType_LOGGED;
+                $loggedType = CacheDB::$loggedType_LOGGED;
             }
         }
-        $_getCacheMetaData = array('domain'=>$domain, 'ishttps'=>$ishttps, 'user_location'=>$user_location, 'loggedType'=>$loggedType);
+        $_getCacheMetaData = ['domain' => $domain, 'ishttps' => $ishttps, 'user_location' => $user_location, 'loggedType' => $loggedType];
         return $_getCacheMetaData;
     }
-    
-    public static function _getCache($name){
+
+    public static function _getCache($name, $ignoreMetadata = false) {
+        global $cache_setCacheToSaveAtTheEnd;
+        if(!empty($cache_setCacheToSaveAtTheEnd[$name])){
+            return $cache_setCacheToSaveAtTheEnd[$name];
+        }
         $metadata = self::getCacheMetaData();
-        return CachesInDB::_getCache($name, $metadata['domain'], $metadata['ishttps'], $metadata['user_location'], $metadata['loggedType']);
-    }
-    
-    public static function _setCache($name, $value) {
-        $metadata = self::getCacheMetaData();
-        return CachesInDB::_setCache($name, $value, $metadata['domain'], $metadata['ishttps'], $metadata['user_location'], $metadata['loggedType']);
+        return CacheDB::getCache($name, $metadata['domain'], $metadata['ishttps'], $metadata['user_location'], $metadata['loggedType'], $ignoreMetadata);
     }
 
-    public static function getCache($name, $lifetime = 60) {
-        global $_getCacheDB;
-        
-        if(!isset($_getCacheDB)){
-            $_getCacheDB = array();
+    public static function _setCache($name, $value) {
+        global $cache_setCacheToSaveAtTheEnd;
+        if(!isset($cache_setCacheToSaveAtTheEnd)){
+            $cache_setCacheToSaveAtTheEnd = array();
+        }
+        $cache_setCacheToSaveAtTheEnd[$name] = $value;
+        return true;
+    }
+
+    static function saveCache() {
+        if (isBot()) {
+            if(isCommandLineInterface()){
+                echo "saveCache isBot".PHP_EOL;
+            }
+            return false;
+        }
+        global $cache_setCacheToSaveAtTheEnd;
+        if(!empty($cache_setCacheToSaveAtTheEnd)){
+            $metadata = self::getCacheMetaData();
+            CacheDB::setBulkCache($cache_setCacheToSaveAtTheEnd, $metadata);
+        }else{
+            if(isCommandLineInterface()){
+                echo "saveCache cache_setCacheToSaveAtTheEnd is empty".PHP_EOL;
+            }
+        }
+    }
+
+    public static function getCache($name, $lifetime = 60, $ignoreMetadata = false) {
+        global $_getCacheDB, $global, $cacheFound, $cacheNotFound;
+        if (!empty($global['ignoreAllCache'])) {
+            return null;
+        }
+        if (!isset($_getCacheDB)) {
+            $_getCacheDB = [];
+            $cacheFound = 0;
+            $cacheNotFound = 0;
+        }
+        if(!empty($lifetime)){
+            if(isBot()){
+                $lifetime = 0;
+            }else if($cacheNotFound>100){
+                $lifetime = 0; // make it unlimited
+            }else {
+                // increase timeout
+                $lifetime += $cacheNotFound*30;
+            }
         }
         $index = "{$name}_{$lifetime}";
-        if(empty($_getCacheDB[$index])){
-            $_getCacheDB[$index] = null;
-            $metadata = self::getCacheMetaData();
-            $row = CachesInDB::_getCache($name, $metadata['domain'], $metadata['ishttps'], $metadata['user_location'], $metadata['loggedType']);
-            if (!empty($row)) {
-                $time = getTimeInTimezone(strtotime($row['modified']), $row['timezone']);
-                if (($time + $lifetime) < time()) { 
-                    $c = new CachesInDB($row['id']);
-                    $c->delete();
-                }else{
+        if (!isset($_getCacheDB[$index])) {
+            $_getCacheDB[$index] = false;
+            if ($ignoreMetadata) {
+                // Skip the expensive User_Location/ip2location lookup; only cheap fields are needed.
+                // CachesInDB._getCache() will omit user_location from its WHERE clause when ignoreMetadata=true.
+                $metadata = ['domain' => getDomain(), 'ishttps' => (isset($_SERVER['HTTPS']) ? 1 : 0), 'user_location' => '', 'loggedType' => ''];
+            } else {
+                $metadata = self::getCacheMetaData();
+            }
+            $row = CacheDB::getCache($name, $metadata['domain'], $metadata['ishttps'], $metadata['user_location'], $metadata['loggedType'], $ignoreMetadata);
+            if (!empty($row) && !empty($row['id'])) {
+                //$time = getTimeInTimezone(strtotime($row['modified']), $row['timezone']);
+                $created_php_time = $row['created_php_time'];
+                $maxTimeTolerance = ($created_php_time + $lifetime);
+                $timeNow = time();
+                $isExpired = !empty($lifetime) && $maxTimeTolerance < $timeNow;
+                if ($isExpired) {
+                    $moreInfo = "Lifetime expired = ".($timeNow-$maxTimeTolerance);
+                    //_error_log("getCache($name, $lifetime, $ignoreMetadata) is expired cacheNotFoundCount=$cacheNotFound $moreInfo line=".__LINE__);
+                    $cacheNotFound++;
+                } else if(!$isExpired && !empty($row['content'])) {
                     $_getCacheDB[$index] = _json_decode($row['content']);
+                    $cacheFound++;
+                    if($_getCacheDB[$index] === null){
+                        $_getCacheDB[$index] = $row['content'];
+                    }
                 }
             }
         }
@@ -334,30 +509,90 @@ class Cache extends PluginAbstract {
     }
 
     public static function deleteCache($name) {
-        return CachesInDB::_deleteCache($name);
+        return CacheDB::deleteCache($name);
     }
-    
+
     public static function deleteAllCache() {
-        return CachesInDB::_deleteAllCache();
+        return CacheDB::deleteAllCache();
+    }
+
+    public static function deleteFirstPageCache() {
+        clearCache(true);
+        return CacheDB::deleteCacheStartingWith('firstPage', false);
+    }
+
+    public static function deleteCacheDir($prefix){;
+        $dir = ObjectYPT::getTmpCacheDir() . $prefix;
+        $resp = exec('rm -R ' . escapeshellarg($dir));
+        return $resp;
+    }
+
+    public static function deleteOldCache($days, $limit = 5000) {
+        global $global;
+        $days = intval($days);
+        if (!empty($days)) {
+            $time = strtotime("-{$days} days");
+            $sql = "DELETE FROM CachesInDB ";
+            //$sql .= " WHERE created < DATE_SUB(NOW(), INTERVAL ? DAY) ";
+            $sql .= " WHERE created_php_time < {$time} ";
+            $sql .= " LIMIT $limit";
+            $global['lastQuery'] = $sql;
+
+            //return sqlDAL::writeSql($sql, "i", [$days]);
+            return sqlDAL::writeSql($sql);
+        }
+        return false;
+    }
+
+    function executeEveryMinute() {
+        global $global;
+        ObjectYPT::scheduleCacheMaintenance();
+        $global['systemRootPath'] . 'plugin/Cache/deleteStatistics.json.php';
+        self::deleteOldCache(1);
+
+        if (class_exists('CachesInDB')) {
+            // Batched, indexed cleanup for rows that already expired, plus a
+            // configurable fallback retention window for rows that never got an
+            // `expires` value (see CachesInDB::deleteStaleCacheWithoutExpiration).
+            CachesInDB::deleteExpiredCache();
+            CachesInDB::deleteStaleCacheWithoutExpiration();
+        }
+
+        $rows = Cache_schedule_delete::getAll();
+        if (is_iterable($rows) && !empty($rows)) {
+            // Only remove the rows we are about to process (by id) instead of
+            // truncating the whole queue: a blanket TRUNCATE would silently drop
+            // invalidations inserted concurrently between getAll() and now.
+            $maxId = 0;
+            foreach ($rows as $row) {
+                $maxId = max($maxId, intval($row['id']));
+            }
+            if ($maxId > 0) {
+                sqlDAL::writeSql("DELETE FROM cache_schedule_delete WHERE id <= ?", 'i', [$maxId]);
+            }
+            foreach ($rows as $row) {
+                CacheDB::deleteCacheStartingWith($row['name'], false);
+                self::deleteCacheDir($row['name']);
+            }
+        }
     }
 
 }
 
 function sanitize_output($buffer) {
-
-    $search = array(
+    $search = [
         '/\>[^\S ]+/s', // strip whitespaces after tags, except space
         '/[^\S ]+\</s', // strip whitespaces before tags, except space
         '/(\s)+/s', // shorten multiple whitespace sequences
-        '/<!--(.|\s)*?-->/' // Remove HTML comments
-    );
+        '/<!--(.|\s)*?-->/', // Remove HTML comments
+    ];
 
-    $replace = array(
+    $replace = [
         '>',
         '<',
         '\\1',
-        ''
-    );
+        '',
+    ];
 
     $len = strlen($buffer);
     if ($len) {

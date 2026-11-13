@@ -5,7 +5,8 @@ require_once dirname(__FILE__) . '/../../../objects/user.php';
 
 class LiveLinksTable extends ObjectYPT {
 
-    protected $id, $title, $description, $link, $start_date, $end_date, $type, $status, $users_id, $categories_id;
+    protected $id, $title, $description, $link, $start_date, $end_date, $type, $status, $users_id, $categories_id, $timezone, $start_php_time, $end_php_time;
+    protected $isRebroadcast;
 
     static function getSearchFieldsNames() {
         return array('title', 'description');
@@ -26,10 +27,10 @@ class LiveLinksTable extends ObjectYPT {
         if (empty($this->categories_id)) {
             $this->categories_id = 'NULL';
         }
-        Category::clearCacheCount();
+        //Category::clearCacheCount();
         $id = parent::save();
         if(class_exists('Live') && $id){
-            Live::deleteStatsCache(true);
+            deleteStatsNotifications(true);
             if($this->status=='a'){
                 Live::notifySocketStats();
             }else{
@@ -52,7 +53,7 @@ class LiveLinksTable extends ObjectYPT {
     }
 
     function getLink() {
-        return $this->link;
+        return str_replace('&amp;', '&', $this->link);
     }
 
     function getStart_date() {
@@ -76,11 +77,12 @@ class LiveLinksTable extends ObjectYPT {
     }
 
     function setTitle($title) {
-        $this->title = $title;
+        // stored raw title reaches view/Live.php unescaped, so sanitize on write (same pattern as Live_schedule::setTitle)
+        $this->title = xss_esc($title);
     }
 
     function setDescription($description) {
-        $this->description = $description;
+        $this->description = xss_esc($description);
     }
 
     function setLink($link) {
@@ -88,10 +90,12 @@ class LiveLinksTable extends ObjectYPT {
     }
 
     function setStart_date($start_date) {
+        $this->setStart_php_time(strtotime($start_date));
         $this->start_date = $start_date;
     }
 
     function setEnd_date($end_date) {
+        $this->setEnd_php_time(strtotime($end_date));
         $this->end_date = $end_date;
     }
 
@@ -115,6 +119,14 @@ class LiveLinksTable extends ObjectYPT {
         $this->categories_id = intval($categories_id);
     }
 
+    public function getIsRebroadcast() {
+        return !empty($this->isRebroadcast);
+    }
+
+    public function setIsRebroadcast($isRebroadcast): void {
+        $this->isRebroadcast = !_empty($isRebroadcast)?1:0;
+    }
+
     public static function getAll($users_id = 0) {
         global $global;
         if (!static::isTableInstalled()) {
@@ -130,20 +142,25 @@ class LiveLinksTable extends ObjectYPT {
         $sql .= self::getSqlFromPost();
         $res = sqlDAL::readSql($sql);
         $fullData = sqlDAL::fetchAllAssoc($res);
+        //var_dump($sql, $fullData);
         sqlDAL::close($res);
         $rows = array();
         if ($res != false) {
             foreach ($fullData as $row) {
+                if(empty($row['start_php_time'])){
+                    LiveLinksTable::updatePhpTimestampById($row['id']);
+                }
                 $row['user_groups'] = self::getUserGorups($row['id']);
+                $row['link'] = str_replace('&amp;', '&', $row['link']);
                 $rows[] = $row;
             }
         } else {
-            die($sql . '\nError : (' . $global['mysqli']->errno . ') ' . $global['mysqli']->error);
+            //die($sql . '\nError : (' . $global['mysqli']->errno . ') ' . $global['mysqli']->error);
         }
         return $rows;
     }
-    
-    public function userGroupsMatch($livelinks_id, $users_id=0){
+
+    static public function userGroupsMatch($livelinks_id, $users_id=0){
         $user_groups = self::getUserGorups($livelinks_id);
         $user_groups_ids = array();
         foreach ($user_groups as $value) {
@@ -151,7 +168,7 @@ class LiveLinksTable extends ObjectYPT {
         }
         return User::userGroupsMatch($user_groups_ids, $users_id);
     }
-    
+
     public function delete(){
         global $global;
         if(!User::isLogged()){
@@ -160,25 +177,29 @@ class LiveLinksTable extends ObjectYPT {
         if (!empty($this->id)) {
             $sql = "DELETE FROM " . static::getTableName() . " ";
             $sql .= " WHERE id = ?";
-            
+
             if (!User::isAdmin()) {
                 $sql .= " AND users_id = ".User::getId();
             }
-            
+
             $global['lastQuery'] = $sql;
+
+            $paths = LiveLinks::getImagesPaths($this->id);
+            @unlink($paths['path']);
+
             //_error_log("Delete Query: ".$sql);
             return sqlDAL::writeSql($sql, "i", array($this->id));
         }
         _error_log("Id for table " . static::getTableName() . " not defined for deletion", AVideoLog::$ERROR);
         return false;
     }
-    
+
     public function deleteAllUserGorups(){
         global $global;
         if (!empty($this->id)) {
             $sql = "DELETE FROM livelinks_has_users_groups ";
             $sql .= " WHERE livelinks_id = ?";
-            
+
             $global['lastQuery'] = $sql;
             //_error_log("Delete Query: ".$sql);
             return sqlDAL::writeSql($sql, "i", array($this->id));
@@ -186,14 +207,19 @@ class LiveLinksTable extends ObjectYPT {
         _error_log("Id for table " . static::getTableName() . " not defined for deletion", AVideoLog::$ERROR);
         return false;
     }
-    
+
     public function addUserGorups($usergroups_ids){
         global $global;
-        
+
         if(empty($usergroups_ids)){
             return false;
         }
-        
+
+        if(empty($this->id)){
+            _error_log("Id for table " . static::getTableName() . " not defined for add", AVideoLog::$ERROR);
+            return false;
+        }
+
         if(!is_array($usergroups_ids)){
             $usergroups_ids = array($usergroups_ids);
         }
@@ -201,12 +227,11 @@ class LiveLinksTable extends ObjectYPT {
             $sql = "INSERT INTO `livelinks_has_users_groups` (`livelinks_id`, `users_groups_id`, `created`, `modified`) VALUES (?, ?, now(), now());";
             sqlDAL::writeSql($sql, "ii", array($this->id, $value));
         }
-        
-        _error_log("Id for table " . static::getTableName() . " not defined for deletion", AVideoLog::$ERROR);
+
         return true;
     }
-    
-    
+
+
     static function getUserGorups($livelinks_id){
         if(!self::isTableInstalled("livelinks_has_users_groups") || empty($livelinks_id)){
             return array();
@@ -222,11 +247,11 @@ class LiveLinksTable extends ObjectYPT {
                 $rows[] = $row;
             }
         } else {
-            die($sql . '\nError : (' . $global['mysqli']->errno . ') ' . $global['mysqli']->error);
+            //die($sql . '\nError : (' . $global['mysqli']->errno . ') ' . $global['mysqli']->error);
         }
         return $rows;
     }
-    
+
     static function getUserGorupsIds($livelinks_id){
         $groups = self::getUserGorups($livelinks_id);
         $rows = array();
@@ -235,5 +260,75 @@ class LiveLinksTable extends ObjectYPT {
         }
         return $rows;
     }
+
+    function getTimezone() {
+        return $this->timezone;
+    }
+
+    function setTimezone($timezone) {
+        $this->timezone = $timezone;
+    }
+
+    function getStart_php_time() {
+        return $this->start_php_time;
+    }
+
+    function setStart_php_time($start_php_time) {
+        $this->start_php_time = $start_php_time;
+    }
+
+    function getEnd_php_time() {
+        return $this->end_php_time;
+    }
+
+    function setEnd_php_time($end_php_time) {
+        $this->end_php_time = $end_php_time;
+    }
+
+    public static function updatePhpTimestampById($id) {
+        global $global;
+
+        if (empty($id)) {
+            _error_log("ID is required for updating PHP timestamps", AVideoLog::$ERROR);
+            return false;
+        }
+
+        // Fetch the record with the provided id from the livelinks table
+        $sql = "SELECT `start_date`, `end_date` FROM `livelinks` WHERE `id` = ?";
+        $res = sqlDAL::readSql($sql, "i", array($id));
+
+        if ($res) {
+            $row = sqlDAL::fetchAssoc($res);
+            sqlDAL::close($res);
+
+            if (!empty($row)) {
+                $startDateTime = $row['start_date'];
+                $endDateTime = $row['end_date'];
+
+                // Convert the datetime to Unix timestamps (PHP time)
+                $startPhpTime = !empty($startDateTime) ? strtotime($startDateTime) : null;
+                $endPhpTime = !empty($endDateTime) ? strtotime($endDateTime) : null;
+
+                // Update the record with the converted PHP timestamps
+                $sqlUpdate = "UPDATE `livelinks` SET `start_php_time` = ?, `end_php_time` = ? WHERE `id` = ?";
+                $result = sqlDAL::writeSql($sqlUpdate, "iii", array($startPhpTime, $endPhpTime, $id));
+
+                if ($result) {
+                    return true;
+                } else {
+                    _error_log("Failed to update PHP timestamps for id: {$id}", AVideoLog::$ERROR);
+                    return false;
+                }
+            } else {
+                _error_log("Record not found for id: {$id}", AVideoLog::$ERROR);
+                return false;
+            }
+        } else {
+            _error_log("Failed to fetch record from livelinks table for id: {$id}", AVideoLog::$ERROR);
+            return false;
+        }
+    }
+
+
 
 }

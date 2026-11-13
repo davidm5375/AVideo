@@ -4,56 +4,53 @@ if (!isset($global['systemRootPath'])) {
 }
 
 header('HTTP/1.0 404 Not Found', true, 404);
-$img = "".getCDN()."view/img/this-video-is-not-available.jpg";
-$poster = "".getCDN()."view/img/this-video-is-not-available.jpg";
+$img = ImagesPlaceHolders::getVideoNotFoundPoster(ImagesPlaceHolders::$RETURN_URL);
+$poster = $img;
 $imgw = 1280;
 $imgh = 720;
 unset($_SESSION['type']);
-session_write_close();
-$video = array();
+_session_write_close();
+$video = [];
 $video['id'] = 0;
-$video['type'] = 'notfound';
+$video['type'] = Video::$videoTypeNotfound;
 $video['rotation'] = 0;
-$video['videoLink'] = "";
+$video['videoLink'] = '';
 $video['title'] = __("Video Not Available");
 $video['clean_title'] = "video-not-available";
-$video['description'] = "";
-$video['duration'] = "";
-$video['creator'] = "";
-$video['likes'] = "";
-$video['dislikes'] = "";
+$video['description'] = '';
+$video['duration'] = '';
+$video['creator'] = '';
+$video['likes'] = '';
+$video['dislikes'] = '';
 $video['category'] = "embed";
 $video['views_count'] = 0;
-$video['filename'] = "";
+$video['filename'] = '';
+
+$_page = new Page(array('Video not found'), 'videoNotFound');
+$_page->setExtraStyles(
+    array(
+        'plugin/Gallery/style.css',
+    )
+);
 ?>
-<!DOCTYPE html>
-<html lang="<?php echo $_SESSION['language']; ?>">
-    <head>
-        <title><?php echo __('Video Not Found'); ?></title>
-        <link href="<?php echo getCDN(); ?>plugin/Gallery/style.css" rel="stylesheet" type="text/css"/>
+<!-- view videoNotFound.php -->
+<div class="container-fluid principalContainer" id="modeYoutubePrincipal" style="overflow: hidden;">
+    <?php
+    require "{$global['systemRootPath']}view/modeYoutubeBundle.php";
+    ?>
+</div>
+<?php
+showCloseButton();
+?>
+<script>
+    $(function() {
         <?php
-        include $global['systemRootPath'] . 'view/include/head.php';
+        if (!empty($_REQUEST['404ErrorMsg'])) {
+            echo 'avideoAlertInfo(' . json_encode($_REQUEST['404ErrorMsg'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ');';
+        }
         ?>
-    </head>
-    <body class="<?php echo $global['bodyClass']; ?>">
-        <?php include $global['systemRootPath'] . 'view/include/navbar.php'; ?>
-        <div class="container-fluid principalContainer" id="modeYoutubePrincipal">
-            <?php
-            require "{$global['systemRootPath']}view/modeYoutubeBundle.php";
-            ?>
-        </div>        
-        <?php
-        include $global['systemRootPath'] . 'view/include/footer.php';
-        showCloseButton();
-        ?>
-        <script>
-            $(function () { 
-                <?php
-                if(!empty($_REQUEST['404ErrorMsg'])){
-                    echo "avideoAlertInfo(\"{$_REQUEST['404ErrorMsg']}\");";
-                }
-                ?>
-            });
-        </script>
-    </body>
-</html>
+    });
+</script>
+<?php
+$_page->print();
+?>

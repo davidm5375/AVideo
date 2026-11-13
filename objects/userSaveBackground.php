@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 global $global, $config;
-if(!isset($global['systemRootPath'])){
+if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
 require_once $global['systemRootPath'] . 'objects/user.php';
@@ -11,6 +11,7 @@ if (!User::isLogged()) {
     $obj->error = __("You must be logged");
     die(json_encode($obj));
 }
+forbidIfIsUntrustedRequest('userSaveBackground');
 $imagePath = "videos/userPhoto/";
 
 //Check write Access to Directory
@@ -19,33 +20,43 @@ if (!file_exists($global['systemRootPath'].$imagePath)) {
 }
 
 if (!is_writable($global['systemRootPath'].$imagePath)) {
-    $response = Array(
+    $response = [
         "status" => 'error',
-        "message" => 'No write Access'
-    );
+        "message" => 'No write Access',
+    ];
     print json_encode($response);
     return;
 }
 
-$fileData = base64DataToImage($_POST['imgBase64']);
+$fileData = getValidatedImageBinaryFromBase64($_POST['imgBase64'] ?? '', 2 * 1024 * 1024, $errorMsg);
+if ($fileData === false) {
+    $response = [
+        "status" => 'error',
+        "msg" => $errorMsg,
+    ];
+    print json_encode($response);
+    return;
+}
+
 $fileName = 'background'. User::getId().'.png';
 $photoURL = $imagePath.$fileName;
 $bytes = file_put_contents($global['systemRootPath'].$photoURL, $fileData);
 if ($bytes) {
-    $response = array(
+    $response = [
         "status" => 'success',
-        "url" => $global['systemRootPath'].$photoURL
-    );
+        "url" => $global['systemRootPath'].$photoURL,
+    ];
 } else {
-    $response = array(
+    $response = [
         "status" => 'error',
         "msg" => 'We could not save this file',
-        "url" => $global['systemRootPath'].$photoURL
-    );
+        "url" => $global['systemRootPath'].$photoURL,
+    ];
 }
-
-$user = new User(User::getId());
-$user->setBackgroundURL($photoURL);
-$user->save();
-User::updateSessionInfo();
+if ($bytes) {
+    $user = new User(User::getId());
+    $user->setBackgroundURL($photoURL);
+    $user->save();
+    User::updateSessionInfo();
+}
 print json_encode($response);

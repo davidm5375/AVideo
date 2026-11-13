@@ -55,6 +55,7 @@ class BigQueryDataTransfer extends \Google\Service
   public $projects_transferConfigs;
   public $projects_transferConfigs_runs;
   public $projects_transferConfigs_runs_transferLogs;
+  public $rootUrlTemplate;
 
   /**
    * Constructs the internal representation of the BigQueryDataTransfer service.
@@ -67,6 +68,7 @@ class BigQueryDataTransfer extends \Google\Service
   {
     parent::__construct($clientOrConfig);
     $this->rootUrl = $rootUrl ?: 'https://bigquerydatatransfer.googleapis.com/';
+    $this->rootUrlTemplate = $rootUrl ?: 'https://bigquerydatatransfer.UNIVERSE_DOMAIN/';
     $this->servicePath = '';
     $this->batchPath = 'batch';
     $this->version = 'v1';
@@ -175,6 +177,11 @@ class BigQueryDataTransfer extends \Google\Service
                   'type' => 'string',
                   'required' => true,
                 ],
+                'extraLocationTypes' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                  'repeated' => true,
+                ],
                 'filter' => [
                   'location' => 'query',
                   'type' => 'string',
@@ -186,6 +193,16 @@ class BigQueryDataTransfer extends \Google\Service
                 'pageToken' => [
                   'location' => 'query',
                   'type' => 'string',
+                ],
+              ],
+            ],'unenrollDataSources' => [
+              'path' => 'v1/{+name}:unenrollDataSources',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
                 ],
               ],
             ],

@@ -25,6 +25,9 @@ class Occurrence extends \Google\Model
   protected $buildDataType = '';
   protected $complianceType = ComplianceOccurrence::class;
   protected $complianceDataType = '';
+  /**
+   * @var string
+   */
   public $createTime;
   protected $deploymentType = DeploymentOccurrence::class;
   protected $deploymentDataType = '';
@@ -36,13 +39,35 @@ class Occurrence extends \Google\Model
   protected $envelopeDataType = '';
   protected $imageType = ImageOccurrence::class;
   protected $imageDataType = '';
+  /**
+   * @var string
+   */
   public $kind;
+  /**
+   * @var string
+   */
   public $name;
+  /**
+   * @var string
+   */
   public $noteName;
   protected $packageType = PackageOccurrence::class;
   protected $packageDataType = '';
+  /**
+   * @var string
+   */
   public $remediation;
+  /**
+   * @var string
+   */
   public $resourceUri;
+  protected $sbomReferenceType = SBOMReferenceOccurrence::class;
+  protected $sbomReferenceDataType = '';
+  protected $secretType = SecretOccurrence::class;
+  protected $secretDataType = '';
+  /**
+   * @var string
+   */
   public $updateTime;
   protected $upgradeType = UpgradeOccurrence::class;
   protected $upgradeDataType = '';
@@ -91,10 +116,16 @@ class Occurrence extends \Google\Model
   {
     return $this->compliance;
   }
+  /**
+   * @param string
+   */
   public function setCreateTime($createTime)
   {
     $this->createTime = $createTime;
   }
+  /**
+   * @return string
+   */
   public function getCreateTime()
   {
     return $this->createTime;
@@ -169,26 +200,44 @@ class Occurrence extends \Google\Model
   {
     return $this->image;
   }
+  /**
+   * @param string
+   */
   public function setKind($kind)
   {
     $this->kind = $kind;
   }
+  /**
+   * @return string
+   */
   public function getKind()
   {
     return $this->kind;
   }
+  /**
+   * @param string
+   */
   public function setName($name)
   {
     $this->name = $name;
   }
+  /**
+   * @return string
+   */
   public function getName()
   {
     return $this->name;
   }
+  /**
+   * @param string
+   */
   public function setNoteName($noteName)
   {
     $this->noteName = $noteName;
   }
+  /**
+   * @return string
+   */
   public function getNoteName()
   {
     return $this->noteName;
@@ -207,26 +256,72 @@ class Occurrence extends \Google\Model
   {
     return $this->package;
   }
+  /**
+   * @param string
+   */
   public function setRemediation($remediation)
   {
     $this->remediation = $remediation;
   }
+  /**
+   * @return string
+   */
   public function getRemediation()
   {
     return $this->remediation;
   }
+  /**
+   * @param string
+   */
   public function setResourceUri($resourceUri)
   {
     $this->resourceUri = $resourceUri;
   }
+  /**
+   * @return string
+   */
   public function getResourceUri()
   {
     return $this->resourceUri;
   }
+  /**
+   * @param SBOMReferenceOccurrence
+   */
+  public function setSbomReference(SBOMReferenceOccurrence $sbomReference)
+  {
+    $this->sbomReference = $sbomReference;
+  }
+  /**
+   * @return SBOMReferenceOccurrence
+   */
+  public function getSbomReference()
+  {
+    return $this->sbomReference;
+  }
+  /**
+   * @param SecretOccurrence
+   */
+  public function setSecret(SecretOccurrence $secret)
+  {
+    $this->secret = $secret;
+  }
+  /**
+   * @return SecretOccurrence
+   */
+  public function getSecret()
+  {
+    return $this->secret;
+  }
+  /**
+   * @param string
+   */
   public function setUpdateTime($updateTime)
   {
     $this->updateTime = $updateTime;
   }
+  /**
+   * @return string
+   */
   public function getUpdateTime()
   {
     return $this->updateTime;

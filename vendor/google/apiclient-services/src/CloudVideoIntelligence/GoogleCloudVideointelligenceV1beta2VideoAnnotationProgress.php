@@ -19,34 +19,83 @@ namespace Google\Service\CloudVideoIntelligence;
 
 class GoogleCloudVideointelligenceV1beta2VideoAnnotationProgress extends \Google\Model
 {
+  protected $exportStatusType = GoogleCloudVideointelligenceV1beta2ExportToOutputUriStatus::class;
+  protected $exportStatusDataType = '';
+  /**
+   * @var string
+   */
   public $feature;
+  /**
+   * @var string
+   */
   public $inputUri;
+  /**
+   * @var int
+   */
   public $progressPercent;
   protected $segmentType = GoogleCloudVideointelligenceV1beta2VideoSegment::class;
   protected $segmentDataType = '';
+  /**
+   * @var string
+   */
   public $startTime;
+  /**
+   * @var string
+   */
   public $updateTime;
 
+  /**
+   * @param GoogleCloudVideointelligenceV1beta2ExportToOutputUriStatus
+   */
+  public function setExportStatus(GoogleCloudVideointelligenceV1beta2ExportToOutputUriStatus $exportStatus)
+  {
+    $this->exportStatus = $exportStatus;
+  }
+  /**
+   * @return GoogleCloudVideointelligenceV1beta2ExportToOutputUriStatus
+   */
+  public function getExportStatus()
+  {
+    return $this->exportStatus;
+  }
+  /**
+   * @param string
+   */
   public function setFeature($feature)
   {
     $this->feature = $feature;
   }
+  /**
+   * @return string
+   */
   public function getFeature()
   {
     return $this->feature;
   }
+  /**
+   * @param string
+   */
   public function setInputUri($inputUri)
   {
     $this->inputUri = $inputUri;
   }
+  /**
+   * @return string
+   */
   public function getInputUri()
   {
     return $this->inputUri;
   }
+  /**
+   * @param int
+   */
   public function setProgressPercent($progressPercent)
   {
     $this->progressPercent = $progressPercent;
   }
+  /**
+   * @return int
+   */
   public function getProgressPercent()
   {
     return $this->progressPercent;
@@ -65,18 +114,30 @@ class GoogleCloudVideointelligenceV1beta2VideoAnnotationProgress extends \Google
   {
     return $this->segment;
   }
+  /**
+   * @param string
+   */
   public function setStartTime($startTime)
   {
     $this->startTime = $startTime;
   }
+  /**
+   * @return string
+   */
   public function getStartTime()
   {
     return $this->startTime;
   }
+  /**
+   * @param string
+   */
   public function setUpdateTime($updateTime)
   {
     $this->updateTime = $updateTime;
   }
+  /**
+   * @return string
+   */
   public function getUpdateTime()
   {
     return $this->updateTime;

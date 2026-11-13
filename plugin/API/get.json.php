@@ -1,34 +1,51 @@
 <?php
-$configFile = '../../videos/configuration.php';
+$configFile = __DIR__.'/../../videos/configuration.php';
 if (!file_exists($configFile)) {
-    list($scriptPath) = get_included_files();
+    [$scriptPath] = get_included_files();
     $path = pathinfo($scriptPath);
     $configFile = $path['dirname'] . "/" . $configFile;
 }
+$global['bypassSameDomainCheck'] = 1;
+// API clients may send another account's user/pass while still holding an old session cookie:
+// User::loginFromRequest() then logs the old session off and signs in the requested account
+$global['switchUserFromRequestCredentials'] = 1;
+
 require_once $configFile;
-require_once $global['systemRootPath'].'plugin/API/API.php';
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header("Access-Control-Allow-Headers: Content-Type");
+require_once $global['systemRootPath'] . 'plugin/API/API.php';
+allowOrigin(true);
+header("Access-Control-Allow-Headers: Content-Type, ua-resolution");
 
 $plugin = AVideoPlugin::loadPluginIfEnabled("API");
 $objData = AVideoPlugin::getObjectDataIfEnabled("API");
 
-if(empty($plugin)){
+if (empty($plugin)) {
     $obj = new ApiObject("API Plugin disabled");
-    die(json_encode($obj));
+    die(_json_encode($obj));
 }
 
 // gettig the mobile submited value
 $inputJSON = url_get_contents('php://input');
-$input = _json_decode($inputJSON, TRUE); //convert JSON into array
-if(empty($input)){
-    $input = array();
-}else{
+$input = _json_decode($inputJSON, true); //convert JSON into array
+if (empty($input)) {
+    $input = [];
+} else {
     $input = object_to_array($input);
 }
+
+$_REQUEST['rowCount'] = $_GET['rowCount'] = getRowCount();
+
 $parameters = array_merge($_GET, $_POST, $input);
 
 $obj = $plugin->get($parameters);
+if (is_object($obj)) {
+    $obj = _json_encode($obj);
+}
 
-die(json_encode($obj));
+header('Content-Type: application/json');
+if (!empty($_REQUEST['gzip'])) {
+    $obj = gzencode($obj, 9);
+    header('Content-Encoding: gzip');
+}
+
+header('Content-Length: ' . strlen($obj));
+die($obj);

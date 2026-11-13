@@ -41,6 +41,7 @@ class CloudTasks extends \Google\Service
   public $projects_locations;
   public $projects_locations_queues;
   public $projects_locations_queues_tasks;
+  public $rootUrlTemplate;
 
   /**
    * Constructs the internal representation of the CloudTasks service.
@@ -53,6 +54,7 @@ class CloudTasks extends \Google\Service
   {
     parent::__construct($clientOrConfig);
     $this->rootUrl = $rootUrl ?: 'https://cloudtasks.googleapis.com/';
+    $this->rootUrlTemplate = $rootUrl ?: 'https://cloudtasks.UNIVERSE_DOMAIN/';
     $this->servicePath = '';
     $this->batchPath = 'batch';
     $this->version = 'v2';
@@ -74,6 +76,16 @@ class CloudTasks extends \Google\Service
                   'required' => true,
                 ],
               ],
+            ],'getCmekConfig' => [
+              'path' => 'v2/{+name}',
+              'httpMethod' => 'GET',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
             ],'list' => [
               'path' => 'v2/{+name}/locations',
               'httpMethod' => 'GET',
@@ -82,6 +94,11 @@ class CloudTasks extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'extraLocationTypes' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                  'repeated' => true,
                 ],
                 'filter' => [
                   'location' => 'query',
@@ -92,6 +109,20 @@ class CloudTasks extends \Google\Service
                   'type' => 'integer',
                 ],
                 'pageToken' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                ],
+              ],
+            ],'updateCmekConfig' => [
+              'path' => 'v2/{+name}',
+              'httpMethod' => 'PATCH',
+              'parameters' => [
+                'name' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'updateMask' => [
                   'location' => 'query',
                   'type' => 'string',
                 ],
@@ -242,7 +273,22 @@ class CloudTasks extends \Google\Service
         'tasks',
         [
           'methods' => [
-            'create' => [
+            'buffer' => [
+              'path' => 'v2/{+queue}/tasks/{taskId}:buffer',
+              'httpMethod' => 'POST',
+              'parameters' => [
+                'queue' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+                'taskId' => [
+                  'location' => 'path',
+                  'type' => 'string',
+                  'required' => true,
+                ],
+              ],
+            ],'create' => [
               'path' => 'v2/{+parent}/tasks',
               'httpMethod' => 'POST',
               'parameters' => [

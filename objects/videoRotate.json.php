@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
 global $global, $config;
-if(!isset($global['systemRootPath'])){
+if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
 require_once $global['systemRootPath'] . 'objects/user.php';
@@ -9,14 +9,19 @@ require_once $global['systemRootPath'] . 'objects/functions.php';
 if (!User::canUpload() || empty($_POST['id'])) {
     die('{"error":"'.__("Permission denied").'"}');
 }
-
-$type = !empty($_POST['type'])?$_POST['type']:"";
+forbidIfIsUntrustedRequest('videoRotate');
+$type = !empty($_POST['type']) ? $_POST['type'] : "";
 
 require_once 'video.php';
 
 $obj = new Video("", "", $_POST['id']);
-if(empty($obj)){
+if (empty($obj)) {
     croak(["error" => "Video not found"]);
+}
+
+// Verify user can manage this specific video
+if (!Video::canEdit($_POST['id'])) {
+    die('{"error":"'.__("Permission denied").'"}');
 }
 
 $currentRotation = $obj->getRotation();

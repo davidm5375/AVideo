@@ -47,10 +47,10 @@ if (showThis($sectionName)) {
         <?php
         foreach ($object->videos as $video) {
             $youtubeEmbedLink = "{$global['webSiteRootURL']}evideo/".  encryptString(json_encode($video));
-            $youtubeTitle = $video->title;
-            $youtubeThumbs = $video->thumbnails;
+            $youtubeTitle = htmlspecialchars($video->title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $youtubeThumbs = htmlspecialchars($video->thumbnails, ENT_QUOTES | ENT_HTML5, 'UTF-8');
             ?>
-            <div class="col-lg-<?php echo 12 / $objGallery->screenColsLarge; ?> col-md-<?php echo 12 / $objGallery->screenColsMedium; ?> col-sm-<?php echo 12 / $objGallery->screenColsSmall; ?> col-xs-<?php echo 12 / $objGallery->screenColsXSmall; ?> galleryVideo thumbsImage fixPadding" style="z-index: <?php echo $zindex--; ?>; min-height: 175px;">
+            <div class="col-lg-<?php echo 12 / $objGallery->screenColsLarge; ?> col-md-<?php echo 12 / $objGallery->screenColsMedium; ?> col-sm-<?php echo 12 / $objGallery->screenColsSmall; ?> col-xs-<?php echo 12 / $objGallery->screenColsXSmall; ?> galleryVideo fixPadding" style="z-index: <?php echo $zindex--; ?>; min-height: 175px;">
                 <a class="evideo" href="<?php echo $youtubeEmbedLink; ?>" title="<?php echo $youtubeTitle; ?>">
                     <div class="aspectRatio16_9">
                         <img src="<?php echo $youtubeThumbs; ?>" alt="<?php echo $youtubeTitle; ?>" class="thumbsJPG img img-responsive" />
@@ -64,14 +64,14 @@ if (showThis($sectionName)) {
         }
         if($_GET['page'] > 1 && !empty($object->prevPageToken)){
         ?>
-        <a href="<?php echo "{$global['webSiteRootURL']}page/".($_GET['page']-1)."?pageToken={$object->prevPageToken}&search=".(@$_GET['search']); ?>" class="btn btn-primary btn-sm pull-left">
+        <a href="<?php echo htmlspecialchars("{$global['webSiteRootURL']}page/".(intval($_GET['page'])-1)."?pageToken=".urlencode($object->prevPageToken)."&search=".urlencode(@$_GET['search']), ENT_QUOTES | ENT_HTML5, 'UTF-8'); ?>" class="btn btn-primary btn-sm pull-left">
             <i class="fas fa-angle-double-left"></i> <?php echo __("Previous"); ?>
         </a>
         <?php
         }
         if(!empty($object->nextPageToken)){
         ?>
-        <a href="<?php echo "{$global['webSiteRootURL']}page/".($_GET['page']+1)."?pageToken={$object->nextPageToken}&search=".(@$_GET['search']); ?>" class="btn btn-primary btn-sm pull-right">
+        <a href="<?php echo htmlspecialchars("{$global['webSiteRootURL']}page/".(intval($_GET['page'])+1)."?pageToken=".urlencode($object->nextPageToken)."&search=".urlencode(@$_GET['search']), ENT_QUOTES | ENT_HTML5, 'UTF-8'); ?>" class="btn btn-primary btn-sm pull-right">
             <?php echo __("Next"); ?> <i class="fas fa-angle-double-right"></i>
         </a>
         <?php

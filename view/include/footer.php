@@ -1,5 +1,6 @@
 <?php
-$footerjs = "";
+_ob_start();
+$footerjs = '';
 $fileUpdates = thereIsAnyUpdate();
 if (!empty($fileUpdates)) {
     $footerjs .= "$.toast({
@@ -18,7 +19,7 @@ if (empty($advancedCustom)) {
 <div class="clearfix"></div>
 <footer style="<?php echo $advancedCustom->footerStyle; ?> display: none;" id="mainFooter">
     <?php
-    $custom = "";
+    $custom = '';
     $extraPluginFile = $global['systemRootPath'] . 'plugin/Customize/Objects/ExtraConfig.php';
     if (file_exists($extraPluginFile) && AVideoPlugin::isEnabled("c4fe1b83-8f5a-4d1b-b912-172c608bf9e3")) {
         require_once $extraPluginFile;
@@ -40,36 +41,40 @@ if (empty($advancedCustom)) {
 </footer>
 <script>
     $(function () {
-<?php
-showAlertMessage();
-?>
+        /** showAlertMessage **/
+        <?php
+        showAlertMessage();
+        ?>
     });
 </script>
-<script src="<?php echo getURL('view/js/jquery.lazy/jquery.lazy.min.js'); ?>" type="text/javascript"></script>
-<script src="<?php echo getURL('view/js/jquery.lazy/jquery.lazy.plugins.min.js'); ?>" type="text/javascript"></script>
+<script src="<?php echo getURL('node_modules/jquery-lazy/jquery.lazy.min.js'); ?>" type="text/javascript"></script>
+<script src="<?php echo getURL('node_modules/jquery-lazy/jquery.lazy.plugins.min.js'); ?>" type="text/javascript"></script>
+<?php
+include $global['systemRootPath'] . 'view/include/moment.js.php';
+?>
 <script src="<?php echo getURL('view/js/script.js'); ?>" type="text/javascript"></script>
+<script src="<?php echo getURL('view/js/addView.js'); ?>" type="text/javascript"></script>
 <script src="<?php echo getURL('node_modules/jquery-ui-dist/jquery-ui.min.js'); ?>" type="text/javascript"></script>
 <?php
 include $global['systemRootPath'] . 'view/include/bootstrap.js.php';
 ?>
 <?php
-$jsFiles = array();
-//$jsFiles[] = "view/js/jquery.lazy/jquery.lazy.min.js";
-//$jsFiles[] = "view/js/jquery.lazy/jquery.lazy.plugins.min.js";
+$jsFiles = [];
+//$jsFiles[] = "node_modules/jquery-lazy/jquery.lazy.min.js";
+//$jsFiles[] = "node_modules/jquery-lazy/jquery.lazy.plugins.min.js";
 //$jsFiles[] = "view/js/script.js";
 $jsFiles[] = "node_modules/sweetalert/dist/sweetalert.min.js";
-$jsFiles[] = "view/js/bootpag/jquery.bootpag.min.js";
-$jsFiles[] = "view/js/bootgrid/jquery.bootgrid.js";
-$jsFiles[] = "view/bootstrap/bootstrapSelectPicker/js/bootstrap-select.min.js";
+$jsFiles[] = "view/js/bootgrid/jquery.bootgrid.min.js";
+//$jsFiles[] = "view/bootstrap/bootstrapSelectPicker/js/bootstrap-select.min.js";
 //$jsFiles[] = "view/js/bootstrap-toggle/bootstrap-toggle.min.js";
 $jsFiles[] = "view/js/jquery.bootstrap-autohidingnavbar.min.js";
-$jsFiles[] = "view/css/flagstrap/js/jquery.flagstrap.min.js";
+//$jsFiles[] = "view/css/flagstrap/js/jquery.flagstrap.min.js";
 $jsFiles[] = "view/js/webui-popover/jquery.webui-popover.min.js";
 $jsFiles[] = "view/js/bootstrap-list-filter/bootstrap-list-filter.min.js";
-$jsFiles[] = "view/js/js-cookie/js.cookie.js";
-$jsFiles[] = "view/js/jquery-toast/jquery.toast.min.js";
-$jsFiles[] = "view/bootstrap/jquery-bootstrap-scrolling-tabs/jquery.scrolling-tabs.min.js";
+$jsFiles[] = "node_modules/js-cookie/dist/js.cookie.js";
+$jsFiles[] = "node_modules/jquery-toast-plugin/dist/jquery.toast.min.js";
 $jsFiles[] = "view/js/BootstrapMenu.min.js";
+//$jsFiles[] = "view/js/ajaxLoad.js";
 
 $jsFiles = array_merge($jsFiles, AVideoPlugin::getJSFiles());
 echo combineFilesHTML($jsFiles, "js", true);
@@ -83,14 +88,14 @@ echo combineFilesHTML($jsFiles, "js", true);
 </div>
 <?php
 if (isset($_SESSION['savedQuerys'])) {
-    echo "<!-- Saved querys: " . $_SESSION['savedQuerys'] . " -->";
-}
+        echo "<!-- Saved querys: " . $_SESSION['savedQuerys'] . " -->";
+    }
 if (!empty($advancedCustom->footerHTMLCode->value)) {
     echo $advancedCustom->footerHTMLCode->value;
 }
 
 if (isFirstPage()) {
-    echo '<script src="' . (getCDN() . 'view/js/a2hs.js?' . filectime("{$global['systemRootPath']}view/js/a2hs.js")) . '" type="text/javascript"></script>';
+    echo '<script src="' . getURL('view/js/a2hs.js') . '" type="text/javascript"></script>';
 }
 ?>
 <script>
@@ -123,14 +128,17 @@ if (isFirstPage()) {
     });
     function checkFooter() {
         $("#mainFooter").fadeIn();
-        if (getPageHeight() <= $(window).height()) {
+        var height = $("#mainFooter").height();
+        if (height < 150 && getPageHeight() <= $(window).height()) {
             clearTimeout(checkFooterTimout);
             checkFooterTimout = setTimeout(function () {
                 checkFooter();
             }, 1000);
             $("#mainFooter").css("position", "fixed");
+            $('body').css('padding-bottom', height+'px');
         } else {
             $("#mainFooter").css("position", "relative");
+            $('body').css('padding-bottom', '');
         }
     }
 
@@ -174,7 +182,7 @@ if (isFirstPage()) {
   echo "$key => $value" . PHP_EOL;
   }
   }
- * 
+ *
  */
 if (!empty($config) && is_object($config)) {
     echo PHP_EOL . 'v:' . $config->getVersion() . PHP_EOL;

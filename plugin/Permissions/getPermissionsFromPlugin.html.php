@@ -20,6 +20,7 @@ $permissions = Permissions::getPluginPermissions($_REQUEST['plugins_id']);
 $userGroups = UserGroups::getAllUsersGroupsArray();
 $uid = uniqid();
 ?>
+<input type="hidden" id="pluginPermissionsToken<?php echo $uid; ?>" value="<?php echo getToken(300); ?>">
 <div class="panel panel-default">
     <div class="panel-heading tabbable-line">
         <ul class="nav nav-tabs">
@@ -60,17 +61,17 @@ $uid = uniqid();
                         }
                         ?>
                         <div class="material-small material-switch pull-left">
-                            <input name="pluginPermission<?php echo $key2; ?>" 
-                                   id="pluginPermission<?php echo $key2, $uid; ?>_<?php echo $value->type; ?>" 
+                            <input name="pluginPermission<?php echo $key2; ?>"
+                                   id="pluginPermission<?php echo $key2, $uid; ?>_<?php echo $value->type; ?>"
                                    type="checkbox" value="0" <?php echo $checked; ?>
-                                   onchange="updatePluginPermission<?php echo $uid; ?>(<?php echo $key2; ?>, <?php echo $_REQUEST['plugins_id']; ?>, <?php echo $value->type; ?>)"
+                                   onchange="updatePluginPermission<?php echo $uid; ?>(<?php echo $key2; ?>, <?php echo intval($_REQUEST['plugins_id']); ?>, <?php echo $value->type; ?>)"
                                    />
                             <label for="pluginPermission<?php echo $key2, $uid; ?>_<?php echo $value->type; ?>" class="label-success"> </label>
                         </div> <?php echo $group; ?><br>
                         <?php
                     }
                     ?>
-                </div>    
+                </div>
                 <?php
             }
             ?>
@@ -82,11 +83,23 @@ $uid = uniqid();
         console.log(users_groups_id, plugins_id, type);
         modal.showPleaseWait();
         $.ajax({
-            url: '<?php echo $global['webSiteRootURL']; ?>plugin/Permissions/setPermission.json.php',
-            data: {"users_groups_id": users_groups_id, "plugins_id": plugins_id, "type": type, "isEnabled": $('#pluginPermission'+users_groups_id+'<?php echo  $uid; ?>_'+type).is(":checked")},
+            url: webSiteRootURL+'plugin/Permissions/setPermission.json.php',
+            data: {"users_groups_id": users_groups_id, "plugins_id": plugins_id, "type": type, "isEnabled": $('#pluginPermission'+users_groups_id+'<?php echo  $uid; ?>_'+type).is(":checked"), "globalToken": $('#pluginPermissionsToken<?php echo $uid; ?>').val()},
+            dataType: 'json',
             type: 'post',
             success: function (response) {
                 console.log(response);
+                if (response && response.error && response.msg) {
+                    avideoAlertError(response.msg);
+                }
+                modal.hidePleaseWait();
+            },
+            error: function (xhr) {
+                if (xhr && xhr.responseJSON && xhr.responseJSON.msg) {
+                    avideoAlertError(xhr.responseJSON.msg);
+                } else {
+                    avideoAlertError('Permission update failed');
+                }
                 modal.hidePleaseWait();
             }
         });

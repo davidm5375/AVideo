@@ -10,6 +10,10 @@ $obj->error = true;
 $obj->msg = "";
 $obj->walletBalance = 0;
 
+// this file doesn't match the *.json.php pattern autoCSRFGuard() protects automatically (include_config.php)
+forbidIfIsUntrustedRequest("YPTWallet::saveConfiguration");
+forbidIfNotPost();
+
 if (!User::isLogged()) {
     $obj->msg = ("Is not Loged");
     die(json_encode($obj));
@@ -27,6 +31,19 @@ $wallet->setCrypto_wallet_address($_POST['CryptoWallet']);
 if($wallet->save()){
     $obj->error = false;
 }
+
+if(isset($_REQUEST['donation_notification_url'])){
+     $obj->donation_notification_url = YPTWallet::setDonationNotificationURL(User::getId(), $_REQUEST['donation_notification_url']);
+}
+
+// Handle webhook secret regeneration
+if(isset($_REQUEST['regenerate_webhook_secret']) && $_REQUEST['regenerate_webhook_secret'] == '1'){
+    $obj->new_webhook_secret = YPTWallet::regenerateDonationNotificationSecret(User::getId());
+}
+
+// Always return current webhook secret
+$obj->webhook_secret = YPTWallet::getDonationNotificationSecret(User::getId());
+
 $obj->walletBalance = $plugin->getBalanceFormated(User::getId());
 
 echo json_encode($obj);

@@ -19,9 +19,47 @@ namespace Google\Service\SQLAdmin;
 
 class InstancesRestoreBackupRequest extends \Google\Model
 {
+  /**
+   * @var string
+   */
+  public $backup;
+  /**
+   * @var string
+   */
+  public $backupdrBackup;
   protected $restoreBackupContextType = RestoreBackupContext::class;
   protected $restoreBackupContextDataType = '';
+  protected $restoreInstanceSettingsType = DatabaseInstance::class;
+  protected $restoreInstanceSettingsDataType = '';
 
+  /**
+   * @param string
+   */
+  public function setBackup($backup)
+  {
+    $this->backup = $backup;
+  }
+  /**
+   * @return string
+   */
+  public function getBackup()
+  {
+    return $this->backup;
+  }
+  /**
+   * @param string
+   */
+  public function setBackupdrBackup($backupdrBackup)
+  {
+    $this->backupdrBackup = $backupdrBackup;
+  }
+  /**
+   * @return string
+   */
+  public function getBackupdrBackup()
+  {
+    return $this->backupdrBackup;
+  }
   /**
    * @param RestoreBackupContext
    */
@@ -35,6 +73,20 @@ class InstancesRestoreBackupRequest extends \Google\Model
   public function getRestoreBackupContext()
   {
     return $this->restoreBackupContext;
+  }
+  /**
+   * @param DatabaseInstance
+   */
+  public function setRestoreInstanceSettings(DatabaseInstance $restoreInstanceSettings)
+  {
+    $this->restoreInstanceSettings = $restoreInstanceSettings;
+  }
+  /**
+   * @return DatabaseInstance
+   */
+  public function getRestoreInstanceSettings()
+  {
+    return $this->restoreInstanceSettings;
   }
 }
 

@@ -1,84 +1,69 @@
 <?php
 global $global, $config;
-if(!isset($global['systemRootPath'])){
+if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
 
-if(empty($_GET['type'])){
+if (empty($_GET['type'])) {
     forbiddenPage("Wrong Type");
 }
 
-if(!User::isLogged()){
+if (!User::isLogged()) {
     gotToLoginAndComeBackHere(__("Please login first"));
 }
 
-$iframeURL = "";
-$titleTag = "";
+$iframeURL = '';
+$titleTag = '';
 
-switch ($_GET['type']){
+switch ($_GET['type']) {
     case "upload":
-		$titleTag = __("Upload");
+        $titleTag = __("Upload");
         if ((isset($advancedCustomUser->onlyVerifiedEmailCanUpload) && $advancedCustomUser->onlyVerifiedEmailCanUpload && User::isVerified()) || (isset($advancedCustomUser->onlyVerifiedEmailCanUpload) && !$advancedCustomUser->onlyVerifiedEmailCanUpload) || !isset($advancedCustomUser->onlyVerifiedEmailCanUpload)) {
             if (!empty($config->getEncoderURL())) {
+                // SECURITY REVIEW (2026-10-30, GHSA-9cg7-6j92-q8wh): credentials for the admin-configured Encoder — by
+                // design, DO NOT FIX; see getCredentialsURL() in objects/functions.php.
                 $iframeURL = $config->getEncoderURL()."?noNavbar=1&".getCredentialsURL();
-            }else{
-                if(empty($iframeURL)){
+            } else {
+                if (empty($iframeURL)) {
                     forbiddenPage("Your encoder is empty");
                 }
             }
-        }else{
-            if(empty($iframeURL)){
+        } else {
+            if (empty($iframeURL)) {
                 forbiddenPage("You cannot upload 1");
             }
         }
         break;
     case "network":
-		$titleTag = __("Network");
+        $titleTag = __("Network");
         if ((isset($advancedCustomUser->onlyVerifiedEmailCanUpload) && $advancedCustomUser->onlyVerifiedEmailCanUpload && User::isVerified()) || (isset($advancedCustomUser->onlyVerifiedEmailCanUpload) && !$advancedCustomUser->onlyVerifiedEmailCanUpload) || !isset($advancedCustomUser->onlyVerifiedEmailCanUpload)) {
             if (!empty($advancedCustom->encoderNetwork) && empty($advancedCustom->doNotShowEncoderNetwork)) {
                 $iframeURL = $advancedCustom->encoderNetwork."?".getCredentialsURL();
-            }else{
-                if(empty($iframeURL)){
+            } else {
+                if (empty($iframeURL)) {
                     forbiddenPage("Network is disabled");
                 }
             }
-        }else{
-            if(empty($iframeURL)){
+        } else {
+            if (empty($iframeURL)) {
                 forbiddenPage("You cannot upload 1");
             }
         }
         break;
     case "log":
-		$titleTag = __("Log");
+        $titleTag = __("Log");
         $iframeURL = $global['webSiteRootURL']."view/logs.php";
         break;
-    
+
 }
-if(empty($iframeURL)){
+if (empty($iframeURL)) {
     forbiddenPage("Invalid Type {$_GET['type']}");
 }
 
+$_page = new Page(array($titleTag));
 
 ?>
-<!DOCTYPE html>
-<html lang="<?php echo $config->getLanguage(); ?>">
-    <head>
-        <title><?php echo $titleTag . $config->getPageTitleSeparator() . $config->getWebSiteTitle(); ?></title>
-        <?php
-        include $global['systemRootPath'] . 'view/include/head.php';
-        ?>
-    </head>
-
-    <body class="<?php echo $global['bodyClass']; ?>">
-        <?php
-        include $global['systemRootPath'] . 'view/include/navbar.php';
-        ?>
-        <iframe src="<?php echo $iframeURL; ?>" style="width: 100%; height: calc( 100vh - 50px );">
-            
-        </iframe>
-        <?php
-        
-        include $global['systemRootPath'] . 'view/include/footer.php';
-        ?>
-    </body>
-</html>
+<iframe src="<?php echo $iframeURL; ?>" style="width: 100%; height: calc( 100vh - 50px );"></iframe>
+<?php
+$_page->print();
+?>

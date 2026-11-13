@@ -17,11 +17,12 @@ $tmp_name = "{$global['systemRootPath']}plugin/CDN/Storage/test.txt";
 $filename = "test.txt";
 $remote_file = "{$filename}";
 
-echo '<h2>Transfering...</h2>' . PHP_EOL;
+echo '<h2>Transferring...</h2>' . PHP_EOL;
 
 echo '<h4>Test 1 Default configuration</h4>' . PHP_EOL;
+echo '<h4>Test 1 Default configuration</h4>' . PHP_EOL;
 $CDNstorage = new \FtpClient\FtpClient();
-$CDNstorage->connect('storage.bunnycdn.com');
+$CDNstorage->connect($obj->storage_hostname);
 $CDNstorage->login($obj->storage_username, $obj->storage_password);
 $CDNstorage->pasv(true);
 if ($CDNstorage->modifiedTime($remote_file) > 0) {
@@ -37,6 +38,8 @@ if ($CDNstorage->modifiedTime($remote_file) > 0) {
     echo '<h4>Default configuration fail</h4>' . PHP_EOL;
 }
 
-$pz = CDNStorage::getPZ();
+$url = CDNStorage::getURLFromPZ($filename);
 
-echo "<br><a href='https://{$pz}{$filename}' target='_blank'>{$filename}</a><br>";
+if (!empty($url)) {
+    echo "<br><a href='{$url}' target='_blank'>{$filename}</a><br>";
+}

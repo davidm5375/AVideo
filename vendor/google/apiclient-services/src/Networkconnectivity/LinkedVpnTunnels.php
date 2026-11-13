@@ -20,24 +20,78 @@ namespace Google\Service\Networkconnectivity;
 class LinkedVpnTunnels extends \Google\Collection
 {
   protected $collection_key = 'uris';
+  /**
+   * @var string[]
+   */
+  public $includeImportRanges;
+  /**
+   * @var bool
+   */
   public $siteToSiteDataTransfer;
+  /**
+   * @var string[]
+   */
   public $uris;
+  /**
+   * @var string
+   */
+  public $vpcNetwork;
 
+  /**
+   * @param string[]
+   */
+  public function setIncludeImportRanges($includeImportRanges)
+  {
+    $this->includeImportRanges = $includeImportRanges;
+  }
+  /**
+   * @return string[]
+   */
+  public function getIncludeImportRanges()
+  {
+    return $this->includeImportRanges;
+  }
+  /**
+   * @param bool
+   */
   public function setSiteToSiteDataTransfer($siteToSiteDataTransfer)
   {
     $this->siteToSiteDataTransfer = $siteToSiteDataTransfer;
   }
+  /**
+   * @return bool
+   */
   public function getSiteToSiteDataTransfer()
   {
     return $this->siteToSiteDataTransfer;
   }
+  /**
+   * @param string[]
+   */
   public function setUris($uris)
   {
     $this->uris = $uris;
   }
+  /**
+   * @return string[]
+   */
   public function getUris()
   {
     return $this->uris;
+  }
+  /**
+   * @param string
+   */
+  public function setVpcNetwork($vpcNetwork)
+  {
+    $this->vpcNetwork = $vpcNetwork;
+  }
+  /**
+   * @return string
+   */
+  public function getVpcNetwork()
+  {
+    return $this->vpcNetwork;
   }
 }
 

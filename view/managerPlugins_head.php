@@ -10,17 +10,8 @@ if (!User::isAdmin()) {
 }
 require_once $global['systemRootPath'] . 'objects/plugin.php';
 ?>
-<script src="<?php echo getCDN(); ?>view/bootstrap/bootstrap-fileinput/js/fileinput.min.js" type="text/javascript"></script>
-<link href="<?php echo getCDN(); ?>view/bootstrap/bootstrap-fileinput/css/fileinput.min.css" rel="stylesheet" type="text/css"/>
-<script src="<?php echo getCDN(); ?>view/bootstrap/bootstrap-fileinput/themes/fa/theme.min.js" type="text/javascript"></script>
-<link href="<?php echo getCDN(); ?>view/bootstrap/bootstrap-fileinput/themes/explorer/theme.min.css" rel="stylesheet" type="text/css"/>
-<script src="<?php echo getCDN(); ?>view/bootstrap/bootstrap-fileinput/themes/explorer/theme.min.js" type="text/javascript"></script>
 <style>
     .panel:hover { box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4), 0 1px 5px rgba(130, 130, 130, 0.35); }
-    .panel-body
-    {
-        padding: 0px;
-    }
 
     .the-price
     {
@@ -113,23 +104,5 @@ require_once $global['systemRootPath'] . 'objects/plugin.php';
         font-size: 0.95em;
         font-weight: bold;
         text-align: center;
-    }
-    .panel-sm{
-        margin-bottom: 5px;
-    }
-    .panel-sm table, .panel-sm div{
-        margin: 0;
-    }
-    .panel-sm .panel-heading{
-        height: 25px;
-        padding: 2px 5px;
-        font-size: 0.9em;
-    }
-    .panel-sm .panel-heading .panel-title{
-        font-size: 0.9em;
-    }
-    .panel-sm .panel-body{
-        padding: 0;
-        font-size: 0.8em;
     }
 </style>

@@ -1,5 +1,4 @@
 <?php
-
 $objM = AVideoPlugin::getObjectDataIfEnabled("Meet");
 //_error_log(json_encode($_SERVER));
 if (empty($objM)) {
@@ -13,17 +12,11 @@ if (empty($meet_schedule_id)) {
 }
 
 $meet = new Meet_schedule($meet_schedule_id);
-if(empty($meet->getCleanName())){
+if (empty($meet->getCleanName())) {
     forbiddenPage("meet not found");
 }
 
 $userCredentials = User::loginFromRequestToGet();
-
-$meetDomain = Meet::getDomain();
-if (empty($meetDomain)) {
-    header("Location: {$global['webSiteRootURL']}plugin/Meet/?error=The Server is Not ready");
-    exit;
-}
 
 $canJoin = Meet::canJoinMeetWithReason($meet_schedule_id);
 if (!$canJoin->canJoin) {

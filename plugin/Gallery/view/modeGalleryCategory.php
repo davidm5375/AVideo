@@ -1,4 +1,5 @@
 <?php
+//return false;
 global $global, $config;
 if (!isset($global['systemRootPath'])) {
     require_once '../../../videos/configuration.php';
@@ -6,77 +7,65 @@ if (!isset($global['systemRootPath'])) {
 require_once $global['systemRootPath'] . 'plugin/Gallery/functions.php';
 require_once $global['systemRootPath'] . 'objects/subscribe.php';
 require_once $global['systemRootPath'] . 'objects/category.php';
+require_once $global['systemRootPath'].'objects/functionInfiniteScroll.php';
 $obj = AVideoPlugin::getObjectData("Gallery");
-$liveobj = AVideoPlugin::getObjectData("Live");
-$_REQUEST['rowCount'] = 2;
+$liveobj = AVideoPlugin::getObjectDataIfEnabled("Live");
+$_REQUEST['rowCount'] = !empty($obj->CategoriesDisplayCount) ? $obj->CategoriesDisplayCount : 2;
 $_REQUEST['current'] = getCurrentPage();
-
+if(empty($_GET['tagsid']) && !empty($_REQUEST['tags_id'])){
+    $_GET['tagsid'] = $_REQUEST['tags_id'];
+}
 $onlySuggested = $obj->CategoriesShowOnlySuggested;
 if(!empty(getSearchVar())){
     $onlySuggested = false;
+    echo '<!-- modeGalleryCategory start -->';
+}else{
+    echo '<!-- modeGalleryCategory onlySuggested start -->';
 }
-$sort = $_POST['sort'];
+$sort = @$_POST['sort'];
 unset($_POST['sort']);
+resetCurrentPage();
 $categories = Category::getAllCategories(false, true, $onlySuggested);
 $total = Category::getTotalCategories(false, true, $onlySuggested);
-$totalPages = ceil($total / getRowCount());
-$page = getCurrentPage();
-if ($totalPages < $page) {
-    $page = $totalPages;
-}
-$link = "{$global['webSiteRootURL']}plugin/Gallery/view/modeGalleryCategory.php?tags_id=" . intval(@$_GET['tagsid']) . "&search=" . htmlentities(urlencode(getSearchVar())) . "&current={page}";
+
+$totalPages = ceil($total / $_REQUEST['rowCount']);
+
+$link = addSearchOptions("{$global['webSiteRootURL']}plugin/Gallery/view/modeGalleryCategory.php") . "&current=_pageNum_";
 
 if (empty($categories)) {
     return false;
 }
-$_REQUEST['current'] = 1;
+unsetCurrentPage();
 $_REQUEST['rowCount'] = $obj->CategoriesRowCount;
 ?>
 <div class="categoriesContainerItem">
     <?php
+    //var_dump($categories);exit;
+    $timeLogName = TimeLogStart('modeGalleryCategory');
     foreach ($categories as $_cat) {
-        $_GET['catName'] = $_cat['clean_name'];
-        if (empty($liveobj->doNotShowLiveOnCategoryList)) {
-            $currentCat = $_cat;
-            include $global['systemRootPath'] . 'plugin/Gallery/view/modeGalleryCategoryLive.php';
-        }
-        unset($_POST['sort']);
-        $_POST['sort']['v.created'] = "DESC";
-        $_POST['sort']['likes'] = "DESC";
-        $videos = Video::getAllVideos("viewableNotUnlisted", false, !$obj->hidePrivateVideos);
-        if (empty($videos)) {
-            continue;
-        }
-        if (empty($_cat['clean_name'])) {
-            continue;
-        }
-        ?>
-        <div class="clear clearfix">
-            <?php
-            if (canPrintCategoryTitle($_cat['name'])) {
-                ?>
-                <h3 class="galleryTitle">
-                    <a class="btn-default" href="<?php echo $global['webSiteRootURL']; ?>cat/<?php echo $_cat['clean_name']; ?>">
-                        <i class="<?php echo $_cat['iconClass']; ?>"></i> <?php echo $_cat['name']; ?>
-                    </a>
-                </h3>
-                <?php
-            }
-            createGallerySection($videos, "", array(), true);
-            ?>
-        </div>
-
-        <?php
+        //var_dump($_cat);
+        $setCacheName = "GalleryCategoryInclude{$_cat['id']}_" . getVideoListVisibilityCacheKey();
+        unsetCurrentPage();
+        //var_dump($_currentPage, $_GET['page']);
+        //var_dump($_cat, $setCacheName);exit;
+        $contents = getIncludeFileContent("{$global['systemRootPath']}plugin/Gallery/view/modeGalleryCategoryInclude.php",
+        ['_cat'=>$_cat, 'obj'=>$obj], $setCacheName);
+        echo $contents;
     }
+    resetCurrentPage();
+    TimeLogEnd($timeLogName, __LINE__, 1);
     ?>
 </div>
 <!-- modeGalleryCategory -->
-<div class="col-sm-12" style="z-index: 1;">
+<div class="col-sm-12 gallerySection" >
     <?php
-    //getPagination($total, $page = 0, $link = "", $maxVisible = 10, $infinityScrollGetFromSelector="", $infinityScrollAppendIntoSelector="")
-    echo getPagination($totalPages, $page, $link, 10, ".categoriesContainerItem", ".categoriesContainerItem");
+    //getPagination($total, $page = 0, $link = "", $maxVisible = 10, $infinityScrollGetFromSelector = "", $infinityScrollAppendIntoSelector = "", $loadOnScroll = false)
+    echo getPagination($totalPages, $link, 10, ".categoriesContainerItem", ".categoriesContainerItem", false);
+    $link = addSearchOptions("{$global['webSiteRootURL']}page/_pageNum_/");
+    echo getPagination($totalPages, $link);
     ?>
 </div>
+<!-- modeGalleryCategory end -->
 <?php
 $_POST['sort'] = $sort;
 ?>

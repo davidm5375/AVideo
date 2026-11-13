@@ -8,18 +8,10 @@
   padding-right: 1em;
 }
 
-.vjs-live .vjs-time-control {
-  display: none;
-}
-
-// We need the extra specificity that referencing .vjs-no-flex provides.
+.vjs-live .vjs-time-control,
+.vjs-live .vjs-time-divider,
 .video-js .vjs-current-time,
-.vjs-no-flex .vjs-current-time {
-  display: none;
-}
-
-.video-js .vjs-duration,
-.vjs-no-flex .vjs-duration {
+.video-js .vjs-duration {
   display: none;
 }
 
@@ -28,8 +20,6 @@
   line-height: 3em;
 }
 
-.vjs-live .vjs-time-divider {
-  // Already the default, but we want to ensure when the player is live
-  // this hides in the same way as the other time controls for other skins
-  display: none;
+.vjs-normalise-time-controls:not(.vjs-live) .vjs-time-control {
+  display: flex;
 }

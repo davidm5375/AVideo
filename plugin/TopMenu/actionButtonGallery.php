@@ -1,17 +1,18 @@
 <?php
 $configFile = $global['systemRootPath'] . 'videos/configuration.php';
 
-
 require_once $configFile;
 require_once $global['systemRootPath'] . 'plugin/TopMenu/Objects/Menu.php';
 require_once $global['systemRootPath'] . 'plugin/TopMenu/Objects/MenuItem.php';
 
 $menu = Menu::getAllActive(Menu::$typeActionMenu);
+
+$videos_id = getVideos_id();
 ?>
 <!-- action menu start -->
 <?php
 foreach ($menu as $key => $value) {
-    $menuItems = MenuItem::getAllFromMenu($value['id'], true);
+    $menuItems = MenuItem::getAllFromMenu($videos_id, true);
     foreach ($menuItems as $key2 => $value2) {
         ?>
         <div>
@@ -31,9 +32,10 @@ foreach ($menu as $key => $value) {
         <?php
     }
 }
+echo PHP_EOL.'<!-- action menu typeActionMenuCustomURL start -->'.PHP_EOL;
 $menu = Menu::getAllActive(Menu::$typeActionMenuCustomURL);
 foreach ($menu as $key => $value) {
-    $menuItems = MenuItem::getAllFromMenu($value['id'], true);
+    $menuItems = MenuItem::getAllFromMenu($videos_id, true);
     foreach ($menuItems as $key2 => $value2) {
         $url = TopMenu::getVideoMenuURL($videos_id, $value2['id']);
         if (empty($url)) {
@@ -57,10 +59,12 @@ foreach ($menu as $key => $value) {
         <?php
     }
 }
+echo PHP_EOL.'<!-- action menu typeActionMenuCustomURLForLoggedUsers end -->'.PHP_EOL;
+
 if (User::isLogged()) {
     $menu = Menu::getAllActive(Menu::$typeActionMenuCustomURLForLoggedUsers);
     foreach ($menu as $key => $value) {
-        $menuItems = MenuItem::getAllFromMenu($value['id'], true);
+        $menuItems = MenuItem::getAllFromMenu($videos_id, true);
         foreach ($menuItems as $key2 => $value2) {
             $url = TopMenu::getVideoMenuURL($videos_id, $value2['id']);
             if (empty($url)) {
@@ -84,10 +88,11 @@ if (User::isLogged()) {
             <?php
         }
     }
+    echo PHP_EOL.'<!-- action menu typeActionMenuCustomURLForUsersThatCanWatchVideo start -->'.PHP_EOL;
     if (User::canWatchVideo($videos_id)) {
         $menu = Menu::getAllActive(Menu::$typeActionMenuCustomURLForUsersThatCanWatchVideo);
         foreach ($menu as $key => $value) {
-            $menuItems = MenuItem::getAllFromMenu($value['id'], true);
+            $menuItems = MenuItem::getAllFromMenu($videos_id, true);
             foreach ($menuItems as $key2 => $value2) {
                 $url = TopMenu::getVideoMenuURL($videos_id, $value2['id']);
                 if (empty($url)) {
@@ -114,10 +119,11 @@ if (User::isLogged()) {
     }
 }
 
+echo PHP_EOL.'<!-- action menu typeActionMenuCustomURLForUsersThatCanNotWatchVideo start -->'.PHP_EOL;
 if (!User::canWatchVideo($videos_id)) {
     $menu = Menu::getAllActive(Menu::$typeActionMenuCustomURLForUsersThatCanNotWatchVideo);
     foreach ($menu as $key => $value) {
-        $menuItems = MenuItem::getAllFromMenu($value['id'], true);
+        $menuItems = MenuItem::getAllFromMenu($videos_id, true);
         foreach ($menuItems as $key2 => $value2) {
             $url = TopMenu::getVideoMenuURL($videos_id, $value2['id']);
             if (empty($url)) {
@@ -143,4 +149,4 @@ if (!User::canWatchVideo($videos_id)) {
     }
 }
 ?>
-<!-- action menu start -->
+<!-- action menu end -->

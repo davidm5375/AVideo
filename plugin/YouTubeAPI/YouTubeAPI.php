@@ -108,7 +108,8 @@ class YouTubeAPI extends PluginAbstract {
                 return $object;
             }
 
-            _error_log("YouTubeAPI::listVideos try={$try} developer_key={$DEVELOPER_KEY}");
+            // never log the key itself
+            _error_log("YouTubeAPI::listVideos try={$try} developer_key=..." . substr($DEVELOPER_KEY, -4));
 
             try {
 
@@ -207,7 +208,7 @@ class YouTubeAPI extends PluginAbstract {
       return $object;
       }
 
-      $source = Video::getHigestResolutionVideoMP4Source($v->getFilename());
+      $source = Video::getHigestResolutionVideoMP4Source($v->getFilename(), false, true);
       $file_name = $source['path'];
 
       if (!file_exists($file_name)) {

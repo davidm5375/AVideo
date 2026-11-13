@@ -22,6 +22,13 @@ class GetSpreadsheetByDataFilterRequest extends \Google\Collection
   protected $collection_key = 'dataFilters';
   protected $dataFiltersType = DataFilter::class;
   protected $dataFiltersDataType = 'array';
+  /**
+   * @var bool
+   */
+  public $excludeTablesInBandedRanges;
+  /**
+   * @var bool
+   */
   public $includeGridData;
 
   /**
@@ -38,10 +45,30 @@ class GetSpreadsheetByDataFilterRequest extends \Google\Collection
   {
     return $this->dataFilters;
   }
+  /**
+   * @param bool
+   */
+  public function setExcludeTablesInBandedRanges($excludeTablesInBandedRanges)
+  {
+    $this->excludeTablesInBandedRanges = $excludeTablesInBandedRanges;
+  }
+  /**
+   * @return bool
+   */
+  public function getExcludeTablesInBandedRanges()
+  {
+    return $this->excludeTablesInBandedRanges;
+  }
+  /**
+   * @param bool
+   */
   public function setIncludeGridData($includeGridData)
   {
     $this->includeGridData = $includeGridData;
   }
+  /**
+   * @return bool
+   */
   public function getIncludeGridData()
   {
     return $this->includeGridData;

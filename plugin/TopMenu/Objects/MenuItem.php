@@ -7,6 +7,7 @@ require_once dirname(__FILE__) . '/../../../objects/user.php';
 class MenuItem extends ObjectYPT {
 
     protected $id, $title, $image, $url, $class, $style, $item_order, $topMenu_id, $status, $text, $icon, $clean_url, $menuSeoUrlItem;
+    private static $menuItemsCache = array();
 
     static function getSearchFieldsNames() {
         return array();
@@ -18,9 +19,16 @@ class MenuItem extends ObjectYPT {
 
     static function getAllFromMenu($menu_id, $activeOnly = false, $sort = true) {
         global $global;
+        if(empty($global)){
+            $global = [];
+        }
         $menu_id = intval($menu_id);
         if (empty($menu_id)) {
             return false;
+        }
+        $cacheKey = $menu_id . '_' . intval($activeOnly) . '_' . intval($sort);
+        if (array_key_exists($cacheKey, self::$menuItemsCache)) {
+            return self::$menuItemsCache[$cacheKey];
         }
         $sql = "SELECT * FROM  " . static::getTableName() . " WHERE topMenu_id = {$menu_id}";
 
@@ -30,6 +38,10 @@ class MenuItem extends ObjectYPT {
 
         if ($sort) {
             $sql .= " ORDER BY item_order ";
+        }
+
+        if(!empty($global['forceDebug'])){
+            var_dump($sql);
         }
 
         $res = $global['mysqli']->query($sql);
@@ -54,14 +66,15 @@ class MenuItem extends ObjectYPT {
                 }
                 $rows[] = $row;
             }
-        } else {
-            die($sql . '\nError : (' . $global['mysqli']->errno . ') ' . $global['mysqli']->error);
         }
-        return $rows;
+        // Desktop and mobile menus request the same items during one page render.
+        self::$menuItemsCache[$cacheKey] = $rows;
+        return self::$menuItemsCache[$cacheKey];
     }
 
     function setTitle($title) {
-        $this->title = $title;
+        // some menu render sites (actionButtonGallery.php, actionButtonNetflix.php) echo this raw on public pages, so sanitize on write
+        $this->title = xss_esc($title);
     }
 
     function setImage($image) {
@@ -119,12 +132,26 @@ class MenuItem extends ObjectYPT {
         if (empty($this->menuSeoUrlItem)) {
             $this->menuSeoUrlItem = $this->title;
         }
-        $this->menuSeoUrlItem = $global['mysqli']->real_escape_string(preg_replace('/[^a-z0-9]+/', '_', strtolower($this->title)));
+        $this->menuSeoUrlItem = (preg_replace('/[^a-z0-9]+/', '_', strtolower($this->title)));
 
-        $this->title = $global['mysqli']->real_escape_string($this->title);
-        $this->text = $global['mysqli']->real_escape_string($this->text);
+        $this->title = ($this->title);
+        $this->text = ($this->text);
 
-        return parent::save();
+        $result = parent::save();
+        self::clearRequestCache();
+        return $result;
+    }
+
+    public function delete()
+    {
+        $result = parent::delete();
+        self::clearRequestCache();
+        return $result;
+    }
+
+    public static function clearRequestCache()
+    {
+        self::$menuItemsCache = array();
     }
 
     function getTitle() {

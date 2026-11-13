@@ -1,12 +1,12 @@
 <?php
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'autoload.php';
 
-header('Access-Control-Allow-Origin: *');
 header("Access-Control-Allow-Headers: Content-Type");
 global $global, $config;
 if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
+allowOrigin();
 require_once $global['systemRootPath'] . 'objects/functions.php';
 
 $timeLog = __FILE__ . "::Login ";
@@ -27,17 +27,15 @@ require_once $global['systemRootPath'] . 'videos/configuration.php';
 require_once $global['systemRootPath'] . 'objects/user.php';
 require_once $global['systemRootPath'] . 'objects/category.php';
 
-Category::clearCacheCount();
+//Category::clearCacheCount();
 TimeLogEnd($timeLog, __LINE__);
-_error_log("Start Login Request");
 
-_error_log("redirectUri: " . $_POST['redirectUri']);
-
-if (!preg_match("|^" . $global['webSiteRootURL'] . "|", $_POST['redirectUri'])) {
+if(!isSameDomain($global['webSiteRootURL'], $_POST['redirectUri'])){
     $_POST['redirectUri'] = $global['webSiteRootURL'];
 }
+//_error_log("Start Login Request redirectUri=" . $_POST['redirectUri']);
 
-_error_log("same redirectUri: " . $_POST['redirectUri']);
+//User::logoff();
 
 use Hybridauth\Hybridauth;
 use Hybridauth\HttpClient;
@@ -62,11 +60,11 @@ if (!empty($_GET['type'])) {
                         "id" => trim($obj->id),
                         "team_id" => trim($obj->team_id),
                         "key_id" => trim($obj->key_id),
-                        "key_content" => trim($obj->key_content->value)
+                        "key_content" => trim($obj->key_content->value),
                     ],
                     "scope" => "name email",
-                    "verifyTokenSignature" => true
-                ]
+                    "verifyTokenSignature" => true,
+                ],
             ],
                 /* optional : set debug mode
                   'debug_mode' => true,
@@ -76,6 +74,10 @@ if (!empty($_GET['type'])) {
     } else {
         $login = AVideoPlugin::getLogin();
         foreach ($login as $value) {
+            if(!is_object($value['loginObject'])){
+                //_error_log('Error on getLogin: '. json_encode($value), AVideoLog::$ERROR);
+                continue;
+            }
             $obj = $value['loginObject']->getDataObject();
             if ($value['parameters']->type === $_GET['type']) {
                 $id = $obj->id;
@@ -83,8 +85,11 @@ if (!empty($_GET['type'])) {
                 break;
             }
         }
+        // $_GET['type'] has already been sanitized by objects/security.php through
+        // videos/configuration.php before this branch runs, so rendering it here
+        // does not reflect raw HTML from the request.
         if (empty($id)) {
-            die(sprintf(__("%s ERROR: You must set a ID on config"), $_GET['type']));
+            die(sprintf(__("%s ERROR: You must set an ID on config"), $_GET['type']));
         }
 
         if (empty($key)) {
@@ -106,8 +111,8 @@ if (!empty($_GET['type'])) {
                     'keys' => ['id' => $id, 'secret' => $key, 'key' => $id],
                     "includeEmail" => true,
                     'scope' => $scope,
-                    'trustForwarded' => false
-                ]
+                    'trustForwarded' => false,
+                ],
             ],
                 /* optional : set debug mode
                   'debug_mode' => true,
@@ -125,18 +130,12 @@ if (!empty($_GET['type'])) {
 
         //print_r($tokens);
         //print_r($userProfile);
-        if (!empty($userProfile->email)) {
-            $user = $userProfile->email;
-        } else {
-            $user = $userProfile->displayName;
+        // without an email the account is bound to the provider's user id, never chosen by display name (GHSA-9rvm-cfc4-q9g9)
+        $users_id = User::getSocialLoginUserId($_GET['type'], $userProfile, true);
+        if (empty($users_id)) {
+            throw new Exception(__('Permission denied'));
         }
-        $name = $userProfile->displayName;
-        $photoURL = $userProfile->photoURL;
-        $email = $userProfile->email;
-        $pass = rand();
-        //createUserIfNotExists($user, $pass, $name, $email, $photoURL, $isAdmin = false, $emailVerified = false);
-        User::createUserIfNotExists($user, $pass, $name, $email, $photoURL, false, true);
-        $userObject = new User(0, $user, $pass);
+        $userObject = new User($users_id);
         $userObject->login(true);
         $adapter->disconnect();
 
@@ -144,7 +143,7 @@ if (!empty($_GET['type'])) {
             _session_start();
             $location = $_SESSION['redirectUri'];
             //header("Location: {$_SESSION['redirectUri']}");
-            $_SESSION['redirectUri'] = "";
+            $_SESSION['redirectUri'] = '';
             unset($_SESSION['redirectUri']);
         } else {
             $location = $global['webSiteRootURL'];
@@ -155,11 +154,10 @@ if (!empty($_GET['type'])) {
         //header("Location: {$global['webSiteRootURL']}user?error=" . urlencode($e->getMessage()));
         //echo $e->getMessage();
     }
-    if(!isSameDomainAsMyAVideo($location)){
-       $location = $global['webSiteRootURL'];
+    if (!isSameDomainAsMyAVideo($location)) {
+        $location = $global['webSiteRootURL'];
     }
-    header('Content-Type: text/html');
-    ?>
+    header('Content-Type: text/html'); ?>
     <script>
         window.opener = self;
         if (window.name == 'loginYPT') {
@@ -193,16 +191,39 @@ if (empty($_POST['user']) || empty($_POST['pass'])) {
     $object->error = __("User and Password can not be blank");
     die(json_encode($object));
 }
+// Encoder/Mobile App User-Agent is attacker-spoofable and skips the CAPTCHA check in
+// User::checkLoginAttempts(); real Encoder/Mobile App login volume is far below this cap.
+if (isAVideoMobileApp() || isAVideoEncoder()) {
+    enforceRateLimit('login_encoder_mobile_ua', 10, 300);
+}
+// Brute-force protection: cap credential-submission attempts per IP.
+// Sends HTTP 429 and stops once the threshold is exceeded within the window.
+enforceRateLimit('login', 30, 300);
 $user = new User(0, $_POST['user'], $_POST['pass']);
+if(!empty($user)){
+    _error_log("login.json.php user found [{$_POST['user']}]");
+}else{
+    _error_log("login.json.php user not found [{$_POST['user']}]");
+}
+//_error_log("login.json.php trying to login");
 
-_error_log("login.json.php trying to login");
+_session_start();
+if (!empty($_POST['encodedPass']) && $_POST['encodedPass'] !== 'false') {
+    _error_log('login.json.php encodedPass login attempt for user [' . @$_POST['user'] . '] from IP ' . getRealIpAddr(), AVideoLog::$SECURITY);
+}
 $resp = $user->login(false, @$_POST['encodedPass']);
-_error_log("login.json.php login respond something");
+//_error_log("login.json.php login respond something");
 TimeLogEnd($timeLog, __LINE__);
 $object->isCaptchaNeed = User::isCaptchaNeed();
 if ($resp === User::USER_NOT_VERIFIED) {
     _error_log("login.json.php User not verified");
-    $object->error = __("Your user is not verified, we sent you a new e-mail");
+    $object->error = __("Please verify your email address");
+    die(json_encode($object));
+}
+
+if ($resp === User::SYSTEM_ERROR) {
+    _error_log("login.json.php System error", AVideoLog::$ERROR);
+    $object->error = __("System error, check your logs");
     die(json_encode($object));
 }
 
@@ -212,23 +233,43 @@ if ($resp === User::CAPTCHA_ERROR) {
     die(json_encode($object));
 }
 
+if ($resp === User::TOO_MANY_FAILED_ATTEMPTS) {
+    // HTTP 200 like the other errors here: view/userLogin.php only handles the ajax success callback
+    $object->error = __("Too many failed login attempts. Try again later.");
+    die(json_encode($object));
+}
+
 if ($resp === User::REQUIRE2FA) {
     _error_log("login.json.php 2fa login is required");
     $object->error = __("2FA login is required");
     die(json_encode($object));
 }
 
-//_error_log("login.json.php setup object");
+////_error_log("login.json.php setup object");
 $object->siteLogo = $global['webSiteRootURL'] . $config->getLogo();
 $object->id = User::getId();
+$object->age = User::getAge();
 $object->user = User::getUserName();
 $object->donationLink = User::donationLink();
 $object->name = User::getName();
-//_error_log("login.json.php get name identification");
+////_error_log("login.json.php get name identification");
 $object->nameIdentification = User::getNameIdentification();
+// SECURITY NOTE (WON'T FIX — by design): the "pass" field below is NOT the raw
+// password nor the stored DB hash. It is an encrypted, time-limited, revocable
+// auth token (_user_hash_...) produced by User::getUserHash():
+//   - AES-encrypted with a server-only key (raw hash never exposed);
+//   - not permanent: this session copy (also handed to the admin-configured Encoder,
+//     see getCredentialsURL()) is valid 7 days; the login cookie copy 1 day / 1 year (remember-me);
+//   - bound to the current password hash, so a password change revokes it;
+//   - returned only to the user who just authenticated, over HTTPS.
+// It is functionally equivalent to a session/refresh token and is REQUIRED by the
+// native mobile/TV apps, the "remember me" cookie flow, and server-to-server auth.
+// Removing it breaks those clients. Automated scanners flag this as a password/hash
+// leak (e.g. CWE-522/CWE-836) — that is a FALSE POSITIVE. Do not "fix" by removing.
 $object->pass = User::getUserPass();
 $object->email = User::getMail();
-//_error_log("login.json.php get channel name");
+$object->emailVerified = !empty(User::_getEmailVerified());
+////_error_log("login.json.php get channel name");
 $object->channelName = User::_getChannelName($object->id);
 $object->photo = User::getPhoto();
 $object->backgroundURL = User::getBackground($object->id);
@@ -236,20 +277,25 @@ $object->isLogged = User::isLogged();
 $object->isAdmin = User::isAdmin();
 $object->canUpload = User::canUpload();
 $object->canComment = User::canComment();
+$object->canMeet = AVideoPlugin::isEnabledByName('Meet');
 $object->canCreateCategory = Category::canCreateCategory();
 $object->theme = getCurrentTheme();
 $object->canStream = User::canStream();
 $object->redirectUri = @$_POST['redirectUri'];
 $object->embedChatUrl = '';
 $object->embedChatUrlMobile = '';
+$object->age = User::getAge();
+
+//_error_log("login.json.php check chat2");
 if (AVideoPlugin::isEnabledByName('Chat2') && method_exists('Chat2', 'getChatRoomLink')) {
     $object->embedChatUrl = Chat2::getChatRoomLink(User::getId(), 1, 1, 0, true);
     $object->embedChatUrlMobile = addQueryStringParameter($object->embedChatUrl, 'mobileMode', 1);
     $object->embedChatUrlMobile = addQueryStringParameter($object->embedChatUrlMobile, 'user', $object->user);
     $object->embedChatUrlMobile = addQueryStringParameter($object->embedChatUrlMobile, 'pass', $object->pass);
 }
-//_error_log("login.json.php setup object done");
+////_error_log("login.json.php setup object done");
 
+//_error_log("login.json.php check redirect");
 if ((empty($object->redirectUri) || $object->redirectUri === $global['webSiteRootURL'])) {
     if (!empty($advancedCustomUser->afterLoginGoToMyChannel)) {
         $object->redirectUri = User::getChannelLink();
@@ -258,21 +304,25 @@ if ((empty($object->redirectUri) || $object->redirectUri === $global['webSiteRoo
     }
 }
 
+////_error_log("login.json.php userCanNotChangeCategory");
 if (empty($advancedCustomUser->userCanNotChangeCategory) || User::isAdmin()) {
     //_error_log("login.json.php get categories");
     $object->categories = Category::getAllCategories(true);
+    //_error_log("login.json.php get categories done");
     if (is_array($object->categories)) {
         array_multisort(array_column($object->categories, 'hierarchyAndName'), SORT_ASC, $object->categories);
     }
 } else {
-    $object->categories = array();
+    $object->categories = [];
 }
+////_error_log("login.json.php get user groups");
+TimeLogEnd($timeLog, __LINE__);
 //_error_log("login.json.php get user groups");
-TimeLogEnd($timeLog, __LINE__);
 $object->userGroups = UserGroups::getAllUsersGroups();
+$object->allowedResolutions = UserGroups::getAllowedResolutionsForUser($object->id);
 TimeLogEnd($timeLog, __LINE__);
-$object->streamServerURL = "";
-$object->streamKey = "";
+$object->streamServerURL = '';
+$object->streamKey = '';
 if ($object->isLogged) {
     $timeLog2 = __FILE__ . "::Is Logged ";
     TimeLogStart($timeLog2);
@@ -286,10 +336,10 @@ if ($object->isLogged) {
             $object->streamServerURL = $p->getServer() . "?p=" . User::getUserPass();
             $object->streamKey = $trasnmition['key'];
         } else {
-            _error_log('login.json.php transmissionKey is empty [' . User::getId() . ']');
+            //_error_log('login.json.php transmissionKey is empty [' . User::getId() . ']');
         }
     } else {
-        _error_log('login.json.php live plugin is disabled');
+        //_error_log('login.json.php live plugin is disabled');
     }
     TimeLogEnd($timeLog2, __LINE__);
     //_error_log("login.json.php get MobileManager");
@@ -310,16 +360,29 @@ if ($object->isLogged) {
     $p = AVideoPlugin::loadPluginIfEnabled("Subscription");
     if (!empty($p)) {
         $object->Subscription = Subscription::getAllFromUser($object->id);
+        foreach ($object->Subscription as $key => $row) {
+            $unixTime = convertDatabaseDateToUnixTime($row['good_until'] ?? '');
+            $object->Subscription[$key]['good_until_utc'] = empty($unixTime) ? '' : gmdate('Y-m-d H:i:s', $unixTime);
+            $object->Subscription[$key]['good_until_unix'] = $unixTime;
+        }
     }
     TimeLogEnd($timeLog2, __LINE__);
     //_error_log("login.json.php get PayPerView");
     $p = AVideoPlugin::loadPluginIfEnabled("PayPerView");
     if (!empty($p) && class_exists('PayPerView')) {
         $object->PayPerView = PayPerView::getAllPPVFromUser($object->id);
+        foreach ($object->PayPerView as $key => $row) {
+            $unixTime = convertDatabaseDateToUnixTime($row['expiration'] ?? '');
+            $object->PayPerView[$key]['expiration_utc'] = empty($unixTime) ? '' : gmdate('Y-m-d H:i:s', $unixTime);
+            $object->PayPerView[$key]['expiration_unix'] = $unixTime;
+            // same names as in Subscription, so the app reads both lists the same way
+            $object->PayPerView[$key]['good_until_utc'] = $object->PayPerView[$key]['expiration_utc'];
+            $object->PayPerView[$key]['good_until_unix'] = $unixTime;
+        }
     }
     TimeLogEnd($timeLog2, __LINE__);
 } else {
-    _error_log('login.json.php is not logged');
+    //_error_log('login.json.php is not logged');
 }
 
 $object->PHPSESSID = session_id();
@@ -329,5 +392,7 @@ TimeLogEnd($timeLog, __LINE__);
 $json = _json_encode($object);
 //_error_log("login.json.php complete");
 //header("Content-length: " . strlen($json));
-_error_log('login.json.php is done');
+//_error_log('login.json.php is done '.User::getId());
+_session_write_close();
 echo $json;
+exit;

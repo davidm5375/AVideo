@@ -1,80 +1,58 @@
 <?php
-global $advancedCustom;
-$crc = uniqid();
+global $advancedCustom, $global;
+doNOTOrganizeHTMLIfIsPagination();
+$global['laodPlaylistScript'] = 1;
 ?>
-    <?php if ((empty($_POST['disableAddTo'])) && (( ($advancedCustom != false) && ($advancedCustom->disableShareAndPlaylist == false)) || ($advancedCustom == false))) { ?>
-       <a href="#" class="<?php echo $btnClass; ?>" id="addBtn<?php echo $videos_id . $crc; ?>" onclick="loadPlayLists('<?php echo $videos_id; ?>', '<?php echo $crc; ?>');" data-toggle="tooltip" title="<?php echo __("Add to"); ?>">
-            <span class="fa fa-plus"></span> 
-            <span class="hidden-sm hidden-xs"><?php echo __("Add to"); ?></span>
-        </a>
-        <div class="webui-popover-content" >
-            <?php if (User::isLogged()) { ?>
-                <form role="form">
-                    <div class="form-group">
-                        <input class="form-control" id="searchinput<?php echo $videos_id.$crc; ?>" type="search" placeholder="<?php echo __("Search"); ?>..." />
-                    </div>
-                    <div class="PlayListList searchlist<?php echo $videos_id.$crc; ?> list-group">
-                    </div>
-                </form>
-                <div>
-                    <hr>
-                    <div class="form-group">
-                        <input id="playListName<?php echo $videos_id . $crc; ?>" class="form-control" placeholder="<?php echo __("Create a New"); ?> <?php echo $obj->name; ?>"  >
-                    </div>
-                    <div class="form-group">
-                        <?php echo __("Make it public"); ?>
-                        <div class="material-switch pull-right">
-                            <input id="publicPlayList<?php echo $videos_id . $crc; ?>" name="publicPlayList" type="checkbox" checked="checked"/>
-                            <label for="publicPlayList<?php echo $videos_id . $crc; ?>" class="label-success"></label>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <button class="btn btn-success btn-block" id="addPlayList<?php echo $videos_id . $crc; ?>" ><?php echo __("Create a New"); ?> <?php echo $obj->name; ?></button>
+<!-- <?php echo __FILE__; ?> -->
+<?php if ((empty($_POST['disableAddTo'])) && ((($advancedCustom != false) && ($advancedCustom->disableShareAndPlaylist == false)) || ($advancedCustom == false))) { ?>
+    <button type="button" class="<?php echo empty($btnClass) ? 'btn btn-default' : $btnClass; ?> playlist-add-button" id="addBtn<?php echo $videos_id; ?>" onclick="actionButtonPlaylistClick(this, '<?php echo $videos_id; ?>'); return false;" aria-haspopup="dialog" aria-expanded="false">
+        <span class="fa fa-plus" aria-hidden="true"></span>
+        <?php echo __("Add to"); ?>
+        <span class="fa fa-angle-down playlist-add-chevron" aria-hidden="true"></span>
+    </button>
+    <div class="webui-popover-content">
+        <?php
+        if (User::isLogged()) {
+            $uniqId = uniqid();
+        ?>
+            <div class="playlist-picker">
+                <div class="form-group playlist-picker-search">
+                    <label class="sr-only" for="searchinput<?php echo $videos_id; ?>"><?php echo __("Search"); ?></label>
+                    <input class="form-control" id="searchinput<?php echo $videos_id; ?>" type="search" placeholder="<?php echo __("Search"); ?>..." autocomplete="off" />
+                </div>
+                <div class="PlayListList searchlist<?php echo $videos_id; ?> list-group"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+            <details class="playlist-create">
+                <summary><i class="fa fa-plus" aria-hidden="true"></i> <?php echo __("Create a New"); ?> <?php echo $obj->name; ?></summary>
+                <div class="form-group">
+                    <label class="sr-only" for="playListName<?php echo $videos_id; ?>_<?php echo $uniqId; ?>"><?php echo __("Name"); ?></label>
+                    <input id="playListName<?php echo $videos_id; ?>_<?php echo $uniqId; ?>" class="form-control playListName" placeholder="<?php echo __("Create a New"); ?> <?php echo $obj->name; ?>">
+                </div>
+                <div class="form-group">
+                    <?php echo __("Make it public"); ?>
+                    <div class="material-switch pull-right">
+                        <input id="publicPlayList<?php echo $videos_id; ?>_<?php echo $uniqId; ?>" name="publicPlayList" type="checkbox" checked="checked" />
+                        <label for="publicPlayList<?php echo $videos_id; ?>_<?php echo $uniqId; ?>" class="label-success"><span class="sr-only"><?php echo __("Make it public"); ?></span></label>
                     </div>
                 </div>
-            <?php } else { ?>
-                <h5><?php echo __("Want to watch this again later?"); ?></h5>
-                <?php echo __("Sign in to add this video to a playlist."); ?>
-                <a href="<?php echo $global['webSiteRootURL']; ?>user" class="btn btn-primary">
-                    <span class="fas fa-sign-in-alt"></span>
-                    <?php echo __("Login"); ?>
-                </a>
-            <?php } ?>
-        </div>
-        <script>
-            $(document).ready(function () {
-                loadPL<?php echo $videos_id . $crc; ?>();
-            });
-            function loadPL<?php echo $videos_id . $crc; ?>(){
-                if(typeof $('#addBtn<?php echo $videos_id . $crc; ?>').webuiPopover !== 'function'){
-                    setTimeout(function(){loadPL<?php echo $videos_id . $crc; ?>()}, 1000);
-                }else{
-                    loadPlayLists('<?php echo $videos_id; ?>', '<?php echo $crc; ?>');
-                    $('#addBtn<?php echo $videos_id . $crc; ?>').webuiPopover();
-                    $('#addPlayList<?php echo $videos_id . $crc; ?>').click(function () {
-                        modal.showPleaseWait();
-                        $.ajax({
-                            url: '<?php echo $global['webSiteRootURL']; ?>objects/playlistAddNew.json.php',
-                            method: 'POST',
-                            data: {
-                                'videos_id': <?php echo $videos_id; ?>,
-                                'status': $('#publicPlayList<?php echo $videos_id . $crc; ?>').is(":checked") ? "public" : "private",
-                                'name': $('#playListName<?php echo $videos_id . $crc; ?>').val()
-                            },
-                            success: function (response) {
-                                if (response.status>0) {
-                                    playList = [];
-                                    reloadPlayLists();
-                                    loadPlayLists('<?php echo $videos_id; ?>', '<?php echo $crc; ?>');
-                                    $('#playListName<?php echo $videos_id . $crc; ?>').val("");
-                                    $('#publicPlayList<?php echo $videos_id . $crc; ?>').prop('checked', true);
-                                }
-                                modal.hidePleaseWait();
-                            }
-                        });
-                        return false;
-                    });
-                }
-            }
-        </script>
-    <?php } ?>
+                <div class="form-group">
+                    <button
+                        class="btn btn-success btn-block"
+                        type="button"
+                        id="addPlayList<?php echo $videos_id; ?>"
+                        onclick="createNewProgram($('#playListName<?php echo $videos_id; ?>_<?php echo $uniqId; ?>').val(), $('#publicPlayList<?php echo $videos_id; ?>_<?php echo $uniqId; ?>').is(':checked'), <?php echo $videos_id; ?>);return false;">
+                        <?php echo __("Create a New"); ?> <?php echo $obj->name; ?>
+                    </button>
+                </div>
+            </details>
+        <?php } else { ?>
+            <strong><?php echo __("Want to watch this again later?"); ?></strong>
+            <br>
+            <?php echo __("Sign in to add this video to a playlist."); ?>
+            <a href="<?php echo $global['webSiteRootURL']; ?>user" class="btn btn-primary">
+                <span class="fas fa-sign-in-alt"></span>
+                <?php echo __("Login"); ?>
+            </a>
+        <?php } ?>
+    </div>
+<?php } ?>

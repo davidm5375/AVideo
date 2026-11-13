@@ -17,23 +17,60 @@
 
 namespace Google\Service\Compute;
 
-class CacheInvalidationRule extends \Google\Model
+class CacheInvalidationRule extends \Google\Collection
 {
+  protected $collection_key = 'cacheTags';
+  /**
+   * @var string[]
+   */
+  public $cacheTags;
+  /**
+   * @var string
+   */
   public $host;
+  /**
+   * @var string
+   */
   public $path;
 
+  /**
+   * @param string[]
+   */
+  public function setCacheTags($cacheTags)
+  {
+    $this->cacheTags = $cacheTags;
+  }
+  /**
+   * @return string[]
+   */
+  public function getCacheTags()
+  {
+    return $this->cacheTags;
+  }
+  /**
+   * @param string
+   */
   public function setHost($host)
   {
     $this->host = $host;
   }
+  /**
+   * @return string
+   */
   public function getHost()
   {
     return $this->host;
   }
+  /**
+   * @param string
+   */
   public function setPath($path)
   {
     $this->path = $path;
   }
+  /**
+   * @return string
+   */
   public function getPath()
   {
     return $this->path;

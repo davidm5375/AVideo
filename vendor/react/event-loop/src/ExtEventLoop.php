@@ -16,7 +16,7 @@ use SplObjectStorage;
  * that provides an interface to `libevent` library.
  * `libevent` itself supports a number of system-specific backends (epoll, kqueue).
  *
- * This loop is known to work with PHP 5.4 through PHP 7+.
+ * This loop is known to work with PHP 5.4 through PHP 8+.
  *
  * @link https://pecl.php.net/package/event
  */
@@ -64,7 +64,7 @@ final class ExtEventLoop implements LoopInterface
     {
         // explicitly clear all references to Event objects to prevent SEGFAULTs on Windows
         foreach ($this->timerEvents as $timer) {
-            $this->timerEvents->detach($timer);
+            $this->timerEvents->offsetUnset($timer);
         }
 
         $this->readEvents = array();
@@ -157,9 +157,9 @@ final class ExtEventLoop implements LoopInterface
 
     public function cancelTimer(TimerInterface $timer)
     {
-        if ($this->timerEvents->contains($timer)) {
+        if ($this->timerEvents->offsetExists($timer)) {
             $this->timerEvents[$timer]->free();
-            $this->timerEvents->detach($timer);
+            $this->timerEvents->offsetUnset($timer);
         }
     }
 
@@ -243,7 +243,7 @@ final class ExtEventLoop implements LoopInterface
         $this->timerCallback = function ($_, $__, $timer) use ($timers) {
             \call_user_func($timer->getCallback(), $timer);
 
-            if (!$timer->isPeriodic() && $timers->contains($timer)) {
+            if (!$timer->isPeriodic() && $timers->offsetExists($timer)) {
                 $this->cancelTimer($timer);
             }
         };

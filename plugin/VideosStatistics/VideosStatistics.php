@@ -54,12 +54,27 @@ class VideosStatistics extends PluginAbstract {
           $o->value = "";
           $obj->textareaSample = $o;
          */
+        $o = new stdClass();
+        $o->type = array(
+            0=>'Do not delete', 
+            7=>'Delete records older than 1 week', 
+            30=>'Delete records older than 1 month', 
+        );
+        for ($i=60; $i < 365; $i+=60) { 
+            $o->type[$i] = "Delete records older than ".($i/30)." months";
+        }
+        $o->value = 60;
+        $obj->autoCleanStatisticsTable = $o;
+        self::addDataObjectHelper('autoCleanStatisticsTable', 'Auto clean statistics table', 'This option is good to speed up your page');
+        
         return $obj;
     }
 
     public function getPluginMenu() {
         global $global;
-        return '<button onclick="avideoModalIframeLarge(webSiteRootURL+\'plugin/VideosStatistics/View/editor.php\')" class="btn btn-primary btn-sm btn-xs btn-block"><i class="fa fa-edit"></i> Edit</button>';
+        $btn = '<button onclick="avideoModalIframeLarge(webSiteRootURL+\'plugin/VideosStatistics/View/editor.php\')" class="btn btn-primary btn-sm btn-xs btn-block"><i class="fa fa-edit"></i> Edit</button>';
+        $btn .= '<button onclick="avideoAjax(webSiteRootURL+\'plugin/VideosStatistics/autoclean.json.php\')" class="btn btn-danger btn-sm btn-xs btn-block"><i class="fa fa-edit"></i> Clean Old Records</button>';
+        return $btn;
     }
 
     static public function getTotalVideos($users_id) {
@@ -118,26 +133,63 @@ class VideosStatistics extends PluginAbstract {
     }
 
     static public function getTotalLikes($users_id) {
-        return self::getTotalLikesDislikes($users_id, 1, 0);
+        return self::getTotalLikesDislikesFromVideos($users_id, 1, 0);
     }
 
     static public function getTotalDislikes($users_id) {
-        return self::getTotalLikesDislikes($users_id, -1, 0);
+        return self::getTotalLikesDislikesFromVideos($users_id, -1, 0);
+    }
+
+    static public function getTotalLikesDislikesFromVideos($users_id, $like, $days) {
+        global $_getTotalLikesDislikes;
+
+        $index = "videoCounters:$users_id, $like, $days";
+
+        if (!isset($_getTotalLikesDislikes)) {
+            $_getTotalLikesDislikes = array();
+        }
+
+        if (isset($_getTotalLikesDislikes[$index])) {
+            return $_getTotalLikesDislikes[$index];
+        }
+
+        $column = 'likes';
+        if ($like == -1) {
+            $column = 'dislikes';
+        }
+
+        $sql = "SELECT sum({$column}) as total FROM videos WHERE 1=1 ";
+        $users_id = intval($users_id);
+        if (!empty($users_id)) {
+            $sql .= " AND users_id = $users_id ";
+        }
+        if (!empty($days)) {
+            $sql .= " AND modified  > (NOW() - INTERVAL {$days} DAY) ";
+        }
+        $total = 0;
+        $res = sqlDAL::readSql($sql);
+        if ($res != false) {
+            $row = sqlDAL::fetchAssoc($res);
+            sqlDAL::close($res);
+            $total = intval($row['total']);
+        }
+        $_getTotalLikesDislikes[$index] = $total;
+        return $total;
     }
 
     static public function getTotalLikesDislikes($users_id, $like, $days) {
-        global $_getTotalLikesDislikes; 
-        
+        global $_getTotalLikesDislikes;
+
         $index = "$users_id, $like, $days";
-        
-        if(!isset($_getTotalLikesDislikes)){
+
+        if (!isset($_getTotalLikesDislikes)) {
             $_getTotalLikesDislikes = array();
         }
-        
-        if(isset($_getTotalLikesDislikes[$index])){
+
+        if (isset($_getTotalLikesDislikes[$index])) {
             return $_getTotalLikesDislikes[$index];
         }
-        
+
         $sql = "SELECT count(id) as total FROM likes WHERE `like` = {$like} ";
         $users_id = intval($users_id);
         if (!empty($users_id)) {
@@ -194,28 +246,31 @@ class VideosStatistics extends PluginAbstract {
 
     static public function getMostViewedVideosFromLastDays($users_id, $days = 7, $limit = 15) {
         global $global;
-        $sql = "SELECT v.*, "
-                . " (SELECT count(id) FROM videos_statistics vs WHERE vs.videos_id = v.id AND modified  > (NOW() - INTERVAL {$days} DAY)) as total_views, "
-                . " (SELECT count(id) FROM comments c WHERE c.videos_id = v.id AND modified  > (NOW() - INTERVAL {$days} DAY)) as total_comments  "
-                . " FROM videos v WHERE (SELECT count(id) FROM videos_statistics vs WHERE vs.videos_id = v.id AND modified  > (NOW() - INTERVAL {$days} DAY)) > 0 ";
-
         $users_id = intval($users_id);
-        $days = intval($days);
-        $limit = intval($limit);
-
-        if (!empty($users_id)) {
-            $sql .= " AND users_id = $users_id ";
+        $days = max(1, intval($days));
+        $limit = max(1, intval($limit));
+        $sql = "SELECT v.*, a.total_views,
+                (SELECT COUNT(*) FROM comments c WHERE c.videos_id = v.id AND c.created > NOW() - INTERVAL ? DAY AND c.created <= NOW()) AS total_comments,
+                (SELECT COUNT(*) FROM likes r WHERE r.videos_id = v.id AND r.`like` = 1 AND COALESCE(r.modified, r.created) > NOW() - INTERVAL ? DAY AND COALESCE(r.modified, r.created) <= NOW()) AS total_likes,
+                (SELECT COUNT(*) FROM likes r WHERE r.videos_id = v.id AND r.`like` = -1 AND COALESCE(r.modified, r.created) > NOW() - INTERVAL ? DAY AND COALESCE(r.modified, r.created) <= NOW()) AS total_dislikes
+                FROM videos v JOIN (
+                    SELECT videos_id, COUNT(*) AS total_views FROM videos_statistics
+                    WHERE `when` > NOW() - INTERVAL ? DAY AND `when` <= NOW() GROUP BY videos_id
+                ) a ON a.videos_id = v.id WHERE 1=1";
+        $formats = 'iiii';
+        $values = [$days, $days, $days, $days];
+        if ($users_id > 0) {
+            $sql .= ' AND v.users_id = ?';
+            $formats .= 'i';
+            $values[] = $users_id;
         }
-
-        if (!empty($days)) {
-            $sql .= " AND modified  > (NOW() - INTERVAL {$days} DAY) ";
+        $sql .= ' ORDER BY total_views DESC, v.id DESC LIMIT ?';
+        $formats .= 'i';
+        $values[] = $limit;
+        $res = sqlDAL::readSql($sql, $formats, $values);
+        if ($res === false) {
+            throw new RuntimeException('Unable to load video ranking');
         }
-
-        $sql .= " ORDER BY v.modified DESC ";
-
-        $sql .= " LIMIT {$limit} ";
-
-        $res = sqlDAL::readSql($sql);
         $fullData = sqlDAL::fetchAllAssoc($res);
         sqlDAL::close($res);
 
@@ -236,8 +291,8 @@ class VideosStatistics extends PluginAbstract {
                 $video->totalComents = $row['total_comments'];
                 $video->total_views = $row['total_views'];
                 $video->modified = $row['modified'];
-                $video->total_likes = self::getTotalLikesDislikes($users_id, 1, $days);
-                $video->total_dislikes = self::getTotalLikesDislikes($users_id, -1, $days);
+                $video->total_likes = (int) $row['total_likes'];
+                $video->total_dislikes = (int) $row['total_dislikes'];
                 $video->human = humanTimingAgo($video->modified, 2);
                 $video->poster = Video::getPoster($row['id']);
 
@@ -248,14 +303,12 @@ class VideosStatistics extends PluginAbstract {
                 $obj->totalLikes += $video->total_likes;
                 $obj->totalDislikes += $video->total_dislikes;
             }
-        } else {
-            die($sql . '\nError : (' . $global['mysqli']->errno . ') ' . $global['mysqli']->error);
         }
-
+        
         if (!empty($obj->videos)) {
             usort(
                     $obj->videos,
-                    function($a, $b) {
+                    function ($a, $b) {
                         return $b->total_views - $a->total_views;
                     }
             );
@@ -265,4 +318,85 @@ class VideosStatistics extends PluginAbstract {
         return $obj;
     }
 
+    static public function getVideosToReward($percentage_watched, $only_logged_users = false, $users_id = 0) {
+        global $global;
+        // Preparing the SQL statement
+        $sql = "SELECT vs.*, v.duration_in_seconds, v.users_id as video_owner_users_id, "
+                . " (vs.seconds_watching_video / v.duration_in_seconds * 100) as percentage_watched "
+                . " FROM videos_statistics as vs "
+                . " JOIN videos as v ON vs.videos_id = v.id "
+                . " WHERE vs.seconds_watching_video IS NOT NULL ";
+
+        if (!empty($only_logged_users)) {
+            $sql .= " AND vs.users_id IS NOT NULL AND vs.users_id > 0 ";
+        }
+
+        $sql .= " AND vs.rewarded = 0 AND vs.seconds_watching_video >= (v.duration_in_seconds * ? / 100) ";
+        $formats = "s";
+        $values = [$percentage_watched];
+
+        if (!empty($users_id)) {
+            $sql .= " AND v.users_id = ?";
+            $formats .= 'i';
+            $values[] = $users_id;
+        }
+
+        //var_dump($sql, $formats, $values);
+        $res = sqlDAL::readSql($sql, $formats, $values);
+        $fullData = sqlDAL::fetchAllAssoc($res);
+        sqlDAL::close($res);
+
+        return $fullData;
+    }
+    
+    static public function setRewarded($ids_array) {
+        if(empty($ids_array)){
+            return true;
+        }
+        if(!is_array($ids_array)){
+            $ids_array = array($ids_array);
+        }
+        global $global;
+        // Preparing the SQL statement
+        $sql = "UPDATE videos_statistics SET rewarded = 1 WHERE id IN (".implode(',', $ids_array).") ";
+        
+        return sqlDAL::writeSql($sql);
+    }
+
+    function executeEveryDay() {
+        self::autoCleanStatisticsTable();
+    }
+
+    static function autoCleanStatisticsTable(){
+        $obj = AVideoPlugin::getDataObject('VideosStatistics');
+        if(!empty($obj->autoCleanStatisticsTable)){
+            $interval = intval($obj->autoCleanStatisticsTable->value);
+            if ($interval <= 0) {
+                // 0 is "Do not delete": INTERVAL 0 DAY would delete every record
+                return false;
+            }
+            $sql = "DELETE FROM videos_statistics
+            WHERE created < NOW() - INTERVAL {$interval} DAY;";
+            return sqlDAL::writeSql($sql);
+        }
+        return false;
+    }
+
+
+    
+    public static function profileTabName($users_id) {
+        global $global;
+        include $global['systemRootPath'] . 'plugin/VideosStatistics/profileTabName.php';
+    }
+
+    public static function profileTabContent($users_id) {
+        global $global;
+        include $global['systemRootPath'] . 'plugin/VideosStatistics/profileTabContent.php';
+    }
+    
+    public function navBarButtons()
+    {
+        global $global;
+        include $global['systemRootPath'] . 'plugin/VideosStatistics/navBarButtons.php';
+    }
 }

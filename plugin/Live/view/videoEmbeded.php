@@ -15,6 +15,18 @@ $customizedAdvanced = AVideoPlugin::getObjectDataIfEnabled('CustomizeAdvanced');
 
 $livet = LiveTransmition::getFromRequest();
 setLiveKey($livet['key'], Live::getLiveServersIdRequest(), @$_REQUEST['live_index']);
+
+Live::checkIfPasswordIsGood($livet['key']);
+
+if(empty($livet['live_schedule'])){
+    $lt = new LiveTransmition($livet['id']);
+}else{
+    $lt = new Live_schedule($livet['id']);
+}
+
+if (!$lt->userCanSeeTransmition()) {
+    forbiddenPage("You are not allowed see this streaming");
+}
 $uuid = LiveTransmition::keyNameFix($livet['key']);
 $p = AVideoPlugin::loadPlugin("Live");
 $objSecure = AVideoPlugin::loadPluginIfEnabled('SecureVideosDirectory');
@@ -31,20 +43,20 @@ if (!empty($_REQUEST['live_schedule'])) {
     $ls = new Live_schedule($_REQUEST['live_schedule']);
     $liveTitle = $ls->getTitle();
     global $getLiveKey;
-    $getLiveKey = array('key' => $ls->getKey(), 'live_servers_id' => intval($ls->getLive_servers_id()), 'live_index' => '', 'cleanKey' => '');
+    $getLiveKey = ['key' => $ls->getKey(), 'live_servers_id' => intval($ls->getLive_servers_id()), 'live_index' => '', 'cleanKey' => ''];
 }
-$poster = Live::getPosterImage($livet['users_id'], $_REQUEST['live_servers_id'], @$_REQUEST['live_schedule']);
+$poster = Live::getRegularPosterImage($livet['users_id'], $_REQUEST['live_servers_id'], @$_REQUEST['live_schedule'], @$_REQUEST['ppv_schedule_id']);
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo $_SESSION['language']; ?>">
+<html lang="<?php echo getLanguage(); ?>">
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="icon" href="<?php echo getCDN(); ?>view/img/favicon.ico">
-        <title><?php echo $liveTitle; ?></title>
-        <link href="<?php echo getCDN(); ?>view/bootstrap/css/bootstrap.css" rel="stylesheet" type="text/css"/>
-        <link href="<?php echo getCDN(); ?>node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"/>
+        <link rel="icon" href="<?php echo getURL('view/img/favicon.ico'); ?>">
+        <title><?php echo @$liveTitle; ?></title>
+        <link href="<?php echo getURL('view/bootstrap/css/bootstrap.min.css'); ?>" rel="stylesheet" type="text/css"/>
+        <link href="<?php echo getURL('node_modules/@fortawesome/fontawesome-free/css/all.min.css'); ?>" rel="stylesheet" type="text/css"/>
         <script src="<?php echo getURL('node_modules/jquery/dist/jquery.min.js'); ?>" type="text/javascript"></script>
         <link href="<?php echo getURL('node_modules/video.js/dist/video-js.min.css'); ?>" rel="stylesheet" type="text/css"/>
         <?php
@@ -54,11 +66,6 @@ $poster = Live::getPosterImage($livet['users_id'], $_REQUEST['live_servers_id'],
             body {
                 padding: 0 !important;
                 margin: 0 !important;
-                <?php
-                if (!empty($customizedAdvanced->embedBackgroundColor)) {
-                    echo "background-color: $customizedAdvanced->embedBackgroundColor;";
-                }
-                ?>
                 overflow:hidden;
             }
         </style>
@@ -73,7 +80,7 @@ $poster = Live::getPosterImage($livet['users_id'], $_REQUEST['live_servers_id'],
 
     <body>
         <div class="">
-            <video poster="<?php echo $global['webSiteRootURL']; ?><?php echo $poster; ?>?<?php echo filectime($global['systemRootPath'] . $poster); ?>" controls  playsinline webkit-playsinline="webkit-playsinline" 
+            <video poster="<?php echo getURL($poster); ?>" controls controlsList="nodownload" <?php echo PlayerSkins::getPlaysinline(); ?> 
                    class="video-js vjs-default-skin vjs-big-play-centered"
                    id="mainVideo" style="width: 100%; height: 100%; position: absolute;">
                 <source src="<?php echo Live::getM3U8File($uuid); ?>" type='application/x-mpegURL'>
@@ -98,8 +105,8 @@ $poster = Live::getPosterImage($livet['users_id'], $_REQUEST['live_servers_id'],
         include $global['systemRootPath'] . 'view/include/bootstrap.js.php';
         ?>
         <script src="<?php echo getURL('view/js/script.js'); ?>" type="text/javascript"></script>
-        <script src="<?php echo getCDN(); ?>view/js/js-cookie/js.cookie.js" type="text/javascript"></script>
-        <script src="<?php echo getCDN(); ?>view/js/jquery-toast/jquery.toast.min.js" type="text/javascript"></script>
+        <script src="<?php echo getCDN(); ?>node_modules/js-cookie/dist/js.cookie.js" type="text/javascript"></script>
+        <script src="<?php echo getCDN(); ?>node_modules/jquery-toast-plugin/dist/jquery.toast.min.js" type="text/javascript"></script>
         <script src="<?php echo getCDN(); ?>node_modules/sweetalert/dist/sweetalert.min.js" type="text/javascript"></script>
         <script>
 <?php

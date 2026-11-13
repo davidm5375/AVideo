@@ -10,7 +10,7 @@ if (empty($playlists_id)) {
 if (!isset($global['systemRootPath'])) {
     require_once '../../../videos/configuration.php';
 }
-session_write_close();
+_session_write_close();
 
 $video = Video::getVideoFromSeriePlayListsId($playlists_id);
 if (empty($video)) {
@@ -33,44 +33,56 @@ if (empty($_REQUEST['uid'])) {
   return false;
   }
   ob_start();
- * 
+ *
  */
 $obj = AVideoPlugin::getObjectData("YouPHPFlix2");
 
 //if ($obj->PlayList) {
-    $dataFlickirty = new stdClass();
+$dataFlickirty = new stdClass();
+$dataFlickirty->wrapAround = true;
+$dataFlickirty->pageDots = !empty($obj->pageDots);
+$dataFlickirty->lazyLoad = true;
+$dataFlickirty->fade = true;
+$dataFlickirty->setGallerySize = false;
+$dataFlickirty->cellAlign = 'left';
+$dataFlickirty->groupCells = true;
+if ($obj->PlayListAutoPlay) {
+    $dataFlickirty->autoPlay = 10000;
     $dataFlickirty->wrapAround = true;
-    $dataFlickirty->pageDots = !empty($obj->pageDots);
-    $dataFlickirty->lazyLoad = true;
-    $dataFlickirty->fade = true;
-    $dataFlickirty->setGallerySize = false;
-    $dataFlickirty->cellAlign = 'left';
-    $dataFlickirty->groupCells = true;
-    if ($obj->PlayListAutoPlay) {
-        $dataFlickirty->autoPlay = 10000;
-        $dataFlickirty->wrapAround = true;
-    } else {
-        $dataFlickirty->wrapAround = true;
-    }
-    $videos = PlayList::getAllFromPlaylistsID($playlists_id);
-    $uidFlickirty = uniqid();
-    ?>
-    <div class="row topicRow" id="<?php echo $uidFlickirty; ?>-Flickirty">
-        <!-- Serie -->
-        <?php
-        $rowPlayListLink = PlayLists::getLink($playlists_id);
-        $rowPlayListLinkEmbed = PlayLists::getLink($playlists_id, true);
-        include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/row.php';
-        unset($rowPlayListLink);
-        unset($rowPlayListLinkEmbed);
-        ?>
+} else {
+    $dataFlickirty->wrapAround = true;
+}
+$videos = PlayList::getAllFromPlaylistsID($playlists_id);
+
+if (empty($videos)) {
+?>
+    <div class="alert alert-info text-center" role="alert">
+        <h4><?php echo __('No videos in this playlist yet'); ?>!</h4>
+        <p><?php echo __('Please come back later'); ?>.</p>
     </div>
-    <script>
-        startModeFlix('#<?php echo $uidFlickirty; ?>-Flickirty ');
-    </script>
+<?php
+    return;
+}
+
+$uidFlickirty = uniqid();
+?>
+<div class="row topicRow" id="<?php echo $uidFlickirty; ?>-Flickirty">
+    <!-- Serie -->
     <?php
-    $rowlink = false;
-    $rowlinkEmbed = false;
+    $rowPlayListLink = PlayLists::getLink($playlists_id);
+    $rowPlayListLinkEmbed = PlayLists::getLink($playlists_id, true);
+    include $global['systemRootPath'] . 'plugin/YouPHPFlix2/view/row.php';
+    unset($rowPlayListLink);
+    unset($rowPlayListLinkEmbed);
+    ?>
+</div>
+<script>
+    startModeFlix('#<?php echo $uidFlickirty; ?>-Flickirty ');
+</script>
+<?php
+$rowLinkType = '';
+$rowlink = false;
+$rowlinkEmbed = false;
 //}
 /*
   $cache = ob_get_clean();
@@ -78,6 +90,6 @@ $obj = AVideoPlugin::getObjectData("YouPHPFlix2");
   ObjectYPT::setCache($cacheName, $cache);
 
   echo str_replace('{serie_uid}', uniqid(), $cache);
- * 
+ *
  */
 ?>

@@ -60,12 +60,12 @@ class Google extends OAuth2
     /**
      * {@inheritdoc}
      */
-    protected $authorizeUrl = 'https://accounts.google.com/o/oauth2/auth';
+    protected $authorizeUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
 
     /**
      * {@inheritdoc}
      */
-    protected $accessTokenUrl = 'https://accounts.google.com/o/oauth2/token';
+    protected $accessTokenUrl = 'https://oauth2.googleapis.com/token';
 
     /**
      * {@inheritdoc}
@@ -80,13 +80,14 @@ class Google extends OAuth2
         parent::initialize();
 
         $this->AuthorizeUrlParameters += [
-            'access_type' => 'offline'
+            'access_type' => 'offline',
+            'prompt' => 'consent'
         ];
 
         if ($this->isRefreshTokenAvailable()) {
             $this->tokenRefreshParameters += [
                 'client_id' => $this->clientId,
-                'client_secret' => $this->clientSecret
+                'client_secret' => $this->clientSecret,
             ];
         }
     }

@@ -29,7 +29,7 @@ use Google\Service\Apigee\GoogleProtobufEmpty;
  * Typical usage is:
  *  <code>
  *   $apigeeService = new Google\Service\Apigee(...);
- *   $developers = $apigeeService->developers;
+ *   $developers = $apigeeService->organizations_developers;
  *  </code>
  */
 class OrganizationsDevelopers extends \Google\Service\Resource
@@ -52,6 +52,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * @param GoogleCloudApigeeV1Attributes $postBody
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1Attributes
+   * @throws \Google\Service\Exception
    */
   public function attributes($parent, GoogleCloudApigeeV1Attributes $postBody, $optParams = [])
   {
@@ -71,6 +72,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * @param GoogleCloudApigeeV1Developer $postBody
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1Developer
+   * @throws \Google\Service\Exception
    */
   public function create($parent, GoogleCloudApigeeV1Developer $postBody, $optParams = [])
   {
@@ -84,15 +86,16 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * related artifacts. To avoid permanently deleting developers and their
    * artifacts, set the developer status to `inactive` using the
    * SetDeveloperStatus API. **Note**: The delete operation is asynchronous. The
-   * developer app is deleted immediately, but its associated resources, such as
-   * apps and API keys, may take anywhere from a few seconds to a few minutes to
-   * be deleted. (developers.delete)
+   * developer is deleted immediately, but its associated resources, such as apps
+   * and API keys, may take anywhere from a few seconds to a few minutes to be
+   * deleted. (developers.delete)
    *
    * @param string $name Required. Email address of the developer. Use the
    * following structure in your request:
    * `organizations/{org}/developers/{developer_email}`
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1Developer
+   * @throws \Google\Service\Exception
    */
   public function delete($name, $optParams = [])
   {
@@ -113,6 +116,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * @opt_param string action Status of the developer. Valid values are `active`
    * or `inactive`.
    * @return GoogleCloudApigeeV1Developer
+   * @throws \Google\Service\Exception
    */
   public function get($name, $optParams = [])
   {
@@ -128,6 +132,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * `organizations/{org}/developers/{developer}/balance`
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1DeveloperBalance
+   * @throws \Google\Service\Exception
    */
   public function getBalance($name, $optParams = [])
   {
@@ -144,6 +149,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * `organizations/{org}/developers/{developer}/monetizationConfig`
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1DeveloperMonetizationConfig
+   * @throws \Google\Service\Exception
    */
   public function getMonetizationConfig($name, $optParams = [])
   {
@@ -182,6 +188,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * and your `startKey` is `fezzik@example.com`, the list returned will be ```
    * fezzik@example.com buttercup@example.com ```
    * @return GoogleCloudApigeeV1ListOfDevelopersResponse
+   * @throws \Google\Service\Exception
    */
   public function listOrganizationsDevelopers($parent, $optParams = [])
   {
@@ -207,6 +214,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * @opt_param string action Status of the developer. Valid values are `active`
    * and `inactive`.
    * @return GoogleProtobufEmpty
+   * @throws \Google\Service\Exception
    */
   public function setDeveloperStatus($name, $optParams = [])
   {
@@ -231,6 +239,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * @param GoogleCloudApigeeV1Developer $postBody
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1Developer
+   * @throws \Google\Service\Exception
    */
   public function update($name, GoogleCloudApigeeV1Developer $postBody, $optParams = [])
   {
@@ -248,6 +257,7 @@ class OrganizationsDevelopers extends \Google\Service\Resource
    * @param GoogleCloudApigeeV1DeveloperMonetizationConfig $postBody
    * @param array $optParams Optional parameters.
    * @return GoogleCloudApigeeV1DeveloperMonetizationConfig
+   * @throws \Google\Service\Exception
    */
   public function updateMonetizationConfig($name, GoogleCloudApigeeV1DeveloperMonetizationConfig $postBody, $optParams = [])
   {

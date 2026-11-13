@@ -1,5 +1,4 @@
 <?php
-
 if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
@@ -7,23 +6,23 @@ if (!isset($global['systemRootPath'])) {
 header('Content-Type: application/json');
 
 $obj = new stdClass();
-$obj->videos_id = "";
-$obj->poster = "";
-$obj->sources = "";
-$obj->url = "";
-$obj->friendly = "";
-$obj->embed = "";
-$obj->sprits = "";
-$obj->nextURL = "";
-$obj->nextURLEmbed = "";
+$obj->videos_id = '';
+$obj->poster = '';
+$obj->sources = '';
+$obj->url = '';
+$obj->friendly = '';
+$obj->embed = '';
+$obj->sprits = '';
+$obj->nextURL = '';
+$obj->nextURLEmbed = '';
 $obj->error = true;
-$obj->msg = "";
+$obj->msg = '';
 if (empty($_GET['url'])) {
     $obj->msg = "empty URL";
     die(json_encode($obj));
 }
 $obj->url = $_GET['url'];
-$obj->vtt = array();
+$obj->vtt = [];
 
 $patternURL = addcslashes($global['webSiteRootURL'], "/");
 $obj->videos_id = getVideoIDFromURL($obj->url);
@@ -48,7 +47,7 @@ $obj->error = false;
 
 $obj->friendly = Video::getURLFriendly($obj->videos_id);
 $obj->embed = Video::getURLFriendly($obj->videos_id, true);
-$obj->sources = getSources($video['filename'], true);
+$obj->sources = PlaybackAccess::isAllowed($video['id']) ? getSources($video['filename'], true) : [];
 $obj->poster = "{$global['webSiteRootURL']}videos/{$video['filename']}.jpg";
 $obj->sprits = "{$global['webSiteRootURL']}videos/{$video['filename']}_thumbsSprit.jpg";
 $obj->title = $video['title'];
@@ -57,12 +56,12 @@ $obj->userPhoto = User::getPhoto($video['users_id']);
 if (!empty($video['next_videos_id'])) {
     $obj->nextURL = Video::getURLFriendly($video['next_videos_id']);
     $obj->nextURLEmbed = Video::getURLFriendly($video['next_videos_id'], true);
-}else{
-    $catName = @$_GET['catName'];
+} else {
+    $catName = @$_REQUEST['catName'];
     $cat = new Category($video['categories_id']);
-    $_GET['catName'] = $cat->getClean_name();
-    $next_video = Video::getVideo('', 'viewable', false, true);
-    $_GET['catName'] = $catName;
+    $_REQUEST['catName'] = $cat->getClean_name();
+    $next_video = Video::getVideo('', Video::SORT_TYPE_VIEWABLE, false, true);
+    $_REQUEST['catName'] = $catName;
     if (!empty($next_video['id'])) {
         $obj->nextURL = Video::getURLFriendly($next_video['id']);
         $obj->nextURLEmbed = Video::getURLFriendly($next_video['id'], true);

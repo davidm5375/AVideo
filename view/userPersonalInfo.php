@@ -1,4 +1,4 @@
-<form class="form-compact well form-horizontal"  id="updateUserFormPersonal" onsubmit="">
+<form class="form-compact form-horizontal accountForm"  id="updateUserFormPersonal" onsubmit="">
     <?php
     if (!empty($advancedCustomUser->disablePersonalInfo)) {
         return false;
@@ -10,7 +10,7 @@
     $myCity = $user->getCity();
     ?>
     <div class="form-group">
-        <label class="col-md-4 control-label"><?php echo __("First Name"); ?></label>
+        <label for="first_name" class="col-md-4 control-label"><?php echo __("First Name"); ?></label>
         <div class="col-md-8 inputGroupContainer">
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-lock"></i></span>
@@ -20,7 +20,7 @@
     </div>
 
     <div class="form-group">
-        <label class="col-md-4 control-label"><?php echo __("Last Name"); ?></label>
+        <label for="last_name" class="col-md-4 control-label"><?php echo __("Last Name"); ?></label>
         <div class="col-md-8 inputGroupContainer">
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-lock"></i></span>
@@ -30,7 +30,7 @@
     </div>
 
     <div class="form-group">
-        <label class="col-md-4 control-label"><?php echo __("Address"); ?></label>
+        <label for="address" class="col-md-4 control-label"><?php echo __("Address"); ?></label>
         <div class="col-md-8 inputGroupContainer">
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-lock"></i></span>
@@ -40,7 +40,7 @@
     </div>
 
     <div class="form-group">
-        <label class="col-md-4 control-label"><?php echo __("Zip Code"); ?></label>
+        <label for="zip_code" class="col-md-4 control-label"><?php echo __("Zip Code"); ?></label>
         <div class="col-md-8 inputGroupContainer">
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-lock"></i></span>
@@ -53,16 +53,16 @@
     $countries = IP2Location::getCountries();
     ?>
     <div class="form-group">
-        <label for="status" class="col-md-4 control-label"><?php echo __("Country"); ?>:</label>
+        <label for="country" class="col-md-4 control-label"><?php echo __("Country"); ?> / <?php echo __("Region"); ?>:</label>
         <div class="col-md-8 inputGroupContainer">
 
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-lock"></i></span>
-                <select class="form-control input-sm" name="country" id="country">
+                <select class="form-control" name="country" id="country">
                     <option><?php echo $text; ?></option>
                     <?php
                     foreach ($countries as $key => $value) {
-                        $selected = "";
+                        $selected = '';
                         if ($myCountry === $value) {
                             $selected = 'selected';
                         }
@@ -73,39 +73,39 @@
             </div>
 
         </div>
-    </div> 
+    </div>
 
 
     <div class="form-group">
-        <label for="status" class="col-md-4 control-label"><?php echo __("Region"); ?>:</label>
+        <label for="region" class="col-md-4 control-label"><?php echo __("Region"); ?>:</label>
         <div class="col-md-8 inputGroupContainer">
 
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-lock"></i></span>
-                <select class="form-control input-sm" name="region" id="region">
+                <select class="form-control" name="region" id="region">
                     <option><?php echo $text; ?></option>
                 </select>
             </div>
 
         </div>
-    </div> 
+    </div>
 
     <div class="form-group">
-        <label for="status" class="col-md-4 control-label"><?php echo __("City"); ?>:</label>
+        <label for="city" class="col-md-4 control-label"><?php echo __("City"); ?>:</label>
         <div class="col-md-8 inputGroupContainer">
 
             <div class="input-group">
                 <span class="input-group-addon"><i class="fa fa-lock"></i></span>
-                <select class="form-control input-sm" name="city" id="city">
+                <select class="form-control" name="city" id="city">
                     <option><?php echo $text; ?></option>
                 </select>
             </div>
 
         </div>
-    </div> 
+    </div>
 
-    <div class="form-group">
-        <div class="col-md-12 ">
+    <div class="form-group accountDocument">
+        <div class="col-md-12">
             <div id="documentImage"></div>
             <center>
                 <a id="upload-btnDocument" class="btn btn-success"><i class="fa fa-upload"></i> <?php echo __("Upload a Document Image"); ?></a>
@@ -115,11 +115,11 @@
     </div>
 
     <!-- Button -->
-    <div class="form-group">
+    <div class="form-group accountSave">
         <hr>
         <div class="col-md-12">
             <center>
-                <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <button type="submit" class="btn btn-primary">
                     <span class="fa fa-save"></span> <?php echo __("Save"); ?>
                 </button>
             </center>
@@ -141,11 +141,11 @@
         function savePersonalInfoAjax() {
             uploadCropDocument.croppie('result', {
                 type: 'canvas',
-                size: 'viewport'
+                size: {width: 640, height: 450}
             }).then(function (resp) {
                 $.ajax({
                     type: "POST",
-                    url: "<?php echo $global['webSiteRootURL']; ?>objects/userUpdatePersonal.json.php",
+                    url: webSiteRootURL+"objects/userUpdatePersonal.json.php",
                     data: {
                         imgBase64: resp,
                         first_name: $('#first_name').val(),
@@ -176,25 +176,27 @@
                 savePersonalInfo();
             });
 
+            var documentCropWidth = Math.min(640, Math.max(180, window.innerWidth - 100));
+            var documentCropHeight = Math.round(documentCropWidth * 450 / 640);
             uploadCropDocument = $('#documentImage').croppie({
-                url: '<?php echo $global['webSiteRootURL']; ?>objects/userDocument.png.php?users_id=<?php echo User::getId(); ?>',
+                url: webSiteRootURL+'objects/userDocument.png.php?users_id=<?php echo User::getId(); ?>',
                             enableExif: true,
                             enforceBoundary: false,
                             mouseWheelZoom: false,
                             viewport: {
-                                width: 640,
-                                height: 450
+                                width: documentCropWidth,
+                                height: documentCropHeight
                             },
                             boundary: {
-                                width: 640,
-                                height: 450
+                                width: documentCropWidth,
+                                height: documentCropHeight
                             }
                         });
 
                         $("#country").on("change", function (e) {
                             //modal.showPleaseWait();
                             $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>plugin/User_Location/regions.json.php?country=' + $('#country').val(),
+                                url: webSiteRootURL+'plugin/User_Location/regions.json.php?country=' + $('#country').val(),
                                 success: function (response) {
                                     $('#region').empty();
                                     $('#region').append($("<option></option>").text('<?php echo $text; ?>'));
@@ -220,7 +222,7 @@
                         $("#region").on("change", function (e) {
                             //modal.showPleaseWait();
                             $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>plugin/User_Location/cities.json.php?country=' + $('#country').val() + '&region=' + $('#region').val(),
+                                url: webSiteRootURL+'plugin/User_Location/cities.json.php?country=' + $('#country').val() + '&region=' + $('#region').val(),
                                 success: function (response) {
                                     $('#city').empty();
                                     $('#city').append($("<option></option>").text('<?php echo $text; ?>'));
@@ -238,12 +240,12 @@
 
 <?php
 if (!empty($myCountry)) {
-    ?>
+                        ?>
                             setTimeout(function () {
                                 $("#country").trigger('change');
                             }, 1000);
     <?php
-}
+                    }
 ?>
 
                     });

@@ -30,7 +30,7 @@ use Google\Service\ManagedServiceforMicrosoftActiveDirectoryConsumerAPI\TestIamP
  * Typical usage is:
  *  <code>
  *   $managedidentitiesService = new Google\Service\ManagedServiceforMicrosoftActiveDirectoryConsumerAPI(...);
- *   $peerings = $managedidentitiesService->peerings;
+ *   $peerings = $managedidentitiesService->projects_locations_global_peerings;
  *  </code>
  */
 class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\Resource
@@ -44,8 +44,10 @@ class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\R
    * @param array $optParams Optional parameters.
    *
    * @opt_param string peeringId Required. Peering Id, unique name to identify
-   * peering.
+   * peering. It should follow the regex format
+   * "^(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)$"
    * @return Operation
+   * @throws \Google\Service\Exception
    */
   public function create($parent, Peering $postBody, $optParams = [])
   {
@@ -60,6 +62,7 @@ class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\R
    * `projects/{project_id}/locations/global/peerings/{peering_id}`
    * @param array $optParams Optional parameters.
    * @return Operation
+   * @throws \Google\Service\Exception
    */
   public function delete($name, $optParams = [])
   {
@@ -74,6 +77,7 @@ class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\R
    * `projects/{project_id}/locations/global/peerings/{peering_id}`
    * @param array $optParams Optional parameters.
    * @return Peering
+   * @throws \Google\Service\Exception
    */
   public function get($name, $optParams = [])
   {
@@ -86,19 +90,25 @@ class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\R
    * resource exists and does not have a policy set. (peerings.getIamPolicy)
    *
    * @param string $resource REQUIRED: The resource for which the policy is being
-   * requested. See the operation documentation for the appropriate value for this
-   * field.
+   * requested. See [Resource
+   * names](https://cloud.google.com/apis/design/resource_names) for the
+   * appropriate value for this field.
    * @param array $optParams Optional parameters.
    *
-   * @opt_param int options.requestedPolicyVersion Optional. The policy format
-   * version to be returned. Valid values are 0, 1, and 3. Requests specifying an
-   * invalid value will be rejected. Requests for policies with any conditional
-   * bindings must specify version 3. Policies without any conditional bindings
-   * may specify any valid value or leave the field unset. To learn which
-   * resources support conditions in their IAM policies, see the [IAM
+   * @opt_param int options.requestedPolicyVersion Optional. The maximum policy
+   * version that will be used to format the policy. Valid values are 0, 1, and 3.
+   * Requests specifying an invalid value will be rejected. Requests for policies
+   * with any conditional role bindings must specify version 3. Policies with no
+   * conditional role bindings may specify any valid value or leave the field
+   * unset. The policy in the response might use the policy version that you
+   * specified, or it might use a lower policy version. For example, if you
+   * specify version 3, but the policy has no conditional role bindings, the
+   * response uses version 1. To learn which resources support conditions in their
+   * IAM policies, see the [IAM
    * documentation](https://cloud.google.com/iam/help/conditions/resource-
    * policies).
    * @return Policy
+   * @throws \Google\Service\Exception
    */
   public function getIamPolicy($resource, $optParams = [])
   {
@@ -128,6 +138,7 @@ class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\R
    * @opt_param string pageToken Optional. The next_page_token value returned from
    * a previous List request, if any.
    * @return ListPeeringsResponse
+   * @throws \Google\Service\Exception
    */
   public function listProjectsLocationsManagedidentitiesGlobalPeerings($parent, $optParams = [])
   {
@@ -148,6 +159,7 @@ class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\R
    * path must be supplied in this field. The elements of the repeated paths field
    * may only include these fields from Peering: * `labels`
    * @return Operation
+   * @throws \Google\Service\Exception
    */
   public function patch($name, Peering $postBody, $optParams = [])
   {
@@ -161,11 +173,13 @@ class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\R
    * `PERMISSION_DENIED` errors. (peerings.setIamPolicy)
    *
    * @param string $resource REQUIRED: The resource for which the policy is being
-   * specified. See the operation documentation for the appropriate value for this
-   * field.
+   * specified. See [Resource
+   * names](https://cloud.google.com/apis/design/resource_names) for the
+   * appropriate value for this field.
    * @param SetIamPolicyRequest $postBody
    * @param array $optParams Optional parameters.
    * @return Policy
+   * @throws \Google\Service\Exception
    */
   public function setIamPolicy($resource, SetIamPolicyRequest $postBody, $optParams = [])
   {
@@ -181,11 +195,13 @@ class ProjectsLocationsManagedidentitiesGlobalPeerings extends \Google\Service\R
    * This operation may "fail open" without warning. (peerings.testIamPermissions)
    *
    * @param string $resource REQUIRED: The resource for which the policy detail is
-   * being requested. See the operation documentation for the appropriate value
-   * for this field.
+   * being requested. See [Resource
+   * names](https://cloud.google.com/apis/design/resource_names) for the
+   * appropriate value for this field.
    * @param TestIamPermissionsRequest $postBody
    * @param array $optParams Optional parameters.
    * @return TestIamPermissionsResponse
+   * @throws \Google\Service\Exception
    */
   public function testIamPermissions($resource, TestIamPermissionsRequest $postBody, $optParams = [])
   {

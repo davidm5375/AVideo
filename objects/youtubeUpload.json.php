@@ -43,7 +43,7 @@ if (isset($_GET['code'])) {
     header('Location: ' . $redirect);
 }
 if (!is_array($_POST['id'])) {
-    $_POST['id'] = array($_POST['id']);
+    $_POST['id'] = [$_POST['id']];
 }
 foreach ($_POST['id'] as $value) {
     $v = new Video("", "", $value);
@@ -66,7 +66,7 @@ foreach ($_POST['id'] as $value) {
             $snippet = new Google_Service_YouTube_VideoSnippet();
             $snippet->setTitle($v->getTitle());
             $snippet->setDescription($v->getDescription());
-            $snippet->setTags(array("AVideo", $config->getWebSiteTitle()));
+            $snippet->setTags(["AVideo", $config->getWebSiteTitle()]);
             // Numeric video category. See
             // https://developers.google.com/youtube/v3/docs/videoCategories/list
             // $snippet->setCategoryId("22");
@@ -122,7 +122,7 @@ foreach ($_POST['id'] as $value) {
         } catch (Google_Service_Exception $e) {
             $obj->msg = sprintf(__("A service error occurred [1]: %s"), $e->getMessage());
         } catch (Google_Exception $e) {
-            $obj->msg = sprintf(__("An client error occurred [2]: %s"), $e->getMessage());
+            $obj->msg = sprintf(__("A client error occurred [2]: %s"), $e->getMessage());
         }
         $_SESSION[$tokenSessionKey] = $client->getAccessToken();
     } elseif ($OAUTH2_CLIENT_ID == 'REPLACE_ME') {

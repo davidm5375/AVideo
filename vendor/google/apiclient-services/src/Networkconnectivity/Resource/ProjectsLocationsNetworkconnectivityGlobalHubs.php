@@ -17,10 +17,16 @@
 
 namespace Google\Service\Networkconnectivity\Resource;
 
+use Google\Service\Networkconnectivity\AcceptHubSpokeRequest;
+use Google\Service\Networkconnectivity\AcceptSpokeUpdateRequest;
 use Google\Service\Networkconnectivity\GoogleLongrunningOperation;
 use Google\Service\Networkconnectivity\Hub;
+use Google\Service\Networkconnectivity\ListHubSpokesResponse;
 use Google\Service\Networkconnectivity\ListHubsResponse;
 use Google\Service\Networkconnectivity\Policy;
+use Google\Service\Networkconnectivity\QueryHubStatusResponse;
+use Google\Service\Networkconnectivity\RejectHubSpokeRequest;
+use Google\Service\Networkconnectivity\RejectSpokeUpdateRequest;
 use Google\Service\Networkconnectivity\SetIamPolicyRequest;
 use Google\Service\Networkconnectivity\TestIamPermissionsRequest;
 use Google\Service\Networkconnectivity\TestIamPermissionsResponse;
@@ -30,31 +36,66 @@ use Google\Service\Networkconnectivity\TestIamPermissionsResponse;
  * Typical usage is:
  *  <code>
  *   $networkconnectivityService = new Google\Service\Networkconnectivity(...);
- *   $hubs = $networkconnectivityService->hubs;
+ *   $hubs = $networkconnectivityService->projects_locations_global_hubs;
  *  </code>
  */
 class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Resource
 {
   /**
-   * Creates a new hub in the specified project. (hubs.create)
+   * Accepts a proposal to attach a Network Connectivity Center spoke to a hub.
+   * (hubs.acceptSpoke)
+   *
+   * @param string $name Required. The name of the hub into which to accept the
+   * spoke.
+   * @param AcceptHubSpokeRequest $postBody
+   * @param array $optParams Optional parameters.
+   * @return GoogleLongrunningOperation
+   * @throws \Google\Service\Exception
+   */
+  public function acceptSpoke($name, AcceptHubSpokeRequest $postBody, $optParams = [])
+  {
+    $params = ['name' => $name, 'postBody' => $postBody];
+    $params = array_merge($params, $optParams);
+    return $this->call('acceptSpoke', [$params], GoogleLongrunningOperation::class);
+  }
+  /**
+   * Accepts a proposal to update a Network Connectivity Center spoke in a hub.
+   * (hubs.acceptSpokeUpdate)
+   *
+   * @param string $name Required. The name of the hub to accept spoke update.
+   * @param AcceptSpokeUpdateRequest $postBody
+   * @param array $optParams Optional parameters.
+   * @return GoogleLongrunningOperation
+   * @throws \Google\Service\Exception
+   */
+  public function acceptSpokeUpdate($name, AcceptSpokeUpdateRequest $postBody, $optParams = [])
+  {
+    $params = ['name' => $name, 'postBody' => $postBody];
+    $params = array_merge($params, $optParams);
+    return $this->call('acceptSpokeUpdate', [$params], GoogleLongrunningOperation::class);
+  }
+  /**
+   * Creates a new Network Connectivity Center hub in the specified project.
+   * (hubs.create)
    *
    * @param string $parent Required. The parent resource.
    * @param Hub $postBody
    * @param array $optParams Optional parameters.
    *
-   * @opt_param string hubId Optional. A unique identifier for the hub.
-   * @opt_param string requestId Optional. A unique request ID (optional). If you
-   * specify this ID, you can use it in cases when you need to retry your request.
-   * When you need to retry, this ID lets the server know that it can ignore the
-   * request if it has already been completed. The server guarantees that for at
-   * least 60 minutes after the first request. For example, consider a situation
-   * where you make an initial request and the request times out. If you make the
+   * @opt_param string hubId Required. A unique identifier for the hub.
+   * @opt_param string requestId Optional. A request ID to identify requests.
+   * Specify a unique request ID so that if you must retry your request, the
+   * server knows to ignore the request if it has already been completed. The
+   * server guarantees that a request doesn't result in creation of duplicate
+   * commitments for at least 60 minutes. For example, consider a situation where
+   * you make an initial request and the request times out. If you make the
    * request again with the same request ID, the server can check to see whether
    * the original operation was received. If it was, the server ignores the second
    * request. This behavior prevents clients from mistakenly creating duplicate
    * commitments. The request ID must be a valid UUID, with the exception that
    * zero UUID is not supported (00000000-0000-0000-0000-000000000000).
    * @return GoogleLongrunningOperation
+   * @throws \Google\Service\Exception
    */
   public function create($parent, Hub $postBody, $optParams = [])
   {
@@ -63,23 +104,24 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
     return $this->call('create', [$params], GoogleLongrunningOperation::class);
   }
   /**
-   * Deletes the specified hub. (hubs.delete)
+   * Deletes a Network Connectivity Center hub. (hubs.delete)
    *
    * @param string $name Required. The name of the hub to delete.
    * @param array $optParams Optional parameters.
    *
-   * @opt_param string requestId Optional. A unique request ID (optional). If you
-   * specify this ID, you can use it in cases when you need to retry your request.
-   * When you need to retry, this ID lets the server know that it can ignore the
-   * request if it has already been completed. The server guarantees that for at
-   * least 60 minutes after the first request. For example, consider a situation
-   * where you make an initial request and the request times out. If you make the
+   * @opt_param string requestId Optional. A request ID to identify requests.
+   * Specify a unique request ID so that if you must retry your request, the
+   * server knows to ignore the request if it has already been completed. The
+   * server guarantees that a request doesn't result in creation of duplicate
+   * commitments for at least 60 minutes. For example, consider a situation where
+   * you make an initial request and the request times out. If you make the
    * request again with the same request ID, the server can check to see whether
    * the original operation was received. If it was, the server ignores the second
    * request. This behavior prevents clients from mistakenly creating duplicate
    * commitments. The request ID must be a valid UUID, with the exception that
    * zero UUID is not supported (00000000-0000-0000-0000-000000000000).
    * @return GoogleLongrunningOperation
+   * @throws \Google\Service\Exception
    */
   public function delete($name, $optParams = [])
   {
@@ -88,11 +130,12 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
     return $this->call('delete', [$params], GoogleLongrunningOperation::class);
   }
   /**
-   * Gets details about the specified hub. (hubs.get)
+   * Gets details about a Network Connectivity Center hub. (hubs.get)
    *
    * @param string $name Required. The name of the hub resource to get.
    * @param array $optParams Optional parameters.
    * @return Hub
+   * @throws \Google\Service\Exception
    */
   public function get($name, $optParams = [])
   {
@@ -105,19 +148,25 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
    * resource exists and does not have a policy set. (hubs.getIamPolicy)
    *
    * @param string $resource REQUIRED: The resource for which the policy is being
-   * requested. See the operation documentation for the appropriate value for this
-   * field.
+   * requested. See [Resource
+   * names](https://cloud.google.com/apis/design/resource_names) for the
+   * appropriate value for this field.
    * @param array $optParams Optional parameters.
    *
-   * @opt_param int options.requestedPolicyVersion Optional. The policy format
-   * version to be returned. Valid values are 0, 1, and 3. Requests specifying an
-   * invalid value will be rejected. Requests for policies with any conditional
-   * bindings must specify version 3. Policies without any conditional bindings
-   * may specify any valid value or leave the field unset. To learn which
-   * resources support conditions in their IAM policies, see the [IAM
+   * @opt_param int options.requestedPolicyVersion Optional. The maximum policy
+   * version that will be used to format the policy. Valid values are 0, 1, and 3.
+   * Requests specifying an invalid value will be rejected. Requests for policies
+   * with any conditional role bindings must specify version 3. Policies with no
+   * conditional role bindings may specify any valid value or leave the field
+   * unset. The policy in the response might use the policy version that you
+   * specified, or it might use a lower policy version. For example, if you
+   * specify version 3, but the policy has no conditional role bindings, the
+   * response uses version 1. To learn which resources support conditions in their
+   * IAM policies, see the [IAM
    * documentation](https://cloud.google.com/iam/help/conditions/resource-
    * policies).
    * @return Policy
+   * @throws \Google\Service\Exception
    */
   public function getIamPolicy($resource, $optParams = [])
   {
@@ -126,19 +175,18 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
     return $this->call('getIamPolicy', [$params], Policy::class);
   }
   /**
-   * Lists hubs in a given project.
+   * Lists the Network Connectivity Center hubs associated with a given project.
    * (hubs.listProjectsLocationsNetworkconnectivityGlobalHubs)
    *
    * @param string $parent Required. The parent resource's name.
    * @param array $optParams Optional parameters.
    *
-   * @opt_param string filter An expression that filters the results listed in the
-   * response.
+   * @opt_param string filter An expression that filters the list of results.
    * @opt_param string orderBy Sort the results by a certain order.
-   * @opt_param int pageSize The maximum number of results per page that should be
-   * returned.
+   * @opt_param int pageSize The maximum number of results per page to return.
    * @opt_param string pageToken The page token.
    * @return ListHubsResponse
+   * @throws \Google\Service\Exception
    */
   public function listProjectsLocationsNetworkconnectivityGlobalHubs($parent, $optParams = [])
   {
@@ -147,7 +195,37 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
     return $this->call('list', [$params], ListHubsResponse::class);
   }
   /**
-   * Updates the description and/or labels of the specified hub. (hubs.patch)
+   * Lists the Network Connectivity Center spokes associated with a specified hub
+   * and location. The list includes both spokes that are attached to the hub and
+   * spokes that have been proposed but not yet accepted. (hubs.listSpokes)
+   *
+   * @param string $name Required. The name of the hub.
+   * @param array $optParams Optional parameters.
+   *
+   * @opt_param string filter An expression that filters the list of results.
+   * @opt_param string orderBy Sort the results by name or create_time.
+   * @opt_param int pageSize The maximum number of results to return per page.
+   * @opt_param string pageToken The page token.
+   * @opt_param string spokeLocations A list of locations. Specify one of the
+   * following: `[global]`, a single region (for example, `[us-central1]`), or a
+   * combination of values (for example, `[global, us-central1, us-west1]`). If
+   * the spoke_locations field is populated, the list of results includes only
+   * spokes in the specified location. If the spoke_locations field is not
+   * populated, the list of results includes spokes in all locations.
+   * @opt_param string view The view of the spoke to return. The view that you use
+   * determines which spoke fields are included in the response.
+   * @return ListHubSpokesResponse
+   * @throws \Google\Service\Exception
+   */
+  public function listSpokes($name, $optParams = [])
+  {
+    $params = ['name' => $name];
+    $params = array_merge($params, $optParams);
+    return $this->call('listSpokes', [$params], ListHubSpokesResponse::class);
+  }
+  /**
+   * Updates the description and/or labels of a Network Connectivity Center hub.
+   * (hubs.patch)
    *
    * @param string $name Immutable. The name of the hub. Hub names must be unique.
    * They use the following form:
@@ -155,12 +233,12 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
    * @param Hub $postBody
    * @param array $optParams Optional parameters.
    *
-   * @opt_param string requestId Optional. A unique request ID (optional). If you
-   * specify this ID, you can use it in cases when you need to retry your request.
-   * When you need to retry, this ID lets the server know that it can ignore the
-   * request if it has already been completed. The server guarantees that for at
-   * least 60 minutes after the first request. For example, consider a situation
-   * where you make an initial request and the request times out. If you make the
+   * @opt_param string requestId Optional. A request ID to identify requests.
+   * Specify a unique request ID so that if you must retry your request, the
+   * server knows to ignore the request if it has already been completed. The
+   * server guarantees that a request doesn't result in creation of duplicate
+   * commitments for at least 60 minutes. For example, consider a situation where
+   * you make an initial request and the request times out. If you make the
    * request again with the same request ID, the server can check to see whether
    * the original operation was received. If it was, the server ignores the second
    * request. This behavior prevents clients from mistakenly creating duplicate
@@ -172,6 +250,7 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
    * full request. A field is overwritten if it is in the mask. If the user does
    * not provide a mask, then all fields are overwritten.
    * @return GoogleLongrunningOperation
+   * @throws \Google\Service\Exception
    */
   public function patch($name, Hub $postBody, $optParams = [])
   {
@@ -180,16 +259,92 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
     return $this->call('patch', [$params], GoogleLongrunningOperation::class);
   }
   /**
+   * Query the Private Service Connect propagation status of a Network
+   * Connectivity Center hub. (hubs.queryStatus)
+   *
+   * @param string $name Required. The name of the hub.
+   * @param array $optParams Optional parameters.
+   *
+   * @opt_param string filter Optional. An expression that filters the list of
+   * results. The filter can be used to filter the results by the following
+   * fields: * `psc_propagation_status.source_spoke` *
+   * `psc_propagation_status.source_group` *
+   * `psc_propagation_status.source_forwarding_rule` *
+   * `psc_propagation_status.target_spoke` * `psc_propagation_status.target_group`
+   * * `psc_propagation_status.code` * `psc_propagation_status.message`
+   * @opt_param string groupBy Optional. Aggregate the results by the specified
+   * fields. A comma-separated list of any of these fields: *
+   * `psc_propagation_status.source_spoke` * `psc_propagation_status.source_group`
+   * * `psc_propagation_status.source_forwarding_rule` *
+   * `psc_propagation_status.target_spoke` * `psc_propagation_status.target_group`
+   * * `psc_propagation_status.code`
+   * @opt_param string orderBy Optional. Sort the results in ascending order by
+   * the specified fields. A comma-separated list of any of these fields: *
+   * `psc_propagation_status.source_spoke` * `psc_propagation_status.source_group`
+   * * `psc_propagation_status.source_forwarding_rule` *
+   * `psc_propagation_status.target_spoke` * `psc_propagation_status.target_group`
+   * * `psc_propagation_status.code` If `group_by` is set, the value of the
+   * `order_by` field must be the same as or a subset of the `group_by` field.
+   * @opt_param int pageSize Optional. The maximum number of results to return per
+   * page.
+   * @opt_param string pageToken Optional. The page token.
+   * @return QueryHubStatusResponse
+   * @throws \Google\Service\Exception
+   */
+  public function queryStatus($name, $optParams = [])
+  {
+    $params = ['name' => $name];
+    $params = array_merge($params, $optParams);
+    return $this->call('queryStatus', [$params], QueryHubStatusResponse::class);
+  }
+  /**
+   * Rejects a Network Connectivity Center spoke from being attached to a hub. If
+   * the spoke was previously in the `ACTIVE` state, it transitions to the
+   * `INACTIVE` state and is no longer able to connect to other spokes that are
+   * attached to the hub. (hubs.rejectSpoke)
+   *
+   * @param string $name Required. The name of the hub from which to reject the
+   * spoke.
+   * @param RejectHubSpokeRequest $postBody
+   * @param array $optParams Optional parameters.
+   * @return GoogleLongrunningOperation
+   * @throws \Google\Service\Exception
+   */
+  public function rejectSpoke($name, RejectHubSpokeRequest $postBody, $optParams = [])
+  {
+    $params = ['name' => $name, 'postBody' => $postBody];
+    $params = array_merge($params, $optParams);
+    return $this->call('rejectSpoke', [$params], GoogleLongrunningOperation::class);
+  }
+  /**
+   * Rejects a proposal to update a Network Connectivity Center spoke in a hub.
+   * (hubs.rejectSpokeUpdate)
+   *
+   * @param string $name Required. The name of the hub to reject spoke update.
+   * @param RejectSpokeUpdateRequest $postBody
+   * @param array $optParams Optional parameters.
+   * @return GoogleLongrunningOperation
+   * @throws \Google\Service\Exception
+   */
+  public function rejectSpokeUpdate($name, RejectSpokeUpdateRequest $postBody, $optParams = [])
+  {
+    $params = ['name' => $name, 'postBody' => $postBody];
+    $params = array_merge($params, $optParams);
+    return $this->call('rejectSpokeUpdate', [$params], GoogleLongrunningOperation::class);
+  }
+  /**
    * Sets the access control policy on the specified resource. Replaces any
    * existing policy. Can return `NOT_FOUND`, `INVALID_ARGUMENT`, and
    * `PERMISSION_DENIED` errors. (hubs.setIamPolicy)
    *
    * @param string $resource REQUIRED: The resource for which the policy is being
-   * specified. See the operation documentation for the appropriate value for this
-   * field.
+   * specified. See [Resource
+   * names](https://cloud.google.com/apis/design/resource_names) for the
+   * appropriate value for this field.
    * @param SetIamPolicyRequest $postBody
    * @param array $optParams Optional parameters.
    * @return Policy
+   * @throws \Google\Service\Exception
    */
   public function setIamPolicy($resource, SetIamPolicyRequest $postBody, $optParams = [])
   {
@@ -205,11 +360,13 @@ class ProjectsLocationsNetworkconnectivityGlobalHubs extends \Google\Service\Res
    * This operation may "fail open" without warning. (hubs.testIamPermissions)
    *
    * @param string $resource REQUIRED: The resource for which the policy detail is
-   * being requested. See the operation documentation for the appropriate value
-   * for this field.
+   * being requested. See [Resource
+   * names](https://cloud.google.com/apis/design/resource_names) for the
+   * appropriate value for this field.
    * @param TestIamPermissionsRequest $postBody
    * @param array $optParams Optional parameters.
    * @return TestIamPermissionsResponse
+   * @throws \Google\Service\Exception
    */
   public function testIamPermissions($resource, TestIamPermissionsRequest $postBody, $optParams = [])
   {

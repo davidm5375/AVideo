@@ -1,8 +1,9 @@
 <?php
+
 $recheckTolerance = 600; // 10 min
 require_once dirname(__FILE__) . '/../../videos/configuration.php';
 error_reporting(0);
-session_write_close();
+_session_write_close();
 
 if (empty($_GET['uuid'])) {
     die("uuid empty");
@@ -32,13 +33,13 @@ if (empty($_SESSION['m3u8Verified']) || $_SESSION['m3u8Verified'] + $recheckTole
     unset($_SESSION['m3u8Verified']);
 }
 
-if(!isset($_SESSION['playerServer']) || !is_array($_SESSION['playerServer'])){
+if (!isset($_SESSION['playerServer']) || !is_array($_SESSION['playerServer'])) {
     _session_start();
-    $_SESSION['playerServer'] = array();
+    $_SESSION['playerServer'] = [];
 }
-if(!isset($_SESSION['useAadaptiveMode']) || !is_array($_SESSION['useAadaptiveMode'])){
+if (!isset($_SESSION['useAadaptiveMode']) || !is_array($_SESSION['useAadaptiveMode'])) {
     _session_start();
-    $_SESSION['useAadaptiveMode'] = array();
+    $_SESSION['useAadaptiveMode'] = [];
 }
 
 $live_servers_id = Live::getCurrentLiveServersId();
@@ -49,17 +50,17 @@ if (true || empty($_SESSION['playerServer'][$live_servers_id])) {
     $_SESSION['playerServer'][$live_servers_id] = Live::getPlayerServer();
     $_SESSION['useAadaptiveMode'][$live_servers_id] = Live::getUseAadaptiveMode();
 } else {
-    @$global['mysqli']->close();
+    _mysql_close();
 }
 if ($_SESSION['useAadaptiveMode'][$live_servers_id]) {
     $complement = $_SESSION['playerServer'][$live_servers_id] . "/";
     $url = $_SESSION['playerServer'][$live_servers_id] . "/{$uuid}.m3u8";
-    $content = url_get_contents($url);
+    $content = url_get_contents($url, '', 0, false, false, false);
 }
 if (empty($content)) {
     $complement = $_SESSION['playerServer'][$live_servers_id] . "/{$uuid}/";
     $url = $_SESSION['playerServer'][$live_servers_id] . "/{$uuid}/index.m3u8";
-    $content = url_get_contents($url);
+    $content = url_get_contents($url, '', 0, false, false, false);
     if (!empty($content)) {
         _session_start();
         $_SESSION['useAadaptiveMode'][$live_servers_id] = 0;
@@ -68,14 +69,14 @@ if (empty($content)) {
 if (empty($_SESSION['useAadaptiveMode'][$live_servers_id]) && empty($content)) {
     $complement = $_SESSION['playerServer'][$live_servers_id] . "/";
     $url = $_SESSION['playerServer'][$live_servers_id] . "/{$uuid}.m3u8";
-    $content = url_get_contents($url);
+    $content = url_get_contents($url, '', 0, false, false, false);
     if (!empty($content)) {
         _session_start();
         $_SESSION['useAadaptiveMode'][$live_servers_id] = 1;
     }
 }
 
-if(empty($content)){ // get the default loop
+if (empty($content)) { // get the default loop
     //$complement = "{$global['webSiteRootURL']}plugin/Live/view/loopBGHLS/";
     //$content = file_get_contents("{$global['systemRootPath']}plugin/Live/view/loopBGHLS/index.m3u8");
     include "{$global['systemRootPath']}plugin/Live/view/loopBGHLS/index.m3u8.php";

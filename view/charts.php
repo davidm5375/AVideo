@@ -1,24 +1,13 @@
 <?php
 $limitVideos = 50;
 global $global, $config;
-if(!isset($global['systemRootPath'])){
+if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
+$_page = new Page(array('Analytics'));
+$_page->setExtraScripts(['view/css/DataTables/datatables.min.js', 'view/js/reportDashboard.js']);
+$_page->setExtraStyles(['view/css/DataTables/datatables.min.css', 'view/css/reportDashboard.css']);
+$_page->setIncludeInHead(array('view/charts_head.php'));
+include $global['systemRootPath'] . 'view/charts_body.php';
+$_page->print();
 ?>
-<!DOCTYPE html>
-<html lang="<?php echo $_SESSION['language']; ?>">
-    <head>
-        <title><?php echo __("Dashboard") . $config->getPageTitleSeparator() . $config->getWebSiteTitle(); ?></title>
-        <?php
-        include $global['systemRootPath'] . 'view/include/head.php';
-        include $global['systemRootPath'] . 'view/charts_head.php';
-        ?>
-    </head>
-    <body class="<?php echo $global['bodyClass']; ?>">
-        <?php
-        include $global['systemRootPath'] . 'view/include/navbar.php';
-        include $global['systemRootPath'] . 'view/charts_body.php';
-        include_once $global['systemRootPath'] . 'view/include/footer.php';
-        ?>
-    </body>
-</html>

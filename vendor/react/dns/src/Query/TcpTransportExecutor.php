@@ -127,11 +127,14 @@ class TcpTransportExecutor implements ExecutorInterface
     private $readBuffer = '';
     private $readPending = false;
 
+    /** @var string */
+    private $readChunk = 0xffff;
+
     /**
      * @param string         $nameserver
      * @param ?LoopInterface $loop
      */
-    public function __construct($nameserver, LoopInterface $loop = null)
+    public function __construct($nameserver, $loop = null)
     {
         if (\strpos($nameserver, '[') === false && \substr_count($nameserver, ':') >= 2 && \strpos($nameserver, '://') === false) {
             // several colons, but not enclosed in square brackets => enclose IPv6 address in square brackets
@@ -139,8 +142,12 @@ class TcpTransportExecutor implements ExecutorInterface
         }
 
         $parts = \parse_url((\strpos($nameserver, '://') === false ? 'tcp://' : '') . $nameserver);
-        if (!isset($parts['scheme'], $parts['host']) || $parts['scheme'] !== 'tcp' || !\filter_var(\trim($parts['host'], '[]'), \FILTER_VALIDATE_IP)) {
+        if (!isset($parts['scheme'], $parts['host']) || $parts['scheme'] !== 'tcp' || @\inet_pton(\trim($parts['host'], '[]')) === false) {
             throw new \InvalidArgumentException('Invalid nameserver address given');
+        }
+
+        if ($loop !== null && !$loop instanceof LoopInterface) { // manual type check to support legacy PHP < 7.1
+            throw new \InvalidArgumentException('Argument #2 ($loop) expected null|React\EventLoop\LoopInterface');
         }
 
         $this->nameserver = 'tcp://' . $parts['host'] . ':' . (isset($parts['port']) ? $parts['port'] : 53);
@@ -181,7 +188,7 @@ class TcpTransportExecutor implements ExecutorInterface
             // set socket to non-blocking and wait for it to become writable (connection success/rejected)
             \stream_set_blocking($socket, false);
             if (\function_exists('stream_set_chunk_size')) {
-                \stream_set_chunk_size($socket, (int) ((1 << 31) - 1)); // @codeCoverageIgnore
+                \stream_set_chunk_size($socket, $this->readChunk); // @codeCoverageIgnore
             }
             $this->socket = $socket;
         }
@@ -243,13 +250,24 @@ class TcpTransportExecutor implements ExecutorInterface
             $this->loop->addReadStream($this->socket, array($this, 'handleRead'));
         }
 
-        $written = @\fwrite($this->socket, $this->writeBuffer);
+        $errno = 0;
+        $errstr = '';
+        \set_error_handler(function ($_, $error) use (&$errno, &$errstr) {
+            // Match errstr from PHP's warning message.
+            // fwrite(): Send of 327712 bytes failed with errno=32 Broken pipe
+            \preg_match('/errno=(\d+) (.+)/', $error, $m);
+            $errno = isset($m[1]) ? (int) $m[1] : 0;
+            $errstr = isset($m[2]) ? $m[2] : $error;
+        });
+
+        $written = \fwrite($this->socket, $this->writeBuffer);
+
+        \restore_error_handler();
+
         if ($written === false || $written === 0) {
-            $error = \error_get_last();
-            \preg_match('/errno=(\d+) (.+)/', $error['message'], $m);
             $this->closeError(
-                'Unable to send query to DNS server ' . $this->nameserver . ' (' . (isset($m[2]) ? $m[2] : $error['message']) . ')',
-                isset($m[1]) ? (int) $m[1] : 0
+                'Unable to send query to DNS server ' . $this->nameserver . ' (' . $errstr . ')',
+                $errno
             );
             return;
         }
@@ -270,7 +288,7 @@ class TcpTransportExecutor implements ExecutorInterface
     {
         // read one chunk of data from the DNS server
         // any error is fatal, this is a stream of TCP/IP data
-        $chunk = @\fread($this->socket, 65536);
+        $chunk = @\fread($this->socket, $this->readChunk);
         if ($chunk === false || $chunk === '') {
             $this->closeError('Connection to DNS server ' . $this->nameserver . ' lost');
             return;

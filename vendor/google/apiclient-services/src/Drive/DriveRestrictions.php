@@ -19,42 +19,112 @@ namespace Google\Service\Drive;
 
 class DriveRestrictions extends \Google\Model
 {
+  /**
+   * @var bool
+   */
   public $adminManagedRestrictions;
+  /**
+   * @var bool
+   */
   public $copyRequiresWriterPermission;
+  /**
+   * @var bool
+   */
   public $domainUsersOnly;
+  protected $downloadRestrictionType = DownloadRestriction::class;
+  protected $downloadRestrictionDataType = '';
+  /**
+   * @var bool
+   */
   public $driveMembersOnly;
+  /**
+   * @var bool
+   */
+  public $sharingFoldersRequiresOrganizerPermission;
 
+  /**
+   * @param bool
+   */
   public function setAdminManagedRestrictions($adminManagedRestrictions)
   {
     $this->adminManagedRestrictions = $adminManagedRestrictions;
   }
+  /**
+   * @return bool
+   */
   public function getAdminManagedRestrictions()
   {
     return $this->adminManagedRestrictions;
   }
+  /**
+   * @param bool
+   */
   public function setCopyRequiresWriterPermission($copyRequiresWriterPermission)
   {
     $this->copyRequiresWriterPermission = $copyRequiresWriterPermission;
   }
+  /**
+   * @return bool
+   */
   public function getCopyRequiresWriterPermission()
   {
     return $this->copyRequiresWriterPermission;
   }
+  /**
+   * @param bool
+   */
   public function setDomainUsersOnly($domainUsersOnly)
   {
     $this->domainUsersOnly = $domainUsersOnly;
   }
+  /**
+   * @return bool
+   */
   public function getDomainUsersOnly()
   {
     return $this->domainUsersOnly;
   }
+  /**
+   * @param DownloadRestriction
+   */
+  public function setDownloadRestriction(DownloadRestriction $downloadRestriction)
+  {
+    $this->downloadRestriction = $downloadRestriction;
+  }
+  /**
+   * @return DownloadRestriction
+   */
+  public function getDownloadRestriction()
+  {
+    return $this->downloadRestriction;
+  }
+  /**
+   * @param bool
+   */
   public function setDriveMembersOnly($driveMembersOnly)
   {
     $this->driveMembersOnly = $driveMembersOnly;
   }
+  /**
+   * @return bool
+   */
   public function getDriveMembersOnly()
   {
     return $this->driveMembersOnly;
+  }
+  /**
+   * @param bool
+   */
+  public function setSharingFoldersRequiresOrganizerPermission($sharingFoldersRequiresOrganizerPermission)
+  {
+    $this->sharingFoldersRequiresOrganizerPermission = $sharingFoldersRequiresOrganizerPermission;
+  }
+  /**
+   * @return bool
+   */
+  public function getSharingFoldersRequiresOrganizerPermission()
+  {
+    return $this->sharingFoldersRequiresOrganizerPermission;
   }
 }
 

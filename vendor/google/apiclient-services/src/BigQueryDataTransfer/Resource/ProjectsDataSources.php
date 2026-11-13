@@ -27,24 +27,25 @@ use Google\Service\BigQueryDataTransfer\ListDataSourcesResponse;
  * Typical usage is:
  *  <code>
  *   $bigquerydatatransferService = new Google\Service\BigQueryDataTransfer(...);
- *   $dataSources = $bigquerydatatransferService->dataSources;
+ *   $dataSources = $bigquerydatatransferService->projects_dataSources;
  *  </code>
  */
 class ProjectsDataSources extends \Google\Service\Resource
 {
   /**
    * Returns true if valid credentials exist for the given data source and
-   * requesting user. Some data sources doesn't support service account, so we
-   * need to talk to them on behalf of the end user. This API just checks whether
-   * we have OAuth token for the particular user, which is a pre-requisite before
-   * user can create a transfer config. (dataSources.checkValidCreds)
+   * requesting user. (dataSources.checkValidCreds)
    *
-   * @param string $name Required. The data source in the form:
-   * `projects/{project_id}/dataSources/{data_source_id}` or
-   * `projects/{project_id}/locations/{location_id}/dataSources/{data_source_id}`.
+   * @param string $name Required. The name of the data source. If you are using
+   * the regionless method, the location must be `US` and the name should be in
+   * the following form: * `projects/{project_id}/dataSources/{data_source_id}` If
+   * you are using the regionalized method, the name should be in the following
+   * form: *
+   * `projects/{project_id}/locations/{location_id}/dataSources/{data_source_id}`
    * @param CheckValidCredsRequest $postBody
    * @param array $optParams Optional parameters.
    * @return CheckValidCredsResponse
+   * @throws \Google\Service\Exception
    */
   public function checkValidCreds($name, CheckValidCredsRequest $postBody, $optParams = [])
   {
@@ -53,15 +54,17 @@ class ProjectsDataSources extends \Google\Service\Resource
     return $this->call('checkValidCreds', [$params], CheckValidCredsResponse::class);
   }
   /**
-   * Retrieves a supported data source and returns its settings, which can be used
-   * for UI rendering. (dataSources.get)
+   * Retrieves a supported data source and returns its settings. (dataSources.get)
    *
-   * @param string $name Required. The field will contain name of the resource
-   * requested, for example: `projects/{project_id}/dataSources/{data_source_id}`
-   * or
+   * @param string $name Required. The name of the resource requested. If you are
+   * using the regionless method, the location must be `US` and the name should be
+   * in the following form: * `projects/{project_id}/dataSources/{data_source_id}`
+   * If you are using the regionalized method, the name should be in the following
+   * form: *
    * `projects/{project_id}/locations/{location_id}/dataSources/{data_source_id}`
    * @param array $optParams Optional parameters.
    * @return DataSource
+   * @throws \Google\Service\Exception
    */
   public function get($name, $optParams = [])
   {
@@ -70,12 +73,12 @@ class ProjectsDataSources extends \Google\Service\Resource
     return $this->call('get', [$params], DataSource::class);
   }
   /**
-   * Lists supported data sources and returns their settings, which can be used
-   * for UI rendering. (dataSources.listProjectsDataSources)
+   * Lists supported data sources and returns their settings.
+   * (dataSources.listProjectsDataSources)
    *
    * @param string $parent Required. The BigQuery project id for which data
    * sources should be returned. Must be in the form: `projects/{project_id}` or
-   * `projects/{project_id}/locations/{location_id}
+   * `projects/{project_id}/locations/{location_id}`
    * @param array $optParams Optional parameters.
    *
    * @opt_param int pageSize Page size. The default page size is the maximum value
@@ -85,6 +88,7 @@ class ProjectsDataSources extends \Google\Service\Resource
    * results, `ListDataSourcesResponse` outputs a `next_page` token, which can be
    * used as the `page_token` value to request the next page of list results.
    * @return ListDataSourcesResponse
+   * @throws \Google\Service\Exception
    */
   public function listProjectsDataSources($parent, $optParams = [])
   {

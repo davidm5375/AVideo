@@ -46,7 +46,7 @@
                 -moz-border-radius: 4px;
                 -webkit-border-radius: 4px;
                 border-radius: 4px;
-                background: #fff url(https://tutorials.avideo.com/view/img/transparent1px.png) no-repeat 0 51px;
+                background: #fff url(https://tutorials.wwbn.net/view/img/transparent1px.png) no-repeat 0 51px;
             }
             #block_error div {
                 padding: 10px 40px 0 186px;
@@ -76,7 +76,7 @@
                     <?php echo __("It appears that either something went wrong or the mod rewrite configration is not correct."); ?><br />
                 </p>
                 <p><b><?php echo __("If you don't use apache, just let .htaccess stay or create a empty file - then this check will pass."); ?></b></p>
-                <p><?php echo __("We need to allow Apache to read .htaccess files located under the "); echo getcwd(); echo __(" directory."); ?>
+                <p><?php echo sprintf(__('We need to allow Apache to read .htaccess files located under the %s directory.'), getcwd()); ?>
 
                     <?php echo __("You can do this by editing the Apache configuration file:"); ?></p>
 
@@ -110,7 +110,7 @@
     </body>
 </html>
 <?php
-function __($text){
+function __($text)
+{
     return $text;
 }
-?>

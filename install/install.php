@@ -1,11 +1,10 @@
 <?php
-
-require_once '../objects/functions.php';
+require_once __DIR__ . '/../objects/functions.php';
 if (!isCommandLineInterface()) {
     die('Command Line only');
 }
-if (file_exists("../videos/configuration.php")) {
-    die("Can not create configuration again: " . json_encode($_SERVER));
+if (file_exists(__DIR__ . "/../videos/configuration.php")) {
+    die("Configuration already exists. Installation was not changed.\n");
 }
 
 
@@ -16,11 +15,22 @@ if (version_compare(phpversion(), '7.2', '<')) {
 }
 
 $webSiteRootURL = @$argv[1];
-$webSiteRootURL = preg_replace("/[^0-9a-z._\/:]/i", "", trim($webSiteRootURL));
-$databaseUser = empty($argv[2])?$databaseUser:$argv[2];
-$databasePass = empty($argv[3])?$databasePass:$argv[3];
-$systemAdminPass = empty($argv[4])?"123":$argv[4];
-$contactEmail = empty($argv[5])?"undefined@youremail.com":$argv[5];
+$webSiteRootURL = preg_replace("/[^0-9a-z._\/:-]/i", "", trim($webSiteRootURL));
+$databaseUser = empty($argv[2]) ? $databaseUser : $argv[2];
+$databasePass = empty($argv[3]) ? $databasePass : $argv[3];
+if (empty($argv[4])) {
+    echo "Enter admin password (leave blank to generate a random one): ";
+    @ob_flush();
+    $systemAdminPass = trim(readline(""));
+    if (empty($systemAdminPass)) {
+        $systemAdminPass = bin2hex(random_bytes(8));
+        echo "Generated admin password: {$systemAdminPass}\n";
+        echo "IMPORTANT: Save this password now, it will not be shown again.\n";
+    }
+} else {
+    $systemAdminPass = $argv[4];
+}
+$contactEmail = empty($argv[5]) ? "undefined@youremail.com" : $argv[5];
 if (!filter_var($webSiteRootURL, FILTER_VALIDATE_URL)) {
     if (!empty($webSiteRootURL)) {
         echo "Invalid Site URL ({$webSiteRootURL})\n";
@@ -35,14 +45,7 @@ if (!filter_var($webSiteRootURL, FILTER_VALIDATE_URL)) {
 
 $webSiteRootURL = rtrim($webSiteRootURL, '/') . '/';
 
-$_POST['systemRootPath'] = str_replace("install", "", getcwd());
-if(!is_dir($_POST['systemRootPath'])){
-    $_POST['systemRootPath'] = "/var/www/html/YouPHPTube/";
-    if(!is_dir($_POST['systemRootPath'])){
-        $_POST['systemRootPath'] = "/var/www/html/AVideo/";
-    }
-}
-
+$_POST['systemRootPath'] = str_replace('\\', '/', dirname(__DIR__)) . '/';
 
 $_POST['databaseHost'] = "localhost";
 $_POST['databaseUser'] = $databaseUser;
@@ -56,4 +59,5 @@ $_POST['mainLanguage'] = "en";
 $_POST['webSiteTitle'] = "AVideo";
 $_POST['webSiteRootURL'] = $webSiteRootURL;
 
-include './checkConfiguration.php';
+include __DIR__ . '/checkConfiguration.php';
+if (empty($installerSucceeded)) { exit(1); }

@@ -60,13 +60,17 @@ class Wallet extends ObjectYPT {
         if (empty($row))
             return false;
         foreach ($row as $key => $value) {
-            $this->$key = $value;
+            @$this->$key = $value;
+            //$this->properties[$key] = $value;
         }
         return true;
     }
 
     static function getFromUser($users_id) {
         global $global;
+        if(empty($global)){
+            $global = [];
+        }
         $users_id = intval($users_id);
         $sql = "SELECT * FROM " . static::getTableName() . " WHERE  users_id = $users_id LIMIT 1";
         $res = $global['mysqli']->query($sql);
@@ -81,6 +85,9 @@ class Wallet extends ObjectYPT {
 
     static function getFromWalletId($wallet_id) {
         global $global;
+        if(empty($global)){
+            $global = [];
+        }
         $wallet_id = intval($wallet_id);
         $sql = "SELECT u.*, w.* FROM " . static::getTableName() . " w "
                 . " LEFT JOIN users u ON u.id = users_id WHERE  w.id = $wallet_id LIMIT 1";
@@ -98,9 +105,56 @@ class Wallet extends ObjectYPT {
     public function save() {
         global $global;
         $this->balance = floatval($this->balance);
-        $this->crypto_wallet_address = $global['mysqli']->real_escape_string($this->crypto_wallet_address);
+        $this->crypto_wallet_address = ($this->crypto_wallet_address);
         ObjectYPT::clearSessionCache();
-        return parent::save();
+        // IGNORE_ARGS still keeps "args" on include/require frames: log locations only.
+        $trace = array_map(function ($frame) {
+            unset($frame['args'], $frame['object']);
+            return $frame;
+        }, debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
+        _error_log("save({$this->id}, {$this->users_id}, {$this->balance}) ".json_encode($trace));
+        $id = parent::save();
+        if(!empty($id)){
+            $obj = AVideoPlugin::getObjectData('YPTWallet');
+            $decimalPrecision = $obj->decimalPrecision;
+            sendSocketMessageToUsers_id(
+                array(
+                    'balanceraw' => $this->balance,
+                    'balance' => number_format($this->balance, $decimalPrecision),
+                    'balance_formated' => YPTWallet::formatCurrency($this->balance, false),
+                ),
+                $this->users_id,
+                'socketWalletAddBalance'
+            );
+        }
+        return $id;
+    }
+
+    /**
+     * Like getFromUser() but issues SELECT … FOR UPDATE to lock the row.
+     * Must be called inside an active transaction (mysqlBeginTransaction()).
+     * Returns a populated Wallet object, or false if the row does not exist.
+     */
+    static function getFromUserForUpdate($users_id) {
+        global $global;
+        $users_id = intval($users_id);
+        $result = sqlDAL::readSql(
+            "SELECT * FROM " . static::getTableName() . " WHERE users_id = ? LIMIT 1 FOR UPDATE",
+            'i', [$users_id], true
+        );
+        if (!$result) {
+            return false;
+        }
+        $row = sqlDAL::fetchAssoc($result);
+        sqlDAL::close($result);
+        if (empty($row)) {
+            return false;
+        }
+        $wallet = new static(0);
+        foreach ($row as $key => $value) {
+            @$wallet->$key = $value;
+        }
+        return $wallet;
     }
 
     static function getOrCreateFromUser($users_id) {

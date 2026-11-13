@@ -4,19 +4,34 @@ global $global, $config;
 if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
+// filename does not end in .json.php, so autoCSRFGuard() never runs for this endpoint
+forbidIfIsUntrustedRequest('videoSuggest');
+
+$obj = new stdClass();
+$obj->msg = '';
+$obj->error = true;
+$obj->idsToSave = [];
+$obj->idSaved = [];
+
 require_once $global['systemRootPath'] . 'objects/user.php';
 if (!Permissions::canModerateVideos()) {
-    die('{"error":"'.__("Permission denied").'"}');
+    forbiddenPage('Permission denied');
 }
 require_once $global['systemRootPath'] . 'objects/video.php';
 if (!is_array($_POST['id'])) {
-    $_POST['id'] = array($_POST['id']);
+    $obj->idsToSave = [$_POST['id']];
+}else{
+    $obj->idsToSave = $_POST['id'];
 }
-$id = 0;
-foreach ($_POST['id'] as $value) {
-    $obj = new Video('', '', $value);
-    $obj->setIsSuggested($_POST['isSuggested']);
-    $id = $obj->save();
+foreach ($obj->idsToSave as $value) {
+    $video = new Video('', '', $value);
+    $video->setIsSuggested($_POST['isSuggested']);
+    $obj->idSaved[] = $video->save();
 }
 
-echo '{"status":"'.$id.'"}';
+if(!empty($obj->idSaved)){
+    $obj->error = false;
+    clearCache(true);
+}
+
+echo _json_encode($obj);

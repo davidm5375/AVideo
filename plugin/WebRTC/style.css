@@ -1,0 +1,178 @@
+body {
+    background-color: #000;
+}
+
+/* Make the video cover the entire page */
+video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Fill the container, even if it means cropping */
+    background: black;
+}
+
+/* Wraps the 3 status indicators; positions them as a group (video.php) */
+.webrtc-topbar {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 20;
+}
+
+.indicator {
+    font-family: Arial, Helvetica, sans-serif;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: 6px 12px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, .25);
+}
+
+.indicator-icon {
+    position: relative;
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Offline Indicator */
+#offLineIndicator, .offLineIndicator {
+    background: #FF4D4D; /* Bright red */
+    color: #FFFFFF;
+    border-color: #FF0000;
+}
+
+/* Online Indicator (Not Live) */
+#onLineIndicator, .onLineIndicator,
+#liveIndicator, .liveIndicator {
+    background: #4CAF50; /* Bright green */
+    border-color: #388E3C;
+}
+
+/* Live Indicator */
+#liveIndicator, .liveIndicator {
+    box-shadow: 0 0 8px 2px #4CAF50; /* Strong green glow */
+    animation: greenGlowPulse 1.5s infinite;
+}
+
+/* Green glow pulse animation */
+@keyframes greenGlowPulse {
+    0% {
+        box-shadow: 0 0 8px 2px #66BB6A;
+    }
+    50% {
+        box-shadow: 0 0 12px 4px #4CAF50;
+    }
+    100% {
+        box-shadow: 0 0 8px 2px #66BB6A;
+    }
+}
+
+
+.showWhenIsLive {
+    display: none !important;
+}
+
+.showWhenIsNotLive {
+    display: block !important;
+}
+
+.showWhenWebRTCIsConnected,
+.showWhenWebRTCIsNotConnected,
+.webCamIsOn .showWhenWebCamIsOff,
+.showWhenWebCamIsOn {
+    display: none !important;
+}
+
+.webCamIsOn .showWhenWebCamIsOn{
+    display: inline-flex !important;
+}
+
+.WebcamServerConnected .showWhenWebRTCIsConnected {
+    display: block !important;
+}
+
+.WebcamServerNotConnected .showWhenWebRTCIsNotConnected {
+    display: block !important;
+}
+
+/* Must come after the WebcamServerConnected/NotConnected rules above (equal specificity, both
+   !important) so live state correctly overrides "connected" for elements combining both classes
+   (e.g. #onLineIndicator = showWhenWebRTCIsConnected + showWhenIsNotLive). */
+.isLive .showWhenIsLive {
+    display: block !important;
+}
+
+.isLive .showWhenIsNotLive {
+    display: none !important;
+}
+
+/* The generic show/hide rules above hard-code display:block, which breaks the indicator's
+   icon+label row layout. An ID selector outweighs the class-only rules above (even with
+   !important) so these win regardless of source order; the isLive one still needs to come
+   after the WebcamServerConnected one so "live" correctly hides the "ready" pill. */
+.WebcamServerConnected #onLineIndicator.showWhenWebRTCIsConnected,
+.WebcamServerNotConnected #offLineIndicator.showWhenWebRTCIsNotConnected {
+    display: inline-flex !important;
+}
+
+.isLive #liveIndicator.showWhenIsLive {
+    display: inline-flex !important;
+}
+
+.isLive #onLineIndicator.showWhenIsNotLive {
+    display: none !important;
+}
+
+/* Quick Go Live: keep the Start button hidden until the user confirms camera/microphone setup.
+   Scoped to body.quickGoLiveMode so the manual Webcam tab is unaffected. */
+body.quickGoLiveMode.webCamIsOn:not(.webrtcSetupConfirmed) #startLive {
+    display: none !important;
+}
+
+#webcamMediaControlsMessage {
+    position: fixed;
+    bottom: 10px;
+    width: 100%;
+}
+
+.oval-menu {
+    height: 30px;
+    min-width: 30px;
+    border-radius: 15px;
+    box-shadow: 0 0 15px 1px black;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10px;
+}
+
+.oval-menu i {
+    margin: 0 10px;
+}
+
+.transparent-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 50px);
+    /* Occupies full height minus 100px at the bottom */
+    border: none;
+    /* Removes the border */
+    background: transparent;
+    /* Ensures transparency if supported by the content */
+    z-index: 1;
+    /* Ensure proper stacking order */
+    pointer-events: auto;
+    /* Allows interaction with iframe content */
+}

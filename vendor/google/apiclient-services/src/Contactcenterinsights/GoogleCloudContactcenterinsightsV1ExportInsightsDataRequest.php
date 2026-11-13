@@ -21,9 +21,26 @@ class GoogleCloudContactcenterinsightsV1ExportInsightsDataRequest extends \Googl
 {
   protected $bigQueryDestinationType = GoogleCloudContactcenterinsightsV1ExportInsightsDataRequestBigQueryDestination::class;
   protected $bigQueryDestinationDataType = '';
+  /**
+   * @var string
+   */
+  public $exportSchemaVersion;
+  /**
+   * @var string
+   */
   public $filter;
+  /**
+   * @var string
+   */
   public $kmsKey;
+  /**
+   * @var string
+   */
   public $parent;
+  /**
+   * @var string
+   */
+  public $writeDisposition;
 
   /**
    * @param GoogleCloudContactcenterinsightsV1ExportInsightsDataRequestBigQueryDestination
@@ -39,29 +56,75 @@ class GoogleCloudContactcenterinsightsV1ExportInsightsDataRequest extends \Googl
   {
     return $this->bigQueryDestination;
   }
+  /**
+   * @param string
+   */
+  public function setExportSchemaVersion($exportSchemaVersion)
+  {
+    $this->exportSchemaVersion = $exportSchemaVersion;
+  }
+  /**
+   * @return string
+   */
+  public function getExportSchemaVersion()
+  {
+    return $this->exportSchemaVersion;
+  }
+  /**
+   * @param string
+   */
   public function setFilter($filter)
   {
     $this->filter = $filter;
   }
+  /**
+   * @return string
+   */
   public function getFilter()
   {
     return $this->filter;
   }
+  /**
+   * @param string
+   */
   public function setKmsKey($kmsKey)
   {
     $this->kmsKey = $kmsKey;
   }
+  /**
+   * @return string
+   */
   public function getKmsKey()
   {
     return $this->kmsKey;
   }
+  /**
+   * @param string
+   */
   public function setParent($parent)
   {
     $this->parent = $parent;
   }
+  /**
+   * @return string
+   */
   public function getParent()
   {
     return $this->parent;
+  }
+  /**
+   * @param string
+   */
+  public function setWriteDisposition($writeDisposition)
+  {
+    $this->writeDisposition = $writeDisposition;
+  }
+  /**
+   * @return string
+   */
+  public function getWriteDisposition()
+  {
+    return $this->writeDisposition;
   }
 }
 

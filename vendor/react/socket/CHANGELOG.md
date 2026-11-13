@@ -1,5 +1,122 @@
 # Changelog
 
+## 1.17.0 (2025-11-19)
+
+*   Feature: Improve PHP 8.5+ support by avoiding deprecated `setAccessible()` calls.
+    (#325 by @W0rma and #330 by @WyriHaximus)
+
+*   Improve test suite and update test environment.
+    (#326 and #330 by @WyriHaximus)
+
+## 1.16.0 (2024-07-26)
+
+*   Feature: Improve PHP 8.4+ support by avoiding implicitly nullable type declarations.
+    (#318 by @clue)
+
+## 1.15.0 (2023-12-15)
+
+*   Feature: Full PHP 8.3 compatibility.
+    (#310 by @clue)
+
+*   Fix: Fix cancelling during the 50ms resolution delay when DNS is still pending.
+    (#311 by @clue)
+
+## 1.14.0 (2023-08-25)
+
+*   Feature: Improve Promise v3 support and use template types.
+    (#307 and #309 by @clue)
+
+*   Improve test suite and update to collect all garbage cycles.
+    (#308 by @clue)
+
+## 1.13.0 (2023-06-07)
+
+*   Feature: Include timeout logic to avoid dependency on reactphp/promise-timer.
+    (#305 by @clue)
+
+*   Feature: Improve errno detection for failed connections without `ext-sockets`.
+    (#304 by @clue)
+
+*   Improve test suite, clean up leftover `.sock` files and report failed assertions.
+    (#299, #300, #301 and #306 by @clue)
+
+## 1.12.0 (2022-08-25)
+
+*   Feature: Forward compatibility with react/promise 3.
+    (#214 by @WyriHaximus and @clue)
+
+*   Feature: Full support for PHP 8.2 release.
+    (#298 by @WyriHaximus)
+
+*   Feature: Avoid unneeded syscall on socket close.
+    (#292 by @clue)
+
+*   Feature / Fix: Improve error reporting when custom error handler is used.
+    (#290 by @clue)
+
+*   Fix: Fix invalid references in exception stack trace.
+    (#284 by @clue)
+
+*   Minor documentation improvements, update to use new reactphp/async package instead of clue/reactphp-block.
+    (#296 by @clue, #285 by @SimonFrings and #295 by @nhedger)
+
+*   Improve test suite, update macOS and HHVM environment, fix optional tests for `ENETUNREACH`.
+    (#288, #289 and #297 by @clue)
+
+## 1.11.0 (2022-01-14)
+
+*   Feature: Full support for PHP 8.1 release.
+    (#277 by @clue)
+
+*   Feature: Avoid dependency on `ext-filter`.
+    (#279 by @clue)
+
+*   Improve test suite to skip FD test when hitting memory limit
+    and skip legacy TLS 1.0 tests if disabled by system.
+    (#278 and #281 by @clue and #283 by @SimonFrings)
+
+## 1.10.0 (2021-11-29)
+
+*   Feature: Support listening on existing file descriptors (FDs) with `SocketServer`.
+    (#269 by @clue)
+
+    ```php
+    $socket = new React\Socket\SocketSever('php://fd/3');
+    ```
+
+    This is particularly useful when using [systemd socket activation](https://www.freedesktop.org/software/systemd/man/systemd.socket.html) like this:
+
+    ```bash
+    $ systemd-socket-activate -l 8000 php examples/03-http-server.php php://fd/3
+    ```
+
+*   Feature: Improve error messages for failed connection attempts with `errno` and `errstr`.
+    (#265, #266, #267, #270 and #271 by @clue and #268 by @SimonFrings)
+
+    All error messages now always include the appropriate `errno` and `errstr` to
+    give more details about the error reason when available. Along with these
+    error details exposed by the underlying system functions, it will also
+    include the appropriate error constant name (such as `ECONNREFUSED`) when
+    available. Accordingly, failed TCP/IP connections will now report the actual
+    underlying error condition instead of a generic "Connection refused" error.
+    Higher-level error messages will now consistently report the connection URI
+    scheme and hostname used in all error messages.
+
+    For most common use cases this means that simply reporting the `Exception`
+    message should give the most relevant details for any connection issues:
+
+    ```php
+    $connector = new React\Socket\Connector();
+    $connector->connect($uri)->then(function (React\Socket\ConnectionInterface $conn) {
+        // …
+    }, function (Exception $e) {
+        echo 'Error:' . $e->getMessage() . PHP_EOL;
+    });
+    ```
+
+*   Improve test suite, test against PHP 8.1 release.
+    (#274 by @SimonFrings)
+
 ## 1.9.0 (2021-08-03)
 
 *   Feature: Add new `SocketServer` and deprecate `Server` to avoid class name collisions.

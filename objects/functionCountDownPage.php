@@ -1,7 +1,7 @@
-<?php 
+<?php
 global $advancedCustom;
 $global['doNotLoadPlayer'] = 1;
-if(!is_numeric($toTime)){
+if (!is_numeric($toTime)) {
     $toTime = strtotime($toTime);
 }
 //$toTime = strtotime('+10 seconds');
@@ -9,7 +9,7 @@ if(!is_numeric($toTime)){
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <title>Coming Soon 1</title>
+        <title><?php echo htmlentities($title); ?></title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -25,7 +25,9 @@ if(!is_numeric($toTime)){
             .p-b-9 {padding-bottom: 9px;}
             .p-b-45 {padding-bottom: 45px;}
             .p-b-60 {padding-bottom: 60px;}
+            .p-l-50 {padding-left: 50px;}
             .p-l-75 {padding-left: 75px;}
+            .p-r-50 {padding-right: 50px;}
             .p-r-75 {padding-right: 75px;}
 
             .m-t-15 {margin-top: 15px;}
@@ -595,7 +597,7 @@ if(!is_numeric($toTime)){
                 }
                 ?>
             </div>
-            <div class="size3 flex-col-sb flex-w p-l-75 p-r-75 p-t-20 p-b-45 respon1">
+            <div class="size3 flex-col-sb flex-w p-l-50 p-r-50 p-t-20 p-b-45 respon1">
 
                 <div class="p-t-20 p-b-60">
                     <div class="wrap-pic1">
@@ -613,11 +615,9 @@ if(!is_numeric($toTime)){
         <?php
         include $global['systemRootPath'] . 'view/include/footer.php';
         if (!empty($toTime)) {
-            ?>
-            <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/countdowntime/moment.min.js"></script>
-            <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/countdowntime/moment-timezone.min.js"></script>
-            <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/countdowntime/moment-timezone-with-data.min.js"></script>
-            <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/countdowntime/countdowntime.js"></script>
+            include $global['systemRootPath'] . 'view/include/moment.js.php';
+        ?>
+            <script src="<?php echo getURL('plugin/MaintenanceMode/vendor/countdowntime/countdowntime.js'); ?>"></script>
             <script>
                 $('.cd100').countdown100({
                     endtimeYear: <?php echo date("Y", ($toTime)); ?>,

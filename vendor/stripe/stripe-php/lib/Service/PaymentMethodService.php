@@ -4,17 +4,22 @@
 
 namespace Stripe\Service;
 
-class PaymentMethodService extends \Stripe\Service\AbstractService
+/**
+ * @phpstan-import-type RequestOptionsArray from \Stripe\Util\RequestOptions
+ *
+ * @psalm-import-type RequestOptionsArray from \Stripe\Util\RequestOptions
+ */
+class PaymentMethodService extends AbstractService
 {
     /**
-     * Returns a list of PaymentMethods for a given Customer.
+     * Returns a list of all PaymentMethods.
      *
-     * @param null|array $params
-     * @param null|array|\Stripe\Util\RequestOptions $opts
+     * @param null|array{allow_redisplay?: string, customer?: string, customer_account?: string, ending_before?: string, expand?: string[], limit?: int, starting_after?: string, type?: string} $params
+     * @param null|RequestOptionsArray|\Stripe\Util\RequestOptions $opts
+     *
+     * @return \Stripe\Collection<\Stripe\PaymentMethod>
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
-     *
-     * @return \Stripe\Collection
      */
     public function all($params = null, $opts = null)
     {
@@ -28,10 +33,11 @@ class PaymentMethodService extends \Stripe\Service\AbstractService
      * you use a <a href="/docs/api/setup_intents">SetupIntent</a> or a PaymentIntent
      * with <a
      * href="/docs/api/payment_intents/create#create_payment_intent-setup_future_usage">setup_future_usage</a>.
-     * These approaches will perform any necessary steps to ensure that the
-     * PaymentMethod can be used in a future payment. Using the
-     * <code>/v1/payment_methods/:id/attach</code> endpoint does not ensure that future
-     * payments can be made with the attached PaymentMethod. See <a
+     * These approaches will perform any necessary steps to set up the PaymentMethod
+     * for future payments. Using the <code>/v1/payment_methods/:id/attach</code>
+     * endpoint without first using a SetupIntent or PaymentIntent with
+     * <code>setup_future_usage</code> does not optimize the PaymentMethod for future
+     * use, which makes later declines and payment friction more likely. See <a
      * href="/docs/payments/payment-intents#future-usage">Optimizing cards for future
      * payments</a> for more information about setting up future payments.
      *
@@ -41,12 +47,12 @@ class PaymentMethodService extends \Stripe\Service\AbstractService
      * on the Customer to the PaymentMethod’s ID.
      *
      * @param string $id
-     * @param null|array $params
-     * @param null|array|\Stripe\Util\RequestOptions $opts
-     *
-     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     * @param null|array{customer?: string, customer_account?: string, expand?: string[]} $params
+     * @param null|RequestOptionsArray|\Stripe\Util\RequestOptions $opts
      *
      * @return \Stripe\PaymentMethod
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
      */
     public function attach($id, $params = null, $opts = null)
     {
@@ -64,12 +70,12 @@ class PaymentMethodService extends \Stripe\Service\AbstractService
      * href="/docs/payments/save-and-reuse">SetupIntent</a> API to collect payment
      * method details ahead of a future payment.
      *
-     * @param null|array $params
-     * @param null|array|\Stripe\Util\RequestOptions $opts
-     *
-     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     * @param null|array{acss_debit?: array{account_number: string, institution_number: string, transit_number: string}, affirm?: array{}, afterpay_clearpay?: array{}, alipay?: array{}, allow_redisplay?: string, alma?: array{}, amazon_pay?: array{}, au_becs_debit?: array{account_number: string, bsb_number: string}, bacs_debit?: array{account_number?: string, sort_code?: string}, bancontact?: array{}, billie?: array{}, billing_details?: array{address?: null|array{city?: string, country?: string, line1?: string, line2?: string, postal_code?: string, state?: string}, email?: null|string, name?: null|string, phone?: null|string, tax_id?: string}, bizum?: array{}, blik?: array{}, boleto?: array{tax_id: string}, card?: array{cvc?: string, exp_month?: int, exp_year?: int, networks?: array{preferred?: string}, number?: string, token?: string}, cashapp?: array{}, crypto?: array{}, custom?: array{type: string}, customer?: string, customer_balance?: array{}, eps?: array{bank?: string}, expand?: string[], fpx?: array{account_holder_type?: string, bank: string}, giropay?: array{}, grabpay?: array{}, ideal?: array{bank?: string}, interac_present?: array{}, kakao_pay?: array{}, klarna?: array{dob?: array{day: int, month: int, year: int}}, konbini?: array{}, kr_card?: array{}, link?: array{}, mb_way?: array{}, metadata?: array<string, string>, mobilepay?: array{}, multibanco?: array{}, naver_pay?: array{funding?: string}, nz_bank_account?: array{account_holder_name?: string, account_number: string, bank_code: string, branch_code: string, reference?: string, suffix: string}, oxxo?: array{}, p24?: array{bank?: string}, pay_by_bank?: array{}, payco?: array{}, payment_method?: string, paynow?: array{}, paypal?: array{}, payto?: array{account_number?: string, bsb_number?: string, pay_id?: string}, pix?: array{}, promptpay?: array{}, radar_options?: array{session?: string}, revolut_pay?: array{}, samsung_pay?: array{}, satispay?: array{}, scalapay?: array{}, sepa_debit?: array{iban: string}, sofort?: array{country: string}, sunbit?: array{}, swish?: array{}, twint?: array{}, type?: string, upi?: array{mandate_options?: array{amount?: int, amount_type?: string, description?: string, end_date?: int}}, us_bank_account?: array{account_holder_type?: string, account_number?: string, account_type?: string, financial_connections_account?: string, routing_number?: string}, wechat_pay?: array{}, zip?: array{}} $params
+     * @param null|RequestOptionsArray|\Stripe\Util\RequestOptions $opts
      *
      * @return \Stripe\PaymentMethod
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
      */
     public function create($params = null, $opts = null)
     {
@@ -77,15 +83,16 @@ class PaymentMethodService extends \Stripe\Service\AbstractService
     }
 
     /**
-     * Detaches a PaymentMethod object from a Customer.
+     * Detaches a PaymentMethod object from a Customer. After a PaymentMethod is
+     * detached, it can no longer be used for a payment or re-attached to a Customer.
      *
      * @param string $id
-     * @param null|array $params
-     * @param null|array|\Stripe\Util\RequestOptions $opts
-     *
-     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     * @param null|array{expand?: string[]} $params
+     * @param null|RequestOptionsArray|\Stripe\Util\RequestOptions $opts
      *
      * @return \Stripe\PaymentMethod
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
      */
     public function detach($id, $params = null, $opts = null)
     {
@@ -93,15 +100,18 @@ class PaymentMethodService extends \Stripe\Service\AbstractService
     }
 
     /**
-     * Retrieves a PaymentMethod object.
+     * Retrieves a PaymentMethod object attached to the StripeAccount. To retrieve a
+     * payment method attached to a Customer, you should use <a
+     * href="/docs/api/payment_methods/customer">Retrieve a Customer’s
+     * PaymentMethods</a>.
      *
      * @param string $id
-     * @param null|array $params
-     * @param null|array|\Stripe\Util\RequestOptions $opts
-     *
-     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     * @param null|array{expand?: string[]} $params
+     * @param null|RequestOptionsArray|\Stripe\Util\RequestOptions $opts
      *
      * @return \Stripe\PaymentMethod
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
      */
     public function retrieve($id, $params = null, $opts = null)
     {
@@ -109,16 +119,16 @@ class PaymentMethodService extends \Stripe\Service\AbstractService
     }
 
     /**
-     * Updates a PaymentMethod object. A PaymentMethod must be attached a customer to
-     * be updated.
+     * Updates a PaymentMethod object. A PaymentMethod must be attached to a customer
+     * to be updated.
      *
      * @param string $id
-     * @param null|array $params
-     * @param null|array|\Stripe\Util\RequestOptions $opts
-     *
-     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     * @param null|array{allow_redisplay?: string, billing_details?: array{address?: null|array{city?: string, country?: string, line1?: string, line2?: string, postal_code?: string, state?: string}, email?: null|string, name?: null|string, phone?: null|string, tax_id?: string}, card?: array{exp_month?: int, exp_year?: int, networks?: array{preferred?: null|string}}, expand?: string[], metadata?: null|array<string, string>, payto?: array{account_number?: string, bsb_number?: string, pay_id?: string}, us_bank_account?: array{account_holder_type?: string, account_type?: string}} $params
+     * @param null|RequestOptionsArray|\Stripe\Util\RequestOptions $opts
      *
      * @return \Stripe\PaymentMethod
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
      */
     public function update($id, $params = null, $opts = null)
     {

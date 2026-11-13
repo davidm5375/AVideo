@@ -17,41 +17,114 @@
 
 namespace Google\Service\Contactcenterinsights;
 
-class GoogleCloudContactcenterinsightsV1Issue extends \Google\Model
+class GoogleCloudContactcenterinsightsV1Issue extends \Google\Collection
 {
+  protected $collection_key = 'sampleUtterances';
+  /**
+   * @var string
+   */
   public $createTime;
+  /**
+   * @var string
+   */
+  public $displayDescription;
+  /**
+   * @var string
+   */
   public $displayName;
+  /**
+   * @var string
+   */
   public $name;
+  /**
+   * @var string[]
+   */
+  public $sampleUtterances;
+  /**
+   * @var string
+   */
   public $updateTime;
 
+  /**
+   * @param string
+   */
   public function setCreateTime($createTime)
   {
     $this->createTime = $createTime;
   }
+  /**
+   * @return string
+   */
   public function getCreateTime()
   {
     return $this->createTime;
   }
+  /**
+   * @param string
+   */
+  public function setDisplayDescription($displayDescription)
+  {
+    $this->displayDescription = $displayDescription;
+  }
+  /**
+   * @return string
+   */
+  public function getDisplayDescription()
+  {
+    return $this->displayDescription;
+  }
+  /**
+   * @param string
+   */
   public function setDisplayName($displayName)
   {
     $this->displayName = $displayName;
   }
+  /**
+   * @return string
+   */
   public function getDisplayName()
   {
     return $this->displayName;
   }
+  /**
+   * @param string
+   */
   public function setName($name)
   {
     $this->name = $name;
   }
+  /**
+   * @return string
+   */
   public function getName()
   {
     return $this->name;
   }
+  /**
+   * @param string[]
+   */
+  public function setSampleUtterances($sampleUtterances)
+  {
+    $this->sampleUtterances = $sampleUtterances;
+  }
+  /**
+   * @return string[]
+   */
+  public function getSampleUtterances()
+  {
+    return $this->sampleUtterances;
+  }
+  /**
+   * @param string
+   */
   public function setUpdateTime($updateTime)
   {
     $this->updateTime = $updateTime;
   }
+  /**
+   * @return string
+   */
   public function getUpdateTime()
   {
     return $this->updateTime;

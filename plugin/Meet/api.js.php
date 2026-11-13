@@ -19,20 +19,21 @@ if (empty($meet_schedule_id)) {
     $meet_schedule_id = intval($meet_schedule_id);
 }
 ?>
-<script src="<?php echo getCDN(); ?>plugin/Meet/external_api.js" type="text/javascript"></script>
-<script src="<?php echo getCDN(); ?>node_modules/sweetalert/dist/sweetalert.min.js" type="text/javascript"></script>
+<script src="https://meet.ypt.me/external_api.js" type="text/javascript"></script>
+<script src="<?php echo getURL('node_modules/sweetalert/dist/sweetalert.min.js'); ?>" type="text/javascript"></script>
 <script>
     var webSiteRootURL = "<?php echo $global['webSiteRootURL']; ?>";
     var webSiteTitle = "<?php echo $config->getWebSiteTitle(); ?>";
+    var isCustomJitsi = "<?php echo Meet::isCustomJitsi(); ?>";
     var lastLiveStatus;
-    var eventMethod = window.addEventListener
-            ? "addEventListener"
-            : "attachEvent";
+    var eventMethod = window.addEventListener ?
+        "addEventListener" :
+        "attachEvent";
     var eventer = window[eventMethod];
-    var messageEvent = eventMethod === "attachEvent"
-            ? "onmessage"
-            : "message";
-    eventer(messageEvent, function (e) {
+    var messageEvent = eventMethod === "attachEvent" ?
+        "onmessage" :
+        "message";
+    eventer(messageEvent, function(e) {
         if (typeof e.data.isLive !== 'undefined') {
             if (lastLiveStatus !== e.data.isLive) {
                 lastLiveStatus = e.data.isLive;
@@ -62,7 +63,7 @@ if (empty($meet_schedule_id)) {
             aVideoMeetCreateButtons();
             <?php
             $css = file_get_contents($global['systemRootPath'] . 'plugin/Meet/meet.mobile.css');
-            if(!isMobile()){
+            if (!isMobile()) {
                 $css = "@media (max-width: 767px) {{$css}}";
             }
             $css .= file_get_contents($global['systemRootPath'] . 'plugin/Meet/meet.css');
@@ -75,11 +76,14 @@ if (empty($meet_schedule_id)) {
         } else if (typeof e.data.aVideoMeetStopRecording !== 'undefined') {
             console.log("YPTMeetScript aVideoMeetStopRecording");
             aVideoMeetStopRecording(e.data.aVideoMeetStopRecording.dropURL);
+        } else if (typeof e.data.terminateMeet !== 'undefined' && e.data.terminateMeet == 1) {
+            console.log("YPTMeetScript terminateMeet");
+            terminateMeet();
         }
     });
 
     function aVideoMeetZoom(zoom) {
-        document.querySelector("iframe").contentWindow.postMessage({zoom: zoom}, "*");
+        //document.querySelector("iframe").contentWindow.postMessage({zoom: zoom}, "*");
     }
 
     function getMeetDisplayName(domain, roomName, jwt, email, TOOLBAR_BUTTONS) {
@@ -91,7 +95,7 @@ if (empty($meet_schedule_id)) {
                 text: "<?php echo __("Start Now"); ?>",
                 closeModal: true,
             },
-        }).then(function (displayName) {
+        }).then(function(displayName) {
             displayName = displayName.trim();
             if (!displayName || /^$|^\s+$/.test(displayName)) {
                 //avideoAlertError('<?php echo __("You must provide a name"); ?>');
@@ -104,11 +108,35 @@ if (empty($meet_schedule_id)) {
     }
 
     var api;
+
     function aVideoMeetStart(domain, roomName, jwt, email, displayName, TOOLBAR_BUTTONS) {
 
         if (!displayName || displayName == '') {
             displayName = getMeetDisplayName();
             return getMeetDisplayName(domain, roomName, jwt, email, TOOLBAR_BUTTONS);
+        }
+
+        var configOverwrite = {
+            disableDeepLinking: true,
+            disableInviteFunctions: true,
+            openBridgeChannel: 'websocket',
+            liveStreamingEnabled: true,
+            fileRecordingsEnabled: false,
+            localRecording: {
+                enabled: true,
+                format: 'flac' // ou 'wav'
+            },
+            toolbarButtons: TOOLBAR_BUTTONS,
+            inviteUrl: window.location.href,
+        };
+        if (!isCustomJitsi) {
+            configOverwrite.buttonsWithNotifyClick = [{
+                key: 'recording',
+                preventExecution: true
+            }, {
+                key: 'livestreaming',
+                preventExecution: false
+            }];
         }
 
         const options = {
@@ -119,17 +147,11 @@ if (empty($meet_schedule_id)) {
                 email: email,
                 displayName: displayName
             },
-            ConfigOverwrite: {
-                disableDeepLinking: true,
-                disableInviteFunctions: true,
-                openBridgeChannel: 'websocket'
-            },
+            configOverwrite: configOverwrite,
             interfaceConfigOverwrite: {
-                TOOLBAR_BUTTONS: TOOLBAR_BUTTONS,
                 DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
                 MOBILE_APP_PROMO: false,
                 HIDE_INVITE_MORE_HEADER: true,
-                //disableAudioLevels: true,
                 requireDisplayName: true,
                 enableLayerSuspension: true,
                 channelLastN: 4,
@@ -155,28 +177,115 @@ if (empty($meet_schedule_id)) {
 
         var src = $(iframe).attr('src');
         var srcParts = src.split("#");
-        var newSRC = srcParts[0] + "&getRTMPLink=<?php echo urlencode($rtmpLink); ?>#" + srcParts[1];
-
+        var newSRC = srcParts[0] + "&getRTMPLink=<?php echo urlencode($rtmpLink); ?>&webSiteRootURL=<?php echo urlencode($global['webSiteRootURL']); ?>#" + srcParts[1];
         $(iframe).attr('src', newSRC);
 
         api.addEventListeners({
             readyToClose: readyToClose,
         });
 
+        api.addListener('toolbarButtonClicked', function(event) {
+            console.log('toolbarButtonClicked', event);
+            if (event.key === 'recording') {
+                api.executeCommand('showNotification', {
+                    title: 'Recording Unavailable',
+                    description: 'Recording is only available on premium meeting servers.',
+                    timeout: 'medium'
+                });
+            } else if (event.key === 'livestreaming') {
+                api.executeCommand('showNotification', {
+                    description: '⚠️ Public servers allow livestreaming for up to 10 minutes only. For unlimited streaming time, please upgrade to a premium meeting server.',
+                    timeout: 'sticky'
+                });
+            }
+        });
+
+
+        let myUserID;
+
+        api.addListener('participantJoined', (participan) => {
+            // Log the event details for debugging
+            console.log('participantJoined: Event triggered:', participan);
+        });
+
+        api.addListener('participantUpdated', (event) => {
+            console.log('participantUpdated event:', event);
+        });
+
+        // Listener for the breakoutRoomsUpdated event
+        api.addListener('breakoutRoomsUpdated', (event) => {
+            console.log('breakoutRoomsUpdated: Event triggered:', event);
+        });
+        // Listener for the breakoutRoomsUpdated event
+        api.addListener('notificationTriggered', (event) => {
+            console.log('notificationTriggered: Event triggered:', event);
+        });
+
+        // Listener for the dataChannelOpened event
+        api.addListener('dataChannelOpened', (event) => {
+            console.log('dataChannelOpened: Event triggered:', event);
+        });
+
+        // Listener for the endpointTextMessageReceived event
+        api.addListener('endpointTextMessageReceived', (event) => {
+            console.log('endpointTextMessageReceived: Event triggered:', event);
+        });
+
+        // Listener for the nonParticipantMessageReceived event
+        api.addListener('nonParticipantMessageReceived', (event) => {
+            console.log('nonParticipantMessageReceived: Event triggered:', event);
+        });
+
+        // Listener for the log event
+        api.addListener('log', (event) => {
+            console.log('log event: Event triggered:', event);
+        });
+
+        api.addEventListener('recordingStatusChanged', function(event) {
+            if (event.mode === 'file') {
+                // Automatically stop if user tries to start recording
+                api.executeCommand('stopRecording', {
+                    mode: 'file'
+                });
+
+                // Optional: show alert
+                alert('Local recording is disabled on this conference.');
+            }
+        });
+
+        <?php
+        if (!empty($rtmpLink) && !empty($_REQUEST['startLiveMeet'])) {
+        ?>
+
+            console.log('Live meet will start now');
+            startLiveMeet();
+        <?php
+        }
+        ?>
+
+
     }
 
     function aVideoMeetStartRecording(RTMPLink, dropURL) {
+
+        if (api.getNumberOfParticipants() === 0) {
+            setTimeout(function() {
+                aVideoMeetStartRecording(RTMPLink, dropURL);
+            }, 1000);
+            return false;
+        }
+
         if (typeof on_processingLive === 'function') {
             on_processingLive();
         }
         if (dropURL) {
             $.ajax({
                 url: dropURL,
-                success: function (response) {
+                success: function(response) {
                     console.log("YPTMeetScript Start Recording Drop");
                     console.log(response);
                 }
-            }).always(function (dataOrjqXHR, textStatus, jqXHRorErrorThrown) {
+            }).always(function(dataOrjqXHR, textStatus, jqXHRorErrorThrown) {
                 api.executeCommand('startRecording', {
                     mode: 'stream',
                     youtubeStreamKey: RTMPLink,
@@ -196,10 +305,10 @@ if (empty($meet_schedule_id)) {
         }
         api.executeCommand('stopRecording', 'stream');
         if (dropURL) {
-            setTimeout(function () { // if I run the drop on the same time, the stopRecording fails
+            setTimeout(function() { // if I run the drop on the same time, the stopRecording fails
                 $.ajax({
                     url: dropURL,
-                    success: function (response) {
+                    success: function(response) {
                         console.log("YPTMeetScript Stop Recording Drop");
                         console.log(response);
                     }
@@ -214,33 +323,70 @@ if (empty($meet_schedule_id)) {
     }
 
     function aVideoMeetHideElement(selectors) {
-        document.querySelector("iframe").contentWindow.postMessage({hideElement: selectors}, "*");
+        document.querySelector("iframe").contentWindow.postMessage({
+            hideElement: selectors
+        }, "*");
     }
 
     function aVideoMeetAppendElement(parentSelector, html) {
-        var append = {parentSelector: parentSelector, html: html};
-        document.querySelector("iframe").contentWindow.postMessage({append: append}, "*");
+        var append = {
+            parentSelector: parentSelector,
+            html: html
+        };
+        document.querySelector("iframe").contentWindow.postMessage({
+            append: append
+        }, "*");
     }
 
     function aVideoMeetPrependElement(parentSelector, html) {
-        var prepend = {parentSelector: parentSelector, html: html};
-        document.querySelector("iframe").contentWindow.postMessage({prepend: prepend}, "*");
+        var prepend = {
+            parentSelector: parentSelector,
+            html: html
+        };
+        document.querySelector("iframe").contentWindow.postMessage({
+            prepend: prepend
+        }, "*");
     }
 
     function aVideoMeetCreateButtons() {
-<?php
-if (!empty($rtmpLink) && Meet::isModerator($meet_schedule_id)) {
-    ?>
+        <?php
+        if (!empty($rtmpLink) && Meet::isModerator($meet_schedule_id)) {
+        ?>
             aVideoMeetAppendElement(".button-group-center", <?php echo json_encode(Meet::createJitsiRecordStartStopButton($rtmpLink, $dropURL)); ?>);
-    <?php
-}
-?>
+        <?php
+        }
+        ?>
     }
 
     function readyToClose() {
-        window.parent.postMessage({"meetIsClosed": true}, "*");
+        window.parent.postMessage({
+            "meetIsClosed": true
+        }, "*");
         if (typeof _readyToClose == "function") {
             _readyToClose();
+        }
+    }
+
+    function startLiveMeet() {
+        if (api.getNumberOfParticipants() === 0) {
+            console.log('startLiveMeet: No participants yet, try in 1 second');
+            setTimeout(function() {
+                startLiveMeet();
+            }, 1000);
+            return false;
+        } else {
+            console.log('startLiveMeet: Participants found, we will start in 5 seconds');
+            setTimeout(function() {
+                console.log('startLiveMeet: Start now');
+                aVideoMeetStartRecording('<?php echo $rtmpLink; ?>', '<?php echo $dropURL; ?>');
+            }, 5000);
+        }
+    }
+
+    function terminateMeet() {
+        Participants = api.getParticipantsInfo();
+        for (var index in Participants) {
+            api.executeCommand('kickParticipant', Participants[index].participantId);
         }
     }
 </script>

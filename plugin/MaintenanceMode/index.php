@@ -4,20 +4,24 @@ require_once dirname(__FILE__) . '/../../videos/configuration.php';
 if(empty($obj)){
     $obj = AVideoPlugin::getDataObject('MaintenanceMode');
 }
-
+if(!empty($obj->redirectHere) && isValidURL($obj->redirectHere)){
+    header("Location: {$obj->redirectHere}", true, 302);
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
     <head>
         <title>Coming Soon 1</title>
         <meta charset="UTF-8">
+        <meta name="robots" content="noindex, nofollow">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <!--===============================================================================================-->
             <?php
             include $global['systemRootPath'] . 'view/include/bootstrap.css.php';
             ?>
         <!--===============================================================================================-->
-        <link href="<?php echo getCDN(); ?>node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"/>
+        <link href="<?php echo getURL('node_modules/@fortawesome/fontawesome-free/css/all.min.css'); ?>" rel="stylesheet" type="text/css"/>
 
         <!--===============================================================================================-->
         <link rel="stylesheet" type="text/css" href="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/animate/animate.css">
@@ -91,7 +95,7 @@ if(empty($obj)){
                     if (!empty($obj->twitterLink)) {
                         ?>
                         <a href="<?php echo $obj->twitterLink; ?>" class="flex-c-m size5 bg4 how1 trans-04 m-r-5">
-                            <i class="fab fa-twitter"></i>
+                            <i class="fa-brands fa-x-twitter"></i>
                         </a>
                         <?php
                     }
@@ -122,7 +126,7 @@ if(empty($obj)){
             </div>
         </div>
 
-        <!--===============================================================================================-->	
+        <!--===============================================================================================-->
         <script src="<?php echo getURL('node_modules/jquery/dist/jquery.min.js'); ?>" type="text/javascript"></script>
         <!--===============================================================================================
         <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/bootstrap/js/popper.js"></script>-->
@@ -130,12 +134,12 @@ if(empty($obj)){
         include $global['systemRootPath'] . 'view/include/bootstrap.js.php';
         ?>
         <!--===============================================================================================-->
-        <script src="<?php echo getCDN(); ?>view/js/select2/select2.min.js"></script>
+        <script src="<?php echo getURL('view/js/select2/select2.min.js'); ?>"></script>
         <!--===============================================================================================-->
-        <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/countdowntime/moment.min.js"></script>
-        <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/countdowntime/moment-timezone.min.js"></script>
-        <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/countdowntime/moment-timezone-with-data.min.js"></script>
-        <script src="<?php echo getCDN(); ?>plugin/MaintenanceMode/vendor/countdowntime/countdowntime.js"></script>
+        <?php
+        include $global['systemRootPath'] . 'view/include/moment.js.php';
+        ?>
+        <script src="<?php echo getURL('plugin/MaintenanceMode/vendor/countdowntime/countdowntime.js'); ?>"></script>
         <?php
         if (empty($obj->hideClock) && !empty($obj->endIn)) {
             ?>

@@ -1,6 +1,13 @@
 <?php
+
+require_once __DIR__.'/rokuFunctions.php';
+
+if(empty($rows)){
+    $rows = array();
+}
+
 header('Content-Type: application/json');
-$cacheFeedName = "feedCacheROKU" . json_encode($_REQUEST);
+$cacheFeedName = "feedCache_ROKU" . json_encode($_REQUEST);
 $lifetime = 43200;
 $output = ObjectYPT::getCache($cacheFeedName, $lifetime);
 if (empty($output)) {
@@ -8,82 +15,62 @@ if (empty($output)) {
     $obj->providerName = $title;
     $obj->language = "en";
     $obj->lastUpdated = date('c');
-    $obj->movies = array();
+    $obj->movies = [];
 
-    $cacheName = "roju.json.movies";
+    $cacheName = "feedCache_ROKU_movies".json_encode($_REQUEST);
 
     $movies = ObjectYPT::getCache($cacheName, 0);
 
-    $categories = array();
     if (empty($movies)) {
         foreach ($rows as $row) {
-            $videoSource = Video::getHigestResolution($row['filename']);
-            if (empty($videoSource)) {
-                continue;
-            }
-            $movie = new stdClass();
-            $movie->id = Video::getLinkToVideo($row['id'], $row['clean_title'], false, "permalink");
-            $movie->title = UTF8encode($row['title']);
-            $movie->longDescription = "=> " . _substr(strip_tags(br2nl(UTF8encode($row['description']))), 0, 490);
-            $movie->shortDescription = _substr($movie->longDescription, 0, 200);
-            $movie->thumbnail = Video::getRokuImage($row['id']);
-            $movie->tags = _substr(UTF8encode($row['category']), 0, 20);
-            $movie->genres = array("special");
-            $movie->releaseDate = date('c', strtotime($row['created']));
-            $movie->categories_id = $row['categories_id'];
-
-            $content = new stdClass();
-            $content->dateAdded = date('c', strtotime($row['created']));
-            $content->captions = array();
-            $content->duration = durationToSeconds($row['duration']);
-            $content->language = "en";
-            $content->adBreaks = array("00:00:00");
-
-            $video = new stdClass();
-            $video->url = $videoSource["url"];
-            $video->quality = "HD";
-            $video->videoType = Video::getVideoTypeText($row['filename']);
-            $content->videos = array($video);
-
-            $movie->content = $content;
-
-            $obj->movies[] = $movie;
-
-            if (empty($categories[$movie->categories_id])) {
-                $categories[$movie->categories_id] = new stdClass();
-                $categories[$movie->categories_id]->name = $movie->tags;
-                $categories[$movie->categories_id]->query = $movie->tags;
-                $categories[$movie->categories_id]->order = 'most_recent';
+            $movie = rowToRoku($row);
+            if(!empty($movie)){
+                $obj->movies[] = $movie;
             }
         }
         ObjectYPT::setCache($cacheName, $obj->movies);
     } else {
         $obj->movies = $movies;
-        foreach ($obj->movies as $movie) {
-            if (empty($categories[$movie->categories_id])) {
-                $categories[$movie->categories_id] = new stdClass();
-                $categories[$movie->categories_id]->name = $movie->tags;
-                $categories[$movie->categories_id]->query = $movie->tags;
-                $categories[$movie->categories_id]->order = 'most_recent';
-            }
-        }
     }
 
-    $obj->categories = array();
-    foreach ($categories as $value) {
-        $obj->categories[] = $value;
-    }
 
-    $output = json_encode($obj, JSON_UNESCAPED_UNICODE);
-    if (json_last_error()) {
+    $itemIds = [];
+    foreach ($obj->movies as $value) {
+        $itemIds[] = $value->id;
+    }
+    
+    $categoryName = 'All';
+    $playlistName = 'all';
+    if(!empty($_REQUEST['program_id'])){
+        $program = new PlayList($_REQUEST['program_id']);
+        $categoryName = trim($program->getName()); 
+        $playlistName = ucwords(str_replace("-", " ", $categoryName));
+    }else if(!empty($_REQUEST['catName'])){
+        $categoryName = trim(@$_REQUEST["catName"]);  // 1. LETS USE THE CATEGORY NAME INSTEAD OF 'ALL'
+        $playlistName = ucwords(str_replace("-", " ", $categoryName));
+    }
+    
+    if(empty($categoryName)){
+        $categoryName = 'All';
+    }
+    if(empty($playlistName)){
+        $playlistName = 'all';
+    }
+        
+    $obj->playlists = [['name' => $playlistName, 'itemIds'=>$itemIds]];
+    $obj->categories = [['name' => $categoryName, 'playlistName' => $playlistName, 'order' => 'most_recent']];
+
+    $output = _json_encode($obj);
+    if (empty($output) && json_last_error()) {
         $output = json_encode(json_last_error_msg());
+        var_dump($obj);
+    } else {
+        ObjectYPT::setCache($cacheFeedName, $output);
     }
-    ObjectYPT::setCache($cacheFeedName, $output);
-}else{
+} else {
     //echo '<!-- cache -->';
 }
-if(!is_string($output)){
+if (!is_string($output)) {
     $output = json_encode($output);
 }
 die($output);
-?>

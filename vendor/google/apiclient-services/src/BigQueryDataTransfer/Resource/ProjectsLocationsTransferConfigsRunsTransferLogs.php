@@ -24,19 +24,22 @@ use Google\Service\BigQueryDataTransfer\ListTransferLogsResponse;
  * Typical usage is:
  *  <code>
  *   $bigquerydatatransferService = new Google\Service\BigQueryDataTransfer(...);
- *   $transferLogs = $bigquerydatatransferService->transferLogs;
+ *   $transferLogs = $bigquerydatatransferService->projects_locations_transferConfigs_runs_transferLogs;
  *  </code>
  */
 class ProjectsLocationsTransferConfigsRunsTransferLogs extends \Google\Service\Resource
 {
   /**
-   * Returns user facing log messages for the data transfer run.
+   * Returns log messages for the transfer run.
    * (transferLogs.listProjectsLocationsTransferConfigsRunsTransferLogs)
    *
-   * @param string $parent Required. Transfer run name in the form:
-   * `projects/{project_id}/transferConfigs/{config_id}/runs/{run_id}` or `project
-   * s/{project_id}/locations/{location_id}/transferConfigs/{config_id}/runs/{run_
-   * id}`
+   * @param string $parent Required. Transfer run name. If you are using the
+   * regionless method, the location must be `US` and the name should be in the
+   * following form: *
+   * `projects/{project_id}/transferConfigs/{config_id}/runs/{run_id}` If you are
+   * using the regionalized method, the name should be in the following form: * `p
+   * rojects/{project_id}/locations/{location_id}/transferConfigs/{config_id}/runs
+   * /{run_id}`
    * @param array $optParams Optional parameters.
    *
    * @opt_param string messageTypes Message types to return. If not populated -
@@ -48,6 +51,7 @@ class ProjectsLocationsTransferConfigsRunsTransferLogs extends \Google\Service\R
    * results, `ListTransferLogsResponse` outputs a `next_page` token, which can be
    * used as the `page_token` value to request the next page of list results.
    * @return ListTransferLogsResponse
+   * @throws \Google\Service\Exception
    */
   public function listProjectsLocationsTransferConfigsRunsTransferLogs($parent, $optParams = [])
   {

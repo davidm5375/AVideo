@@ -23,6 +23,9 @@ class GoogleCloudContactcenterinsightsV1CallAnnotation extends \Google\Model
   protected $annotationEndBoundaryDataType = '';
   protected $annotationStartBoundaryType = GoogleCloudContactcenterinsightsV1AnnotationBoundary::class;
   protected $annotationStartBoundaryDataType = '';
+  /**
+   * @var int
+   */
   public $channelTag;
   protected $entityMentionDataType = GoogleCloudContactcenterinsightsV1EntityMentionData::class;
   protected $entityMentionDataDataType = '';
@@ -32,6 +35,8 @@ class GoogleCloudContactcenterinsightsV1CallAnnotation extends \Google\Model
   protected $intentMatchDataDataType = '';
   protected $interruptionDataType = GoogleCloudContactcenterinsightsV1InterruptionData::class;
   protected $interruptionDataDataType = '';
+  protected $issueMatchDataType = GoogleCloudContactcenterinsightsV1IssueMatchData::class;
+  protected $issueMatchDataDataType = '';
   protected $phraseMatchDataType = GoogleCloudContactcenterinsightsV1PhraseMatchData::class;
   protected $phraseMatchDataDataType = '';
   protected $sentimentDataType = GoogleCloudContactcenterinsightsV1SentimentData::class;
@@ -67,10 +72,16 @@ class GoogleCloudContactcenterinsightsV1CallAnnotation extends \Google\Model
   {
     return $this->annotationStartBoundary;
   }
+  /**
+   * @param int
+   */
   public function setChannelTag($channelTag)
   {
     $this->channelTag = $channelTag;
   }
+  /**
+   * @return int
+   */
   public function getChannelTag()
   {
     return $this->channelTag;
@@ -130,6 +141,20 @@ class GoogleCloudContactcenterinsightsV1CallAnnotation extends \Google\Model
   public function getInterruptionData()
   {
     return $this->interruptionData;
+  }
+  /**
+   * @param GoogleCloudContactcenterinsightsV1IssueMatchData
+   */
+  public function setIssueMatchData(GoogleCloudContactcenterinsightsV1IssueMatchData $issueMatchData)
+  {
+    $this->issueMatchData = $issueMatchData;
+  }
+  /**
+   * @return GoogleCloudContactcenterinsightsV1IssueMatchData
+   */
+  public function getIssueMatchData()
+  {
+    return $this->issueMatchData;
   }
   /**
    * @param GoogleCloudContactcenterinsightsV1PhraseMatchData

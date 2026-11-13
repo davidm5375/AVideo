@@ -1,382 +1,544 @@
 <?php
+$videos_id = getVideos_id();
+$include = AVideoPlugin::getCommentsIncludeFile($videos_id);
+if (!empty($include)) {
+    include $include;
+    return;
+}
+
 if (User::canSeeCommentTextarea()) {
     if (!empty($advancedCustom->commentsNoIndex)) {
-        echo "<!--googleoff: all-->";
+        echo "<!-- advancedCustom->commentsNoIndex-->";
     }
-    if (!empty($video['id'])) {
-        ?>
-        <div class="input-group">
-            <textarea class="form-control custom-control" rows="3" style="resize:none" id="comment" maxlength="<?php echo empty($advancedCustom->commentsMaxLength) ? "200" : $advancedCustom->commentsMaxLength ?>" <?php
-            if (!User::canComment()) {
-                echo "disabled";
-            }
-            ?>><?php
-                          if (!User::canComment()) {
-                              if (User::isLogged()) {
-                                  echo __("Verify your email to be able to comment");
-                              } else {
-                                  echo __("You must login to be able to comment on videos");
-                              }
-                          }
-                          ?></textarea>
-                <?php if (User::canComment()) { ?>
-                <span class="input-group-addon btn btn-success" id="saveCommentBtn" <?php
-            if (!User::canComment()) {
-                echo "disabled='disabled'";
-            }
-                    ?>><span class="glyphicon glyphicon-comment"></span> <?php echo __("Comment"); ?></span>
-                  <?php } else if (User::isLogged()) { ?>
-                <a class="input-group-addon btn btn-success" href="<?php echo $global['webSiteRootURL']; ?>user" data-toggle="tooltip" title="<?php echo __("Verify your email to be able to comment"); ?>"><span class="glyphicon glyphicon-log-in"></span> <span class="hidden-sm hidden-xs"><?php echo __("Verify your email to be able to comment"); ?></span></a>
-            <?php } else { ?>
-                <a class="input-group-addon btn btn-success" href="<?php echo $global['webSiteRootURL']; ?>user" data-toggle="tooltip" title="<?php echo __("You must login to be able to comment on videos"); ?>"><span class="glyphicon glyphicon-log-in"></span> <span class="hidden-sm hidden-xs"><?php echo __("You must login to be able to comment on videos"); ?></span></a>
-            <?php } ?>
-        </div>
-        <div class="pull-right" id="count_message"></div>
-        <script>
-            $(document).ready(function () {
-                var text_max = <?php echo empty($advancedCustom->commentsMaxLength) ? "200" : $advancedCustom->commentsMaxLength ?>;
-                $('#count_message').html(text_max + ' <?php echo __("remaining"); ?>');
-                $('#comment').keyup(function () {
-                    var text_length = $(this).val().length;
-                    var text_remaining = text_max - text_length;
-                    $('#count_message').html(text_remaining + ' <?php echo __("remaining"); ?>');
-                });
-            });
-        </script>
-        <?php
-    }
-    ?>
-    <style>
-        .replySet .replySet .divReplyGrid{
-            padding-left: 0 !important;
-        }
-    </style>
-    <div class="replySet hidden" id="replyTemplate" comments_id="0">
-        <div>        
-            <?php
-            if (User::canComment()) {
-                ?>
-                <button class="btn btn-default no-outline reply btn-xs"> 
-                    <?php echo __("Reply"); ?>
-                </button>
-                <?php
-            }
-            ?>
-            <button class="faa-parent animated-hover btn btn-default no-outline btn-xs replyLikeBtn"> 
-                <span class="fa fa-thumbs-up faa-bounce"></span>
-                <small>0</small>
-            </button> 
-            <button class="faa-parent animated-hover btn btn-default no-outline btn-xs replyDislikeBtn"> 
-                <span class="fa fa-thumbs-down faa-bounce faa-reverse"></span>
-                <small>0</small>
-            </button>           
-            <button class="btn btn-default no-outline allReplies btn-xs viewAllReplies">  
-                <?php echo __("View all replies"); ?> (<span class="total_replies">0</span>) <i class="fa fa-chevron-down" aria-hidden="true"></i>
-            </button> 
-            <button class="btn btn-default no-outline allReplies btn-xs hideAllReplies" style="display: none"> 
-                <?php echo __("Hide Replies"); ?> <i class="fa fa-chevron-up" aria-hidden="true"></i>
-            </button> 
-            <button class="btn btn-default no-outline btn-xs pull-right delete userCanAdminComment"> 
-                <i class="fa fa-trash" aria-hidden="true"></i>
-            </button> 
-            <button class="btn btn-default no-outline btn-xs pull-right edit userCanEditComment"> 
-                <i class="fas fa-edit" aria-hidden="true"></i>
-            </button> 
-        </div>
-        <div class="divReplyGrid" style="padding-left: 50px;">
-            <div class="input-group formRepy" style="display: none;">
-                <textarea class="form-control custom-control" rows="2" style="resize:none" maxlength="<?php echo empty($advancedCustom->commentsMaxLength) ? "200" : $advancedCustom->commentsMaxLength ?>" ></textarea>
+    echo '<link rel="stylesheet" href="' . getURL('view/css/comments.css') . '">';
+    include $global['systemRootPath'] . 'view/videoComments_textarea.php';
+    $commentTemplate = json_encode(file_get_contents($global['systemRootPath'] . 'view/videoComments_template.php'));
 
-                <span class="input-group-addon btn btn-success saveReplyBtn">
-                    <span class="glyphicon glyphicon-comment"></span> <?php echo __("Reply"); ?>
-                </span>
-            </div>
-            <div class="replyGrid" style="display: none;">
-                <table class="table table-condensed table-hover table-striped nowrapCell grid">
-                    <thead>
-                        <tr>
-                            <th data-column-id="comment"  data-formatter="commands" ><?php echo __("Comment"); ?></th>
-                        </tr>
-                    </thead>
-                </table>
-            </div>
-        </div>
+    $class = '';
+    if (!empty($advancedCustom->removeThumbsUpAndDown)) {
+        $class = 'removeThumbsUpAndDown';
+    }
+    if (!User::canComment()) {
+        $class .= ' canNotComment';
+    } else {
+        $class .= ' canComment';
+    }
+    if (!User::isLogged()) {
+        $class .= ' userNotLogged';
+    } else {
+        $class .= ' userLogged';
+    }
+    if (empty(getVideos_id())) {
+        $class .= ' noVideosId';
+    } else {
+        $class .= ' withVideosId';
+    }
+?>
+
+    <div id="commentsArea" class="commentsList <?php echo $class; ?>"></div>
+    <div class="text-center">
+        <div id="commentStatus" class="commentStatus text-muted" role="status" aria-live="polite"></div>
+        <button type="button" class="btn btn-default commentLoadMore" onclick="getComments(0, lastLoadedPage+1);" id="commentLoadMoreBtn"> <?php echo __('Load More'); ?></button>
     </div>
-    <h4><?php echo __("Comments"); ?>:</h4>
-    <table id="grid" class="table table-condensed table-hover table-striped nowrapCell">
-        <thead>
-            <tr>
-                <?php
-                if (empty($video['id'])) {
-                    ?>
-                    <th data-formatter="video"  data-width="200px" ><?php echo __("Video"); ?></th>
-                <?php } ?>
-                <th data-column-id="comment"  data-formatter="commands" ><?php echo __("Comment"); ?></th>
-            </tr>
-        </thead>
-    </table>
-
-    <div id="commentFormModal" class="modal fade" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title"><?php echo __("Comment Form"); ?></h4>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" value="" id="inputEditCommentId"/>
-                    <textarea id="inputEditComment" class="form-control" placeholder="<?php echo __("Comment"); ?>" required></textarea>                                
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo __("Close"); ?></button>
-                    <button type="button" class="btn btn-primary" id="saveEditCommentBtn"><?php echo __("Save changes"); ?></button>
-                </div>
-            </div><!-- /.modal-content -->
-        </div><!-- /.modal-dialog -->
-    </div><!-- /.modal -->
     <script>
-        $(document).ready(function () {
-            var grid = $("#grid").bootgrid({
-                labels: {
-                    noResults: "<?php echo __("No results found!"); ?>",
-                    all: "<?php echo __("All"); ?>",
-                    infos: "<?php echo __("Showing {{ctx.start}} to {{ctx.end}} of {{ctx.total}} entries"); ?>",
-                    loading: "<?php echo __("Loading..."); ?>",
-                    refresh: "<?php echo __("Refresh"); ?>",
-                    search: "<?php echo __("Search"); ?>",
+        var commentTemplate = <?php echo $commentTemplate; ?>;
+
+        function updateTextareaMaxLength(textareaSelector) {
+            var textarea = $(textareaSelector);
+            var currentText = textarea.val();
+            var result = countMarkdownImagesAndCharacters(currentText);
+
+            // Set the new max length for the textarea
+            var newMaxLength = commentsmaxlen + result.totalCharacters;
+            textarea.attr('maxlength', newMaxLength);
+
+            console.log('Updated max length:', newMaxLength);
+        }
+
+        function countMarkdownImagesAndCharacters(inputString) {
+            // Regular expression to match Markdown image syntax
+            var markdownImageRegex = /!\[.*?\]\(.*?\)/g;
+
+            // Find all matches in the input string
+            var matches = inputString.match(markdownImageRegex);
+
+            // Number of images found
+            var numberOfImages = matches ? matches.length : 0;
+
+            // Total number of characters for all Markdown images
+            var totalCharacters = 0;
+
+            if (matches) {
+                matches.forEach(function(match) {
+                    totalCharacters += match.length;
+                });
+            }
+
+            return {
+                numberOfImages: numberOfImages,
+                totalCharacters: totalCharacters
+            };
+        }
+
+        function popupCommentTextarea(comments_id, html) {
+            var span = document.createElement("span");
+            var commentTextArea = $('#comment').clone();
+            $(commentTextArea).attr('id', 'popupCommentTextarea');
+            $(commentTextArea).val(html || '');
+
+            // Add image upload button and input
+            var uploadButton = $('<button class="btn btn-primary" id="uploadImageBtnPopup" style="margin-top: 10px;"><i class="fas fa-image"></i> ' + __('Upload Image') + '</button>');
+            var fileInput = $('<input type="file" id="commentImageInputPopup" accept="image/jpeg, image/png, image/gif" style="display: none;">');
+
+            $(span).append(commentTextArea);
+            $(span).append(fileInput);
+            $(span).append(uploadButton);
+
+            swal({
+                title: <?php printJSString('Comment'); ?>,
+                content: span,
+                dangerMode: true,
+                buttons: {
+                    cancel: "Cancel",
+                    comment: {
+                        text: <?php printJSString('Comment'); ?>,
+                        value: "comment",
+                        className: "btn-success",
+                    },
+                }
+            }).then(function(value) {
+                console.log(value);
+                switch (value) {
+                    case "comment":
+                        if (!empty(html)) {
+                            saveEditedComment(comments_id);
+                        } else {
+                            replyComment(comments_id);
+                        }
+                        break;
+                }
+            });
+
+            // Initial update of max length based on content
+            updateTextareaMaxLength('#popupCommentTextarea');
+
+            // Monitor changes to the textarea content to update max length
+            $('#popupCommentTextarea').on('input', function() {
+                updateTextareaMaxLength('#popupCommentTextarea');
+            });
+
+            // Image Upload Logic
+            $('#uploadImageBtnPopup').on('click', function() {
+                $('#commentImageInputPopup').click();
+            });
+
+            $('#commentImageInputPopup').on('change', function() {
+                var fileInput = this.files[0];
+                if (fileInput) {
+                    var formData = new FormData();
+                    formData.append('comment_image', fileInput);
+                    formData.append('videos_id', commentVideos_id); // Send the video ID
+                    commentUploadImagePopup(formData);
+                }
+            });
+
+            $('#popupCommentTextarea').on('dragover', function(e) {
+                e.preventDefault();
+            }).on('drop', function(e) {
+                e.preventDefault();
+                var files = e.originalEvent.dataTransfer.files;
+                if (files.length) {
+                    var fileInput = files[0];
+                    var formData = new FormData();
+                    formData.append('comment_image', fileInput);
+                    formData.append('videos_id', commentVideos_id); // Send the video ID
+                    commentUploadImagePopup(formData);
+                }
+            });
+        }
+
+        function commentUploadImagePopup(formData) {
+            modal.showPleaseWait();
+            $.ajax({
+                url: uploadCommentImageURL,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    modal.hidePleaseWait();
+                    var result = JSON.parse(response);
+                    if (!result.error) {
+                        $('#popupCommentTextarea').val($('#popupCommentTextarea').val() + result.commentText);
+                        updateTextareaMaxLength('#popupCommentTextarea'); // Update max length after adding image
+                    } else {
+                        avideoAlertError(result.msg);
+                    }
                 },
-                ajax: true,
-                url: "<?php echo $global['webSiteRootURL']; ?>objects/comments.json.php?video_id=<?php echo empty($video['id']) ? "0" : $video['id']; ?>",
-                            sorting: false,
-                            templates: {
-                                header: ""
-                            },
-                            requestHandler: function (request) {
-                                request.sort.created = "DESC";
-                                return request;
-                            },
-                            formatters: {
-                                "commands": function (column, row) {
-                                    return formatRow(row);
-                                },
-                                "video": function (column, row) {
-                                    var image;
-                                    if (row.video) {
-                                        image = '<img src="' + row.poster.thumbsJpg + '" class="img img-thumbnail img-responsive"><br><a href="<?php echo $global['webSiteRootURL']; ?>video/' + row.video.clean_title + '" class="btn btn-default btn-xs">' + row.video.title + '</a>';
-                                    } else {
-                                        image = 'Not found';
-                                    }
+                error: function() {
+                    modal.hidePleaseWait();
+                    avideoAlertError('An error occurred while uploading the image');
+                }
+            });
+        }
 
-                                    return image;
-                                }
+
+        function getCommentTemplate(itemsArray) {
+            var template = commentTemplate;
+            for (var search in itemsArray) {
+                var replace = itemsArray[search];
+
+                if (typeof replace == 'boolean') {
+                    if (search == 'userCanAdminComment') {
+                        if (replace) {
+                            replace = 'userCanAdminComment';
+                        } else {
+                            replace = 'userCanNotAdminComment';
+                        }
+                    } else if (search == 'userCanEditComment') {
+                        if (replace) {
+                            replace = 'userCanEditComment';
+                        } else {
+                            replace = 'userCanNotEditComment';
+                        }
+                    }
+                } else if (search == 'myVote') {
+                    if (replace == '1') {
+                        replace = 'myVote1';
+                    } else if (replace == '-1') {
+                        replace = 'myVote-1';
+                    } else {
+                        replace = 'myVote0';
+                    }
+                }
+
+                if (typeof replace !== 'string' && typeof replace !== 'number') {
+                    continue;
+                }
+                if (search == 'pin') {
+                    if (!empty(replace)) {
+                        replace = 'isPinned';
+                    } else {
+                        replace = 'isNotPinned';
+                    }
+                }
+                template = template.replace(new RegExp('{' + search + '}', 'g'), replace);
+            }
+            template = template.replace(new RegExp('{replyText}', 'g'), <?php printJSString('Reply') ?>);
+            template = template.replace(new RegExp('{viewAllRepliesText}', 'g'), <?php printJSString('View all replies') ?>);
+            template = template.replace(new RegExp('{hideRepliesText}', 'g'), <?php printJSString('Hide Replies') ?>);
+            template = template.replace(new RegExp('{likes}', 'g'), 0);
+            template = template.replace(new RegExp('{dislikes}', 'g'), 0);
+            template = template.replace(new RegExp('{myVote}', 'g'), 'myVote0');
+
+            if (!empty(itemsArray.comments_id_pai)) {
+                template = template.replace(new RegExp('{isResponse}', 'g'), 'isResponse');
+            } else {
+                template = template.replace(new RegExp('{isResponse}', 'g'), 'isNotResponse');
+            }
+
+            return template;
+        }
+
+        function processCommentRow(itemsArray) {
+            if (typeof itemsArray === 'function') {
+                return false;
+            }
+            if (!empty(itemsArray.comments_id_pai)) {
+                itemsArray.isAResponse = 'isAResponse';
+            } else {
+                itemsArray.isAResponse = 'isNotAResponse';
+            }
+            itemsArray.videoLink = '#';
+            itemsArray.videoTitle = '';
+            if (typeof itemsArray.video != 'undefined' && !empty(itemsArray.video)) {
+                itemsArray.videoLink = itemsArray.video.link;
+                itemsArray.videoTitle = itemsArray.video.title;
+            }
+            var template = getCommentTemplate(itemsArray);
+            template = $(template);
+            var repliesAreaSelector = '> div.media-body > div.repliesArea';
+            if (typeof itemsArray.responses != 'undefined' && itemsArray.responses.length > 0) {
+                template.find('> .media-body > .commentsButtonsGroup > .allReplies').removeClass('isNotOpen').addClass('isOpen');
+                for (var i in itemsArray.responses) {
+                    var row = itemsArray.responses[i];
+                    if (typeof row === 'function') {
+                        continue;
+                    }
+                    //console.log('getComments', comments_id, page, typeof row);
+                    var templateRow = processCommentRow(row);
+                    template.find(repliesAreaSelector).removeClass('isNotOpen').addClass('isOpen').append(templateRow);
+                }
+            } else {
+                var selector = '#comment_' + itemsArray.id + ' > div.media-body > .commentText';
+                $(selector).html(itemsArray.commentHTML);
+                console.log(selector, itemsArray.commentHTML);
+            }
+
+            return template;
+        }
+
+        function addComment(itemsArray, comments_id, append) {
+
+            var template = processCommentRow(itemsArray);
+            var selector = '#commentsArea ';
+
+            if (!empty(comments_id)) {
+                selector = '#comment_' + comments_id + ' > div.media-body > div.repliesArea ';
+            }
+
+            var element = '#comment_' + itemsArray.id;
+            if ($(element).length) {
+                $(element).replaceWith(template);
+            } else {
+                if (append) {
+                    $(selector).append(template);
+                } else {
+                    $(selector).prepend(template);
+                }
+
+            }
+            return true;
+        }
+
+        function toogleReplies(comments_id, t) {
+            var selector = '#comment_' + comments_id + ' > div.media-body > div.repliesArea ';
+            if ($(selector).is(':empty')) {
+                getComments(comments_id, 1);
+            }
+
+            if ($(t).hasClass('isOpen')) {
+                $(t).removeClass('isOpen');
+                $(t).addClass('isNotOpen');
+                $(selector).slideUp();
+            } else {
+                $(t).removeClass('isNotOpen');
+                $(t).addClass('isOpen');
+                $(selector).slideDown();
+            }
+        }
+
+        var lastLoadedPage = 0;
+        var commentRequests = {};
+
+        function getComments(comments_id, page) {
+            var key = comments_id || 0;
+            if (commentRequests[key]) return;
+            commentRequests[key] = true;
+            var selector = comments_id ? '#comment_' + comments_id + ' > .media-body > .repliesArea' : '#commentsArea';
+            var url = webSiteRootURL + 'objects/comments.json.php';
+            url = addQueryStringParameter(url, 'video_id', typeof commentVideos_id === 'undefined' ? 0 : commentVideos_id);
+            url = addQueryStringParameter(url, 'comments_id', comments_id);
+            url = addQueryStringParameter(url, 'current', page);
+            if (!comments_id) {
+                $('#commentLoadMoreBtn').prop('disabled', true);
+                $('#commentStatus').text(<?php printJSString('Loading'); ?>);
+                if (page <= 1 && typeof avideoSetContainerLoading === 'function') {
+                    avideoSetContainerLoading('commentsArea', true, {clear: true, items: 3});
+                }
+            }
+            function failed() {
+                if (!comments_id) {
+                    $('#commentStatus').text(<?php printJSString('An error occurred'); ?>);
+                    $('#commentLoadMoreBtn').show();
+                } else {
+                    $('#comment_' + comments_id + ' > .media-body > .commentsButtonsGroup > .allReplies').removeClass('isOpen').addClass('isNotOpen');
+                    avideoToastError(<?php printJSString('An error occurred'); ?>);
+                }
+            }
+            $.ajax({
+                url: url,
+                dataType: 'json',
+                success: function(response) {
+                    if (!comments_id && typeof avideoSetContainerLoading === 'function') {
+                        avideoSetContainerLoading('commentsArea', false);
+                    }
+                    if (response.error || !Array.isArray(response.rows)) { failed(); return; }
+                    if (page <= 1) $(selector).empty();
+                    response.rows.forEach(function(row) { addComment(row, comments_id, true); });
+                    if (!comments_id) {
+                        lastLoadedPage = page;
+                        $('#commentStatus').text(response.total == 0 ? <?php printJSString('No comments yet'); ?> : '');
+                        $('#commentLoadMoreBtn').toggle(response.rows.length > 0 && page * response.rowCount < response.total);
+                    }
+                },
+                error: failed,
+                complete: function() {
+                    delete commentRequests[key];
+                    if (!comments_id) {
+                        $('#commentLoadMoreBtn').prop('disabled', false);
+                        if (typeof avideoSetContainerLoading === 'function') avideoSetContainerLoading('commentsArea', false);
+                    }
+                }
+            });
+        }
+
+        function saveComment() {
+            return _saveComment($('#comment').val(), commentVideos_id, 0, 0);
+        }
+
+        function deleteComment(comments_id) {
+            swal({
+                title: "<?php echo __("Are you sure?"); ?>",
+                text: "<?php echo __("You will not be able to recover this action!"); ?>",
+                icon: "warning",
+                buttons: true,
+                dangerMode: true,
+            }).then(function(willDelete) {
+                if (willDelete) {
+
+                    modal.showPleaseWait();
+                    $.ajax({
+                        url: webSiteRootURL + 'objects/commentDelete.json.php',
+                        method: 'POST',
+                        data: {
+                            'id': comments_id
+                        },
+                        success: function(response) {
+                            if (!response.error) {
+                                var selector = '#comment_' + comments_id;
+                                $(selector).slideUp('fast', function() {
+                                    $(this).remove();
+                                });
                             }
-                        }).on("loaded.rs.jquery.bootgrid", function () {
-                            gridLoaded();
-                        });
-
-                        $('#saveCommentBtn').click(function () {
-                            if ($(this).attr('disabled') === 'disabled') {
-                                return false;
-                            }
-                            comment = $('#comment').val();
-                            video = <?php echo empty($video['id']) ? "0" : $video['id']; ?>;
-                            comments_id = 0;
-                            $('#comment').val('');
-                            saveComment(comment, video, comments_id, 0);
-                        });
-
-                        $('#saveEditCommentBtn').click(function () {
-                            comment = $('#inputEditComment').val();
-                            video = <?php echo empty($video['id']) ? "0" : $video['id']; ?>;
-                            comments_id = 0;
-                            id = $('#inputEditCommentId').val();
-                            $('#commentFormModal').modal('hide');
-                            saveComment(comment, video, comments_id, id);
-                        });
+                            avideoResponse(response);
+                            modal.hidePleaseWait();
+                        },
+                        error: function() {
+                            modal.hidePleaseWait();
+                            avideoToastError(<?php printJSString('An error occurred'); ?>);
+                        }
                     });
+                }
+            });
+        }
 
-                    function formatRow(row) {
-                        var template = $("#replyTemplate").clone();
-                        template.removeClass("hidden").attr("id", "").attr("comments_id", row.id);
-                        template.find('.total_replies').addClass("total_replies" + row.id);
-                        if (row.total_replies) {
-                            template.find('.total_replies').text(row.total_replies);
+        function editComment(id) {
+            modal.showPleaseWait();
+            var url = webSiteRootURL + 'objects/comments.json.php';
+            url = addQueryStringParameter(url, 'id', id);
+            $.ajax({
+                url: url,
+                success: function(response) {
+                    modal.hidePleaseWait();
+                    if (response.error) {
+                        avideoAlertError(response.msg);
+                    } else {
+                        console.log(response);
+                        if (empty(response.rows)) {
+                            avideoAlertError('No response from comments');
                         } else {
-                            template.find('.total_replies').closest('.replySet').find('.allReplies').hide();
-                        }
-                        template.find(".replyLikeBtn small").text(row.likes);
-                        template.find(".replyDislikeBtn small").text(row.dislikes);
-                        template.find(".grid").addClass("grid" + row.id);
-                        template.find(".viewAllReplies").addClass("viewAllReplies" + row.id);
-                        template.find(".hideAllReplies").addClass("hideAllReplies" + row.id);
-                        template.find(".formRepy").addClass("formRepy" + row.id);
-                        if (!row.userCanAdminComment) {
-                            template.find(".userCanAdminComment").remove();
-                        }
-                        if (!row.userCanEditComment) {
-                            template.find(".userCanEditComment").remove();
-                        }
-                        if (row.myVote === "1") {
-                            template.find(".replyLikeBtn").addClass("myVote");
-                        } else if (row.myVote === "-1") {
-                            template.find(".replyDislikeBtn").addClass("myVote");
-                        }
-                        return row.comment + $('<a></a>').append(template).html();
-                    }
-
-                    function saveComment(comment, video, comments_id, id) {
-                        if (comment.length > 5) {
-                            modal.showPleaseWait();
-                            $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>objects/commentAddNew.json.php',
-                                method: 'POST',
-                                data: {'comment': comment, 'video': video, 'comments_id': comments_id, 'id': id},
-                                success: function (response) {
-                                    if (response.status > 0) {
-                                        avideoToast("<?php echo __("Your comment has been saved!"); ?>");
-                                        if (comments_id) {
-                                            if ($('.grid' + comments_id).hasClass('bootgrid-table')) {
-                                                $('.grid' + comments_id).bootgrid('reload');
-                                            } else {
-                                                $('.viewAllReplies' + comments_id).trigger('click');
-                                            }
-                                            $('.formRepy' + comments_id).slideUp();
-                                        } else {
-                                            $('#grid').bootgrid('reload');
-                                        }
-                                        addCommentCount(comments_id, 1);
-                                    } else {
-                                        avideoAlert("<?php echo __("Sorry"); ?>!", "<?php echo __("Your comment has NOT been saved!"); ?>", "error");
-                                    }
-                                    modal.hidePleaseWait();
-                                }
-                            });
-                        } else {
-                            avideoAlert("<?php echo __("Sorry"); ?>!", "<?php echo __("Your comment must be bigger then 5 characters!"); ?>", "error");
+                            popupCommentTextarea(id, response.rows[0].commentPlain);
                         }
                     }
+                },
+                error: function() {
+                    modal.hidePleaseWait();
+                    avideoToastError(<?php printJSString('An error occurred'); ?>);
+                }
+            });
 
-                    function gridLoaded() {
+        }
 
-                        $('.reply, .allReplies, .saveReplyBtn, .replyDislikeBtn, .replyLikeBtn, .viewAllReplies, .hideAllReplies, .delete, .edit').off();
-                        $(".replyDislikeBtn, .replyLikeBtn").click(function () {
-                            comment = $(this).closest('.replySet');
-                            comments_id = $(this).closest('.replySet').attr("comments_id");
-                            console.log(comment);
-                            $.ajax({
-                                url: '<?php echo $global['webSiteRootURL']; ?>objects/comments_like.json.php?like=' + ($(this).hasClass('replyDislikeBtn') ? "-1" : "1"),
-                                method: 'POST',
-                                data: {'comments_id': comments_id},
-                                success: function (response) {
-                                    comment.find(".replyDislikeBtn, .replyLikeBtn").first().removeClass("myVote");
-                                    if (response.myVote == 1) {
-                                        comment.find(".replyLikeBtn").first().addClass("myVote");
-                                    } else if (response.myVote == -1) {
-                                        comment.find(".replyDislikeBtn").first().addClass("myVote");
-                                    }
-                                    comment.find(".replyLikeBtn small").first().text(response.likes);
-                                    comment.find(".replyDislikeBtn small").first().text(response.dislikes);
-                                }
-                            });
-                            return false;
-                        });
-                        $('.saveReplyBtn').click(function () {
-                            comment = $(this).closest('.replySet').find('.formRepy textarea').val();
-                            video = <?php echo empty($video['id']) ? "0" : $video['id']; ?>;
-                            comments_id = $(this).closest('.replySet').attr("comments_id");
-                            $(this).closest('.replySet').find('.formRepy textarea').val('');
-                            saveComment(comment, video, comments_id, 0);
-                        });
-                        $('.edit').click(function () {
-                            comments_id = $(this).closest('.replySet').attr("comments_id");
-                            var row_index = $(this).closest('tr').index();
-                            var row = $(this).closest('table').bootgrid("getCurrentRows")[row_index];
-                            $('#inputEditComment').val($('<textarea />').html(row.commentPlain).text());
-                            $('#inputEditCommentId').val(comments_id);
-                            $('#commentFormModal').modal();
-                        });
-                        $('.delete').click(function () {
-                            comments_id = $(this).closest('.replySet').attr("comments_id");
-                            t = this;
-                            swal({
-                                title: "<?php echo __("Are you sure?"); ?>",
-                                text: "<?php echo __("You will not be able to recover this action!"); ?>",
-                                icon: "warning",
-                                buttons: true,
-                                dangerMode: true,
-                            })
-                                    .then(function(willDelete) {
-                                        if (willDelete) {
+        function saveEditedComment(id) {
+            return _saveComment($('#popupCommentTextarea').val(), commentVideos_id, 0, id);
+        }
 
-                                            modal.showPleaseWait();
-                                            $.ajax({
-                                                url: '<?php echo $global['webSiteRootURL']; ?>objects/commentDelete.json.php',
-                                                method: 'POST',
-                                                data: {'id': comments_id},
-                                                success: function (response) {
-                                                    if (response.status) {
-                                                        $(t).closest('tr').fadeOut();
-                                                    } else {
-                                                        avideoAlert("<?php echo __("Sorry"); ?>!", "<?php echo __("Your comment has NOT been deleted!"); ?>", "error");
-                                                    }
-                                                    modal.hidePleaseWait();
-                                                }
-                                            });
-                                        }
-                                    });
-                        });
-                        $('.reply').click(function () {
-                            $(this).closest('.replySet').find('.formRepy').first().slideToggle();
-                        });
-                        $('.viewAllReplies').click(function () {
-                            comments_id = $(this).closest('.replySet').attr("comments_id");
-                            $(this).closest('.replySet').find(".replyGrid").slideDown();
-                            $(this).closest('.replySet').find(".grid").bootgrid({
-                                labels: {
-                                    noResults: "<?php echo __("No results found!"); ?>",
-                                    all: "<?php echo __("All"); ?>",
-                                    infos: "<?php echo __("Showing {{ctx.start}} to {{ctx.end}} of {{ctx.total}} entries"); ?>",
-                                    loading: "<?php echo __("Loading..."); ?>",
-                                    refresh: "<?php echo __("Refresh"); ?>",
-                                    search: "<?php echo __("Search"); ?>",
-                                },
-                                ajax: true,
-                                url: "<?php echo $global['webSiteRootURL']; ?>objects/comments.json.php?video_id=<?php echo empty($video['id']) ? "0" : $video['id']; ?>",
-                                                sorting: false,
-                                                templates: {
-                                                    header: ""
-                                                },
-                                                rowCount: -1, navigation: 0,
-                                                formatters: {
-                                                    "commands": function (column, row) {
-                                                        return formatRow(row);
-                                                    }
-                                                },
-                                                requestHandler: function (request) {
-                                                    request.comments_id = comments_id;
-                                                    request.sort.created = "DESC";
-                                                    return request;
-                                                }
-                                            }).on("loaded.rs.jquery.bootgrid", function () {
-                                                gridLoaded();
-                                            });
-                                            $(this).closest('.replySet').find('.viewAllReplies').hide();
-                                            $(this).closest('.replySet').find('.hideAllReplies').show();
-                                        });
-                                        $('.hideAllReplies').click(function () {
-                                            $(this).closest('.replySet').find(".replyGrid").slideUp();
-                                            $(this).closest('.replySet').find(".replyGrid").find('table').bootgrid("destroy");
-                                            $(this).closest('.replySet').find('.viewAllReplies').show();
-                                            $(this).closest('.replySet').find('.hideAllReplies').hide();
-                                        });
-                                    }
+        function replyComment(comments_id) {
+            return _saveComment($('#popupCommentTextarea').val(), commentVideos_id, comments_id, 0);
+        }
 
-                                    function addCommentCount(comments_id, total) {
-                                        $('.total_replies' + comments_id).text(parseInt($('.total_replies' + comments_id).text()) + total);
-                                    }
+        var commentSavePending = false;
+        function _saveComment(comment, video, comments_id, id) {
+            if (commentSavePending) return;
+            if (comment.trim().length > 5) {
+                commentSavePending = true;
+                $('#saveCommentBtn').prop('disabled', true);
+                modal.showPleaseWait();
+                $.ajax({
+                    url: webSiteRootURL + 'objects/commentAddNew.json.php',
+                    method: 'POST',
+                    data: {
+                        'comment': comment,
+                        'video': video,
+                        'comments_id': comments_id,
+                        'id': id,
+                        'comment_users_id': $('#comment_users_id').val()
+                    },
+                    success: function(response) {
+                        avideoResponse(response);
+                        if (!response.error) {
+                            if (!empty(response.comment)) {
+                                addComment(response.comment, response.replyed_to, false);
+                            }
+                            $(comments_id || id ? '#popupCommentTextarea' : '#comment').val('');
+                        }
+                    },
+                    error: function() { avideoToastError(<?php printJSString('An error occurred'); ?>); },
+                    complete: function() {
+                        commentSavePending = false;
+                        $('#saveCommentBtn').prop('disabled', false);
+                        modal.hidePleaseWait();
+                    }
+                });
+            } else {
+                avideoAlertError(<?php echo printJSString("Your comment must be bigger then 5 characters!"); ?>);
+            }
+        }
+
+        function pinComment(comments_id) {
+            modal.showPleaseWait();
+            var url = webSiteRootURL + 'objects/commentPinToogle.json.php';
+            url = addQueryStringParameter(url, 'comments_id', comments_id);
+            $.ajax({
+                url: url,
+                success: function(response) {
+                    avideoResponse(response);
+                    if (!response.error) {
+                        getComments(0, 1);
+                    }
+                    modal.hidePleaseWait();
+                },
+                error: function() {
+                    modal.hidePleaseWait();
+                    avideoToastError(<?php printJSString('An error occurred'); ?>);
+                }
+            });
+        }
+
+        function saveCommentLikeDislike(comments_id, like) {
+            $.ajax({
+                url: webSiteRootURL + 'objects/comments_like.json.php?like=' + like,
+                method: 'POST',
+                data: {
+                    'comments_id': comments_id
+                },
+                success: function(response) {
+                    var selector = '#comment_' + comments_id;
+                    $(selector).removeClass("myVote0 myVote1 myVote-1");
+                    $(selector).addClass('myVote' + response.myVote);
+                    $(selector + " > .media-body > .commentsButtonsGroup > .commentLikeBtn > small").attr('class', '');
+                    $(selector + " > .media-body > .commentsButtonsGroup > .commentDislikeBtn > small").attr('class', '');
+
+                    $(selector + " > .media-body > .commentsButtonsGroup > .commentLikeBtn > small").addClass('totalLikes' + response.likes);
+                    $(selector + " > .media-body > .commentsButtonsGroup > .commentDislikeBtn > small").addClass('totalDislikes' + response.dislikes);
+
+                    $(selector + " > .media-body > .commentsButtonsGroup > .commentLikeBtn > small").text(response.likes);
+                    $(selector + " > .media-body > .commentsButtonsGroup > .commentDislikeBtn > small").text(response.dislikes);
+                }
+            });
+        }
+
+        function addCommentCount(comments_id, total) {
+            var selector = '#comment_' + comments_id + ' > .media-body > .commentsButtonsGroup .total_replies';
+            $(selector).text(parseInt($(selector).text()) + total);
+        }
+
+        $(document).ready(function() {
+            getComments(0, 1);
+        });
     </script>
-
-    <?php
+<?php
     if (!empty($advancedCustom->commentsNoIndex)) {
         echo "<!--googleon: all-->";
     }

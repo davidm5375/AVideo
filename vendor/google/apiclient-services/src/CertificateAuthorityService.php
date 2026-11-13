@@ -25,7 +25,7 @@ use Google\Client;
  * <p>
  * The Certificate Authority Service API is a highly-available, scalable service
  * that enables you to simplify and automate the management of private
- * certificate authorities (CAs) while staying in control of your private keys."</p>
+ * certificate authorities (CAs) while staying in control of your private keys.</p>
  *
  * <p>
  * For more information about this service, see the API
@@ -47,6 +47,7 @@ class CertificateAuthorityService extends \Google\Service
   public $projects_locations_caPools_certificates;
   public $projects_locations_certificateTemplates;
   public $projects_locations_operations;
+  public $rootUrlTemplate;
 
   /**
    * Constructs the internal representation of the CertificateAuthorityService
@@ -60,6 +61,7 @@ class CertificateAuthorityService extends \Google\Service
   {
     parent::__construct($clientOrConfig);
     $this->rootUrl = $rootUrl ?: 'https://privateca.googleapis.com/';
+    $this->rootUrlTemplate = $rootUrl ?: 'https://privateca.UNIVERSE_DOMAIN/';
     $this->servicePath = '';
     $this->batchPath = 'batch';
     $this->version = 'v1';
@@ -89,6 +91,11 @@ class CertificateAuthorityService extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'extraLocationTypes' => [
+                  'location' => 'query',
+                  'type' => 'string',
+                  'repeated' => true,
                 ],
                 'filter' => [
                   'location' => 'query',
@@ -139,6 +146,10 @@ class CertificateAuthorityService extends \Google\Service
                   'location' => 'path',
                   'type' => 'string',
                   'required' => true,
+                ],
+                'ignoreDependentResources' => [
+                  'location' => 'query',
+                  'type' => 'boolean',
                 ],
                 'requestId' => [
                   'location' => 'query',
@@ -294,9 +305,17 @@ class CertificateAuthorityService extends \Google\Service
                   'location' => 'query',
                   'type' => 'boolean',
                 ],
+                'ignoreDependentResources' => [
+                  'location' => 'query',
+                  'type' => 'boolean',
+                ],
                 'requestId' => [
                   'location' => 'query',
                   'type' => 'string',
+                ],
+                'skipGracePeriod' => [
+                  'location' => 'query',
+                  'type' => 'boolean',
                 ],
               ],
             ],'disable' => [

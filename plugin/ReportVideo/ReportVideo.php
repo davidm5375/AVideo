@@ -16,7 +16,7 @@ class ReportVideo extends PluginAbstract
     }
     public function getDescription()
     {
-        return "Create a button to report videos with inapropriate content";
+        return "Create a button to report videos with inappropriate content";
     }
 
     public function getName()
@@ -39,7 +39,32 @@ class ReportVideo extends PluginAbstract
 
     public function getPluginVersion()
     {
-        return "2.2";
+        return "2.3";
+    }
+
+    public function getPluginMenu()
+    {
+        global $global;
+        $filename = $global['systemRootPath'] . 'plugin/ReportVideo/pluginMenu.html';
+        return file_get_contents($filename);
+    }
+
+    /**
+     * Free text typed by the reporter: no HTML, at most 255 chars (videos_reported.obs)
+     */
+    public static function sanitizeReportReason($obs)
+    {
+        if (!is_scalar($obs)) {
+            return '';
+        }
+        $obs = trim(strip_tags((string) $obs));
+        $obs = preg_replace('/\s+/', ' ', $obs);
+        if (function_exists('mb_substr')) {
+            $obs = mb_substr($obs, 0, 255);
+        } else {
+            $obs = substr($obs, 0, 255);
+        }
+        return $obs;
     }
 
     public function updateScript()
@@ -69,11 +94,15 @@ class ReportVideo extends PluginAbstract
         if (!isVideo()) {
             return '';
         }
-        if (empty($video['id']) && empty($videos_id)) {
+        $videoId = Video::getIdFromVideoVar($video) ?: intval($videos_id);
+        if (empty($videoId)) {
             return '';
         }
-        if (empty($video['id'])) {
-            $video['id'] = intval($videos_id);
+        if (!is_array($video) || empty($video['id'])) {
+            $video = Video::getVideoLight($videoId);
+            if (empty($video)) {
+                $video = ['id' => $videoId];
+            }
         }
         include $global['systemRootPath'] . 'plugin/ReportVideo/actionButton.php';
 
@@ -116,7 +145,7 @@ class ReportVideo extends PluginAbstract
     private function replaceText($users_id, $videos_id, $text)
     {
         $user = new User($users_id);
-        $userName = $user->getNameIdentification();
+        $userName = $user->getNameIdentificationBd();
 
         $video = new Video("", "", $videos_id);
         $videoName = $video->getTitle();
@@ -149,23 +178,39 @@ class ReportVideo extends PluginAbstract
         return str_replace($replace, $words, $text);
     }
 
-    public function report($users_id, $videos_id)
+    /**
+     * Stores a report and notifies by email.
+     * @param int $users_id the reporter
+     * @param int $videos_id the reported video
+     * @param string $obs optional reason typed by the reporter (kept in videos_reported.obs, 255 chars)
+     */
+    public function report($users_id, $videos_id, $obs = '')
     {
         global $global, $config;
+        $obs = self::sanitizeReportReason($obs);
         // check if this user already report this video
         $report = VideosReported::getFromDbUserAndVideo($users_id, $videos_id);
         $resp = new stdClass();
         $resp->error = true;
         $resp->msg = "Report not made";
+        // true once the report row exists, even when the notification emails fail
+        $resp->saved = false;
 
         if (empty($report)) {
             //save it on the database
             $reportObj = new VideosReported(0);
             $reportObj->setUsers_id($users_id);
             $reportObj->setVideos_id($videos_id);
+            $reportObj->setObs($obs);
             if ($reportObj->save()) {
-                $body = $this->getTemplateText($videos_id, $this->replaceText($users_id, $videos_id, __("The <a href='{videoLink}'>{videoName}</a> video was reported as inapropriate from {user} ")));
-                $subject = $this->replaceText($users_id, $videos_id, __("The {videoName} video was reported as inapropriate"));
+                $resp->saved = true;
+                $message = __("The <a href='{videoLink}'>{videoName}</a> video was reported as inappropriate from {user} ");
+                if (!empty($obs)) {
+                    // getTemplateText() decodes entities, so escape twice to keep the reason as text
+                    $message .= '<br>' . __('Reason') . ': ' . htmlspecialchars(htmlspecialchars($obs));
+                }
+                $body = $this->getTemplateText($videos_id, $this->replaceText($users_id, $videos_id, $message));
+                $subject = $this->replaceText($users_id, $videos_id, __("The {videoName} video was reported as inappropriate"));
                 // notify video owner from user id
                 $user = new User($users_id);
                 $email = $user->getEmail();
@@ -176,23 +221,23 @@ class ReportVideo extends PluginAbstract
                 $siteOwnerSent = $this->send($siteOwnerEmail, $subject, $body);
 
                 if (!$videoOwnerSent && !$siteOwnerSent) {
-                    $resp->msg = __("We could not notify anyone ({$email}, {$siteOwnerEmail}), but we marked it as a inapropriated");
+                    $resp->msg = sprintf(__('We could not notify anyone (%s), but we marked it as inappropriate'), $email . ', ' . $siteOwnerEmail);
                 } elseif (!$videoOwnerSent) {
-                    $resp->msg = __("We could not notify the video owner {$email}, but we marked it as a inapropriated");
+                    $resp->msg = sprintf(__('We could not notify the video owner %s, but we marked it as inappropriate'), $email);
                 } elseif (!$siteOwnerSent) {
-                    $resp->msg = __("We could not notify the video owner {$siteOwnerEmail}, but we marked it as a inapropriated");
+                    $resp->msg = sprintf(__('We could not notify the video owner %s, but we marked it as inappropriate'), $siteOwnerEmail);
                 } else {
                     $resp->error = false;
-                    $resp->msg = __("This video was reported to our team, we will review it soon");
+                    $resp->msg = __('This video was reported to our team, we will review it soon');
                 }
             } else {
-                $resp->msg = __("Error on report this video");
+                $resp->msg = __('Error on report this video');
             }
         } else {
-            $resp->msg = __("You already report this video");
+            $resp->msg = __('You already reported this video');
         }
         if ($resp->error === true) {
-            _error_log("Report Video: " . $resp->msg);
+            _error_log('Report Video: ' . $resp->msg);
         }
         return $resp;
     }
@@ -200,11 +245,13 @@ class ReportVideo extends PluginAbstract
     public function block($users_id, $reported_users_id)
     {
         global $global, $config;
-        // check if this user already report this video
+        // Check whether this user already reported this video
         $report = VideosReported::getFromDbUserAndReportedUser($users_id, $reported_users_id);
         $resp = new stdClass();
         $resp->error = true;
-        $resp->msg = "Block not made";
+        $resp->msg = 'Block not made';
+        $resp->reported_users_id = intval($reported_users_id);
+        $resp->users_id = intval($users_id);
 
         if (empty($report)) {
             //save it on the database
@@ -214,11 +261,12 @@ class ReportVideo extends PluginAbstract
             if ($reportObj->save()) {
                 $resp->msg = "";
                 $resp->error = false;
+                self::clearVideoListsCache();
             } else {
                 $resp->msg = __("Error on block this user");
             }
         } else {
-            $resp->msg = __("User Already blocked");
+            $resp->msg = __("User already blocked");
         }
         if ($resp->error === true) {
             _error_log("Block User: " . $resp->msg);
@@ -229,11 +277,11 @@ class ReportVideo extends PluginAbstract
     public function unBlock($users_id, $reported_users_id)
     {
         global $global, $config;
-        // check if this user already report this video
+        // Check whether this user already reported this video
         $report = VideosReported::getFromDbUserAndReportedUser($users_id, $reported_users_id);
         $resp = new stdClass();
         $resp->error = true;
-        $resp->msg = "Block not made";
+        $resp->msg = 'Block not made';
 
         if (!empty($report)) {
             //save it on the database
@@ -241,16 +289,31 @@ class ReportVideo extends PluginAbstract
             if ($reportObj->delete()) {
                 $resp->msg = "";
                 $resp->error = false;
+                self::clearVideoListsCache();
             } else {
                 $resp->msg = __("Error on unblock this user");
             }
         } else {
-            $resp->msg = __("User Already unblocked");
+            $resp->msg = __("User already unblocked");
         }
         if ($resp->error === true) {
             _error_log("Block user: " . $resp->msg);
         }
         return $resp;
+    }
+
+    /**
+     * Video lists are cached per user and request (VideosListCacheHandler, 1 hour in the API);
+     * a block changes what the blocker may see, so invalidate before returning to the app.
+     */
+    private static function clearVideoListsCache()
+    {
+        try {
+            $videosListCache = new VideosListCacheHandler();
+            $videosListCache->deleteCache(false, false);
+        } catch (\Throwable $th) {
+            _error_log('ReportVideo clearVideoListsCache: ' . $th->getMessage());
+        }
     }
 
     public static function isBlocked($reported_users_id, $users_id = 0)
@@ -260,7 +323,7 @@ class ReportVideo extends PluginAbstract
             $users_id = User::getId();
         }
         $users_id = intval($users_id);
-        // check if this user already report this video
+        // Check whether this user already reported this video
         $reportedUsersId = VideosReported::getAllReportedUsersIdFromUser($users_id);
         return in_array($reported_users_id, $reportedUsersId);
     }
@@ -280,12 +343,11 @@ class ReportVideo extends PluginAbstract
             return '';
         }
         global $global, $config;
-        $variable = ob_get_clean();
-        ob_start();
-        include $global['systemRootPath'] . 'plugin/ReportVideo/buttonBlockUser.php';
-        $button = ob_get_clean();
-        ob_start();
-        echo $variable;
+
+        $filePath = $global['systemRootPath'] . 'plugin/ReportVideo/buttonBlockUser.php';
+        $varsArray=array('users_id'=>$users_id);
+        $button = getIncludeFileContent($filePath, $varsArray);
+
         return $button;
     }
 
@@ -295,12 +357,10 @@ class ReportVideo extends PluginAbstract
             return '';
         }
         global $global, $config;
-        $variable = ob_get_clean();
-        ob_start();
-        include $global['systemRootPath'] . 'plugin/ReportVideo/actionButtonBlockUser.php';
-        $button = ob_get_clean();
-        ob_start();
-        echo $variable;
+
+        $filePath = $global['systemRootPath'] . 'plugin/ReportVideo/actionButtonBlockUser.php';
+        $varsArray=array('users_id'=>$users_id);
+        $button = getIncludeFileContent($filePath, $varsArray);
         return $button;
     }
 }

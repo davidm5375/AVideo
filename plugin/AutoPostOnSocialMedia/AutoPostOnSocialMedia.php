@@ -7,28 +7,20 @@ require_once $global['systemRootPath'] . 'objects/autoload.php';
 use Abraham\TwitterOAuth\TwitterOAuth;
 
 class AutoPostOnSocialMedia extends PluginAbstract {
-    
+
+    public function getPluginDependencies() {
+        return array(
+            PluginDependency::create('BitLy', 'Optional link shortening before posting', false),
+        );
+    }
+
     static $scheduleType = 'AutoPostOnSocialMedia';
-    
+
     public function getDescription() {
-        $desc = "AutoPostOnSocialMedia Plugin
-            
-    Our final goal is to post a tweet on your Twitter account using the REST API. This process requires you to register the application on Twitter and get the API keys.
+        $desc = "Helps you automatically post your content on multiple social media platforms (Cuttently Twitter only)";
+        $help = "<br><small><a href='https://github.com/WWBN/AVideo/wiki/AutoPostOnSocialMedia-Plugin' target='_blank'><i class='fas fa-question-circle'></i> Help</a></small>";
 
-These API keys are act like your identity for your Twitter account. To create application, go to <a href='https://apps.twitter.com/' target='_blank'>Twitter Apps</a> and follow the below steps.
-
-Click the button \"Create New App\".
-Fill up Name, Description, Website fields.
-Accept agreement and click the button \"Create your Twitter application\".
-On the next page, click on the tab \"Keys and Access Tokens\". Under this tab you will find your Consumer Key and Consumer Secret. Copy these details and store it in safe place.
-Under the same tab, you will see the section \"Your Access Token\". Click on the button \"Create Access Token\".
-At this step, copy your Access Token and Access Token Secret. Keep these details safe.
-
-Login in your app: http://dev.twitter.com/apps
-In the Settings tab, change the Application type to Read, Write and Access direct messages
-In the Reset keys tab, press the Reset button, update the consumer key and secret in your application accordingly.";
-
-        $desc = nl2br($desc);
+        $desc = $desc.$help ;
         return $desc;
     }
 
@@ -50,7 +42,7 @@ In the Reset keys tab, press the Reset button, update the consumer key and secre
           if (AVideoPlugin::compareVersion($this->getName(), "2.0") < 0) {
           sqlDal::executeFile($global['systemRootPath'] . 'plugin/PayPerView/install/updateV2.0.sql');
           }
-         * 
+         *
          */
         return true;
     }
@@ -83,6 +75,11 @@ In the Reset keys tab, press the Reset button, update the consumer key and secre
         $obj->TwitterAccessTokenSecret = "";
 
         $o = new stdClass();
+        $o->type = [1 => 'API Version 1', '1.1' => 'API Version 1.1', 2=>'API Version 2'];
+        $o->value = '1.1';
+        $obj->apiVersion = $o;
+
+        $o = new stdClass();
         $o->type = array(
             0 => __("All time"),
             1 => __("1 Day"),
@@ -95,28 +92,57 @@ In the Reset keys tab, press the Reset button, update the consumer key and secre
         $o->value = 365;
         $obj->postARandomVideoFromLastDays = $o;
 
+        $obj->debugMode = true;
+
         return $obj;
     }
 
     public function getPluginMenu() {
         global $global;
         $btn = '<button onclick="avideoModalIframeLarge(webSiteRootURL+\'plugin/AutoPostOnSocialMedia/View/editor.php\')" class="btn btn-primary btn-sm btn-xs btn-block"><i class="fa fa-edit"></i> Edit</button>';
-        $btn .= '<button onclick="avideoAjax(webSiteRootURL+\'plugin/AutoPostOnSocialMedia/autopost.json.php\', {})" class="btn btn-primary btn-sm btn-xs btn-block"><i class="fab fa-twitter"></i> Autopost now</button>';
+        $btn .= '<button onclick="avideoAjax(webSiteRootURL+\'plugin/AutoPostOnSocialMedia/autopost.json.php\', {})" class="btn btn-primary btn-sm btn-xs btn-block"><i class="fa-brands fa-x-twitter"></i> Autopost now</button>';
         return $btn;
     }
 
     static function postVideo($videos_id) {
-        $url = Video::getLinkToVideo($videos_id, "", false, "permalink", $get);
+        if(AVideoPlugin::isEnabledByName('BitLy')){
+            $url = BitLy::getLink($videos_id);
+        }else{
+            $url = Video::getLinkToVideo($videos_id, "", false, Video::$urlTypeShort);
+        }
+        _error_log("AutoPostOnSocialMedia::postVideo($videos_id) $url");
         return self::post($url);
     }
 
     static function post($msg) {
         $obj = AVideoPlugin::getDataObject('AutoPostOnSocialMedia');
         //var_dump($obj->TwitterAPIKey, $obj->TwitterAPIKeySecret, $obj->TwitterAccessToken, $obj->TwitterAccessTokenSecret, $msg);exit;
-        
+
+        if($obj->debugMode){
+            _error_log('AutoPostOnSocialMedia start');
+        }
         if($obj->TwitterEnable){
             $connection = new TwitterOAuth($obj->TwitterAPIKey, $obj->TwitterAPIKeySecret, $obj->TwitterAccessToken, $obj->TwitterAccessTokenSecret);
+            if($obj->apiVersion->value>1){
+                _error_log('AutoPostOnSocialMedia apiVersion '.$obj->apiVersion->value);
+                $connection->setApiVersion("{$obj->apiVersion->value}");
+            }
+            if($obj->debugMode){
+                _error_log($msg);
+            }
             $post_tweets = $connection->post("statuses/update", ["status" => $msg]);
+
+            if($obj->debugMode){
+                _error_log("getLastHttpCode: ". $connection->getLastHttpCode());
+                //_error_log("getLastBody: ". $connection->getLastBody());
+                //_error_log("getLastXHeaders: ". $connection->getLastXHeaders());
+                //_error_log("getLastApiPath: ". $connection->getLastApiPath());
+                _error_log(json_encode($post_tweets), AVideoLog::$DEBUG);
+            }
+        }else{
+            if($obj->debugMode){
+                _error_log('Tweeter disabled');
+            }
         }
 
         return $post_tweets;
@@ -126,7 +152,7 @@ In the Reset keys tab, press the Reset button, update the consumer key and secre
         if (!User::isAdmin()) {
             return "";
         }
-        $btn = '<button type="button" class="btn btn-default btn-light btn-sm btn-xs btn-block " onclick="avideoAlertAJAX(webSiteRootURL+\\\'plugin/AutoPostOnSocialMedia/post.json.php?videos_id=\' + row.id + \'\\\');" ><i class="fab fa-twitter"></i> Post On Twitter</button>';
+        $btn = '<button type="button" class="btn btn-default btn-light btn-sm btn-xs btn-block " onclick="avideoAlertAJAX(webSiteRootURL+\\\'plugin/AutoPostOnSocialMedia/post.json.php?videos_id=\' + row.id + \'\\\');" ><i class="fa-brands fa-x-twitter"></i> Post On Twitter</button>';
         return $btn;
     }
 

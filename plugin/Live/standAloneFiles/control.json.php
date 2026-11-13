@@ -2,9 +2,9 @@
 
 /**
  * This file intent to control some features from NGINX based on the control module https://github.com/arut/nginx-rtmp-module/wiki/Control-module
- * 
+ *
  * This file suppose to sit on the same server as the live stream, and for security reasons you may want to setup your control module in a different port, listning only localhost o port 8080
- * 
+ *
   http {
     ...
     server {
@@ -18,7 +18,7 @@
  * For more information please check this https://github.com/WWBN/AVideo/wiki/Live-Plugin#control
  */
 
-$streamerURL = "http://192.168.1.4/YouPHPTube/"; // change it to your streamer URL
+$streamerURL = "http://192.168.0.2/YouPHPTube/"; // change it to your streamer URL
 $record_path = "/var/www/tmp/"; //update this URL
 $controlServer = "http://localhost:8080/";
 
@@ -26,26 +26,60 @@ $controlServer = "http://localhost:8080/";
  * DO NOT EDIT AFTER THIS LINE
  */
 
+error_log("control.json.php: === START ===");
+error_log("control.json.php: REQUEST=" . json_encode($_REQUEST));
+error_log("control.json.php: GET=" . json_encode($_GET));
 
 header('Content-Type: application/json');
 $configFile = '../../../videos/configuration.php';
+$standAloneFile = '../../../objects/functionsStandAlone.php';
 
-if (file_exists($configFile)) {
+error_log("control.json.php: Checking config file: " . realpath(dirname(__FILE__) . '/../../../videos/') . '/configuration.php');
+
+// First try to use functionsStandAlone.php for standalone servers
+if (file_exists($standAloneFile)) {
+    error_log("control.json.php: Using functionsStandAlone.php");
+    require_once $standAloneFile;
+    error_log("control.json.php: functionsStandAlone loaded, streamerURL={$streamerURL}");
+
+    if (!empty($global['webSiteRootURL'])) {
+        $streamerURL = $global['webSiteRootURL'];
+    }
+
+    // Try to get Live plugin data if available
+    if (class_exists('AVideoPlugin')) {
+        $live = AVideoPlugin::getObjectDataIfEnabled('Live');
+        if (!empty($live)) {
+            $controlServer = $live->controlServer;
+            $controlServer = addLastSlash($controlServer);
+            error_log("control.json.php: Got Live plugin controlServer={$controlServer}");
+        } else {
+            error_log("control.json.php: Live plugin not enabled or not available");
+        }
+    }
+} elseif (file_exists($configFile)) {
+    error_log("control.json.php: Config file exists, including it");
     include_once $configFile;
+    error_log("control.json.php: Config loaded, webSiteRootURL=" . @$global['webSiteRootURL']);
     $streamerURL = $global['webSiteRootURL'];
     $live = AVideoPlugin::getObjectDataIfEnabled('Live');
-    if(empty($live)){
+    if (empty($live)) {
+        error_log("control.json.php: ERROR - Live plugin not enabled");
         return false;
     }
     $controlServer = $live->controlServer;
     $controlServer = addLastSlash($controlServer);
+    error_log("control.json.php: controlServer={$controlServer}");
+} else {
+    error_log("control.json.php: Config file NOT found");
 }
 
-if(!empty($_REQUEST['streamerURL'])){
-    $streamerURL = $_REQUEST['streamerURL'];
-}
+// SECURITY: User-supplied streamerURL is intentionally NOT accepted.
+// Allowing it would enable authentication bypass and SSRF via file_get_contents
+// on an attacker-controlled host. streamerURL MUST come from the configuration
+// file or be hard-coded in this file above.
 
-error_log("Control.json.php start");
+error_log("Control.json.php start ".json_encode($_REQUEST));
 
 $obj = new stdClass();
 $obj->error = true;
@@ -58,7 +92,7 @@ $obj->name = $_REQUEST['name'];
 $obj->response = "";
 $obj->requestedURL = "";
 
-if(!preg_match('/^live/i',$obj->app)){
+if (!preg_match('/^live/i', $obj->app)) {
     $obj->app = 'live';
 }
 
@@ -83,12 +117,12 @@ $verifyTokenURL = "{$obj->streamerURL}plugin/Live/verifyToken.json.php?token={$o
 
 error_log("Control.json.php verifying token {$verifyTokenURL}");
 
-$arrContextOptions=array(
-    "ssl"=>array(
+$arrContextOptions=[
+    "ssl"=>[
         "verify_peer"=>false,
         "verify_peer_name"=>false,
-    ),
-);  
+    ],
+];
 
 $content = file_get_contents($verifyTokenURL, false, stream_context_create($arrContextOptions));
 
@@ -99,7 +133,7 @@ if (empty($json)) {
     $obj->msg = "Could not verify token";
     error_log("Control.json.php ERROR {$obj->msg} ({$verifyTokenURL}) ");
     die(json_encode($obj));
-} else if (!empty($json->error)) {
+} elseif (!empty($json->error)) {
     $obj->msg = "Token is invalid";
     error_log("Control.json.php ERROR {$obj->msg} ({$verifyTokenURL}) " . json_encode($json));
     die(json_encode($obj));
@@ -137,9 +171,11 @@ switch ($obj->command) {
         $tolerance = 10; // 10 seconds
         $obj->response = false;
         // check the last file change time, if is less then x seconds it is recording
-        $files = glob("$record_path/{$obj->name}*.flv");
+        // Sanitize name to prevent path-traversal characters from escaping $record_path.
+        $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '', $obj->name);
+        $files = glob("$record_path/{$safeName}*.flv");
         foreach ($files as $value) {
-            if(time()<=filemtime($value)+$tolerance){
+            if (time()<=filemtime($value)+$tolerance) {
                 $obj->response = true;
                 break;
             }

@@ -9,36 +9,36 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT"); // Date in the past
 
 require_once '../videos/configuration.php';
 
-if(empty($_REQUEST['url'])){
+if (empty($_REQUEST['url'])) {
     forbiddenPage("URL not defined");
 }
 
-if(!isSameDomain($global['webSiteRootURL'], $_REQUEST['url'])){
+if (!isSameDomain($global['webSiteRootURL'], $_REQUEST['url'])) {
     forbiddenPage("It is not from the same domain");
 }
 
 $vars["v"] = getVideoIDFromURL($_REQUEST['url']);
 
-if(empty($vars["v"])){
-    forbiddenPage("Video variable not found");
+if (empty($vars["v"])) {
+    return '';
 }
 
 $videos_id = intval($vars["v"]);
 
 $video = Video::getVideo($videos_id);
 
-if(empty($video)){
-    forbiddenPage("Video not found");
+if (empty($video)) {
+    forbiddenPage(__("Video not found"));
 }
 
 $format = 'json';
 
-if(empty($_REQUEST['format']) || $_REQUEST['format']=='xml'){
+if (empty($_REQUEST['format']) || $_REQUEST['format']=='xml') {
     $format = 'xml';
 }
 
 $videos_id = intval($video['id']);
-$source = Video::getSourceFile($video['filename']);
+$source = Video::getSourceFile($video['filename'], '.jpg', false, true);
 $imgw = 1024;
 $imgh = 768;
 if (($video['type'] !== "audio") && ($video['type'] !== "linkAudio") && !empty($source['url'])) {
@@ -46,8 +46,8 @@ if (($video['type'] !== "audio") && ($video['type'] !== "linkAudio") && !empty($
     $data = getimgsize($source['path']);
     $imgw = $data[0];
     $imgh = $data[1];
-} else if ($video['type'] == "audio") {
-    $img = "".getCDN()."view/img/audio_wave.jpg";
+} elseif ($video['type'] == "audio") {
+    $img = ImagesPlaceHolders::getAudioLandscape(ImagesPlaceHolders::$RETURN_URL);
 }
 $type = 'video';
 if ($video['type'] === 'pdf') {
@@ -67,7 +67,8 @@ $code = str_replace("{embedURL}", $embedURL, $advancedCustom->embedCodeTemplate)
 
 if ($format === 'xml') {
     header('Content-type: application/xml');
-    ?><?xml version="1.0" encoding="UTF-8"?>    
+    echo '<?xml version="1.0" encoding="UTF-8"?>';
+?>
 <oembed>
   <version>1.0</version>
   <type>rich</type>
@@ -81,20 +82,19 @@ if ($format === 'xml') {
 </oembed>
     <?php
 } else {
-    header('Content-Type: application/json');
-    $obj=new stdClass();
-    $obj->version = 1.0;
-    $obj->type = "rich";
-    $obj->width = $imgw;
-    $obj->height = $imgh;
-    $obj->title = $title;
-    $obj->url = $link;
-    $obj->provider_name = $siteTitle;
-    $obj->provider_url = $global['webSiteRootURL'];
-    $obj->html = $code;
-    die(json_encode($obj));
-    
-}
+        header('Content-Type: application/json');
+        $obj=new stdClass();
+        $obj->version = 1.0;
+        $obj->type = "rich";
+        $obj->width = $imgw;
+        $obj->height = $imgh;
+        $obj->title = $title;
+        $obj->url = $link;
+        $obj->provider_name = $siteTitle;
+        $obj->provider_url = $global['webSiteRootURL'];
+        $obj->html = $code;
+        die(json_encode($obj));
+    }
 
 
 ?>

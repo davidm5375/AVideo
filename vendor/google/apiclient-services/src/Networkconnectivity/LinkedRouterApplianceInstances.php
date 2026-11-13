@@ -20,10 +20,35 @@ namespace Google\Service\Networkconnectivity;
 class LinkedRouterApplianceInstances extends \Google\Collection
 {
   protected $collection_key = 'instances';
+  /**
+   * @var string[]
+   */
+  public $includeImportRanges;
   protected $instancesType = RouterApplianceInstance::class;
   protected $instancesDataType = 'array';
+  /**
+   * @var bool
+   */
   public $siteToSiteDataTransfer;
+  /**
+   * @var string
+   */
+  public $vpcNetwork;
 
+  /**
+   * @param string[]
+   */
+  public function setIncludeImportRanges($includeImportRanges)
+  {
+    $this->includeImportRanges = $includeImportRanges;
+  }
+  /**
+   * @return string[]
+   */
+  public function getIncludeImportRanges()
+  {
+    return $this->includeImportRanges;
+  }
   /**
    * @param RouterApplianceInstance[]
    */
@@ -38,13 +63,33 @@ class LinkedRouterApplianceInstances extends \Google\Collection
   {
     return $this->instances;
   }
+  /**
+   * @param bool
+   */
   public function setSiteToSiteDataTransfer($siteToSiteDataTransfer)
   {
     $this->siteToSiteDataTransfer = $siteToSiteDataTransfer;
   }
+  /**
+   * @return bool
+   */
   public function getSiteToSiteDataTransfer()
   {
     return $this->siteToSiteDataTransfer;
+  }
+  /**
+   * @param string
+   */
+  public function setVpcNetwork($vpcNetwork)
+  {
+    $this->vpcNetwork = $vpcNetwork;
+  }
+  /**
+   * @return string
+   */
+  public function getVpcNetwork()
+  {
+    return $this->vpcNetwork;
   }
 }
 

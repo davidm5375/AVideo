@@ -20,21 +20,56 @@ namespace Google\Service\Spanner;
 class PartialResultSet extends \Google\Collection
 {
   protected $collection_key = 'values';
+  /**
+   * @var bool
+   */
   public $chunkedValue;
+  /**
+   * @var bool
+   */
+  public $last;
   protected $metadataType = ResultSetMetadata::class;
   protected $metadataDataType = '';
+  protected $precommitTokenType = MultiplexedSessionPrecommitToken::class;
+  protected $precommitTokenDataType = '';
+  /**
+   * @var string
+   */
   public $resumeToken;
   protected $statsType = ResultSetStats::class;
   protected $statsDataType = '';
+  /**
+   * @var array[]
+   */
   public $values;
 
+  /**
+   * @param bool
+   */
   public function setChunkedValue($chunkedValue)
   {
     $this->chunkedValue = $chunkedValue;
   }
+  /**
+   * @return bool
+   */
   public function getChunkedValue()
   {
     return $this->chunkedValue;
+  }
+  /**
+   * @param bool
+   */
+  public function setLast($last)
+  {
+    $this->last = $last;
+  }
+  /**
+   * @return bool
+   */
+  public function getLast()
+  {
+    return $this->last;
   }
   /**
    * @param ResultSetMetadata
@@ -50,10 +85,30 @@ class PartialResultSet extends \Google\Collection
   {
     return $this->metadata;
   }
+  /**
+   * @param MultiplexedSessionPrecommitToken
+   */
+  public function setPrecommitToken(MultiplexedSessionPrecommitToken $precommitToken)
+  {
+    $this->precommitToken = $precommitToken;
+  }
+  /**
+   * @return MultiplexedSessionPrecommitToken
+   */
+  public function getPrecommitToken()
+  {
+    return $this->precommitToken;
+  }
+  /**
+   * @param string
+   */
   public function setResumeToken($resumeToken)
   {
     $this->resumeToken = $resumeToken;
   }
+  /**
+   * @return string
+   */
   public function getResumeToken()
   {
     return $this->resumeToken;
@@ -72,10 +127,16 @@ class PartialResultSet extends \Google\Collection
   {
     return $this->stats;
   }
+  /**
+   * @param array[]
+   */
   public function setValues($values)
   {
     $this->values = $values;
   }
+  /**
+   * @return array[]
+   */
   public function getValues()
   {
     return $this->values;

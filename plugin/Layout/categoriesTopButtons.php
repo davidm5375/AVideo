@@ -1,64 +1,55 @@
-<style>
-    .categoriesTobButtons{
-        border: none;
+<?php
+if (empty($obj) || !isset($obj->categoriesTopButtonsFluid)) {
+    $obj = AVideoPlugin::loadPlugin('Layout');
+}
+$timeLogName = TimeLogStart("CategoryTopButtons");
+global $advancedCustom;
+$_rowCount = getRowCount();
+$current = getCurrentPage();
+$_REQUEST['rowCount'] = 1000;
+unsetCurrentPage();
+$parsed_cats = array();
+TimeLogEnd($timeLogName, __LINE__);
+$categories = Category::getAllCategories();
+TimeLogEnd($timeLogName, __LINE__);
+$_REQUEST['rowCount'] = $_rowCount;
+$_REQUEST['current'] = $current;
+$items = array();
+foreach ($categories as $value) {
+    if ($value['parentId']) {
+        echo "<!-- generateHorizontalFlickity continue parentId -->";
+        continue;
     }
-    .categoriesTobButtons li a{
-        border-radius:23px;
+    if ($advancedCustom->ShowAllVideosOnCategory && !isToHidePrivateVideos()) {
+        $total = $value['fullTotal'];
+    } else {
+        $total = $value['total'];
     }
-</style>
-<div class="container-fluid">
-    <div class="row">
-        <div class="<?php echo $obj->categoriesTopButtonsFluid ? '' : 'col-lg-10 col-lg-offset-1'; ?>">
-            
-    <center>
-        <ul class="nav nav-tabs nav-tabs-horizontal categoriesTobButtons" >
-            <?php
-            global $advancedCustom;
-            $_rowCount = getRowCount();
-            $_REQUEST['rowCount'] = 1000;
-            $parsed_cats = array();
-            $categories = Category::getAllCategories();
-            foreach ($categories as $value) {
-                if ($value['parentId']) {
-                    continue;
-                }
-                if ($advancedCustom->ShowAllVideosOnCategory) {
-                    $total = $value['fullTotal'];
-                } else {
-                    $total = $value['total'];
-                }
-                if (empty($total)) {
-                    continue;
-                }
-                if (in_array($value['id'], $parsed_cats)) {
-                    continue;
-                }
-                ?>
-                <li data-toggle="tooltip" title="<?php echo __($value['name']); ?>" data-placement="bottom">
-                    <a href="<?php echo Category::getCategoryLinkFromName($value['clean_name']); ?>" 
-                       class="<?php echo ($value['clean_name'] == @$_GET['catName'] ? "active" : ""); ?>">
-                           <?php
-                           echo '<i class="' . (empty($value['iconClass']) ? "fa fa-folder" : $value['iconClass']) . '"></i>  '
-                           . '<span class="">' . __($value['name']) . '</span>';
-                           if (!empty($obj->categoriesTopButtonsShowVideosCount)) {
-                               echo ' <span class="badge">' . $total . '</span>';
-                           }
-                           ?>
-                    </a>
-                </li>
-                <?php
-            }
-            $_REQUEST['rowCount'] = $_rowCount;
-            /*
-            for ($i = 0; $i < 100; $i++) {
-                ?> <li data-toggle="tooltip" title="<?php echo __($i); ?>" data-placement="bottom"> <a href="#"> <?php echo '<i class="fa fa-folder"></i>  <span class="hidden-xs">' . $i . '</span>';
-            if (!empty($obj->categoriesTopButtonsShowVideosCount)) {
-                echo ' <span class="badge">' . $i . '</span>';
-            } ?> </a> </li> <?php } 
-            */
-            ?>
-        </ul>
-    </center>
-        </div>
-    </div>
-</div>
+    
+    if (empty($value['fullTotal']) && empty($value['total'])) {
+        echo "<!-- generateHorizontalFlickity continue total -->";
+        continue;
+    }
+    if (in_array($value['id'], $parsed_cats)) {
+        echo "<!-- generateHorizontalFlickity continue parsed_cats -->";
+        continue;
+    }
+    $label = '<i class="' . (empty($value['iconClass']) ? "fa fa-folder" : $value['iconClass']) . '"></i>  '
+        . '<span class="">' . __($value['name']) . '</span>';
+    if (!empty($obj->categoriesTopButtonsShowVideosCount)) {
+        $label .= ' <span class="badge">' . $total . '</span>';
+    }
+    $items[] = array(
+        'href' => Category::getCategoryLinkFromName($value['clean_name']), 
+        'tooltip' => __($value['name']), 
+        'onclick' => '', 
+        'label' => $label,
+        'isActive' => $value['clean_name'] == @$_REQUEST['catName'],
+        'clean_name' => $value['clean_name']
+    );
+}
+TimeLogEnd($timeLogName, __LINE__);
+echo "<!-- generateHorizontalFlickity categories=".count($categories).' items='.count($items)."-->";
+//var_dump($_REQUEST['catName'], $items);exit;
+generateHorizontalFlickity($items);
+TimeLogEnd($timeLogName, __LINE__);

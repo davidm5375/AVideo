@@ -19,6 +19,8 @@ namespace Google\Service\Dataflow\Resource;
 
 use Google\Service\Dataflow\GetDebugConfigRequest;
 use Google\Service\Dataflow\GetDebugConfigResponse;
+use Google\Service\Dataflow\GetWorkerStacktracesRequest;
+use Google\Service\Dataflow\GetWorkerStacktracesResponse;
 use Google\Service\Dataflow\SendDebugCaptureRequest;
 use Google\Service\Dataflow\SendDebugCaptureResponse;
 
@@ -27,7 +29,7 @@ use Google\Service\Dataflow\SendDebugCaptureResponse;
  * Typical usage is:
  *  <code>
  *   $dataflowService = new Google\Service\Dataflow(...);
- *   $debug = $dataflowService->debug;
+ *   $debug = $dataflowService->projects_jobs_debug;
  *  </code>
  */
 class ProjectsJobsDebug extends \Google\Service\Resource
@@ -41,12 +43,29 @@ class ProjectsJobsDebug extends \Google\Service\Resource
    * @param GetDebugConfigRequest $postBody
    * @param array $optParams Optional parameters.
    * @return GetDebugConfigResponse
+   * @throws \Google\Service\Exception
    */
   public function getConfig($projectId, $jobId, GetDebugConfigRequest $postBody, $optParams = [])
   {
     $params = ['projectId' => $projectId, 'jobId' => $jobId, 'postBody' => $postBody];
     $params = array_merge($params, $optParams);
     return $this->call('getConfig', [$params], GetDebugConfigResponse::class);
+  }
+  /**
+   * Get worker stacktraces from debug capture. (debug.getWorkerStacktraces)
+   *
+   * @param string $projectId The project id.
+   * @param string $jobId The job for which to get stacktraces.
+   * @param GetWorkerStacktracesRequest $postBody
+   * @param array $optParams Optional parameters.
+   * @return GetWorkerStacktracesResponse
+   * @throws \Google\Service\Exception
+   */
+  public function getWorkerStacktraces($projectId, $jobId, GetWorkerStacktracesRequest $postBody, $optParams = [])
+  {
+    $params = ['projectId' => $projectId, 'jobId' => $jobId, 'postBody' => $postBody];
+    $params = array_merge($params, $optParams);
+    return $this->call('getWorkerStacktraces', [$params], GetWorkerStacktracesResponse::class);
   }
   /**
    * Send encoded debug capture data for component. (debug.sendCapture)
@@ -56,6 +75,7 @@ class ProjectsJobsDebug extends \Google\Service\Resource
    * @param SendDebugCaptureRequest $postBody
    * @param array $optParams Optional parameters.
    * @return SendDebugCaptureResponse
+   * @throws \Google\Service\Exception
    */
   public function sendCapture($projectId, $jobId, SendDebugCaptureRequest $postBody, $optParams = [])
   {

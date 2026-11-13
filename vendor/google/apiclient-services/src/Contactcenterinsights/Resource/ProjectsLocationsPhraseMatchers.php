@@ -26,7 +26,7 @@ use Google\Service\Contactcenterinsights\GoogleProtobufEmpty;
  * Typical usage is:
  *  <code>
  *   $contactcenterinsightsService = new Google\Service\Contactcenterinsights(...);
- *   $phraseMatchers = $contactcenterinsightsService->phraseMatchers;
+ *   $phraseMatchers = $contactcenterinsightsService->projects_locations_phraseMatchers;
  *  </code>
  */
 class ProjectsLocationsPhraseMatchers extends \Google\Service\Resource
@@ -40,6 +40,7 @@ class ProjectsLocationsPhraseMatchers extends \Google\Service\Resource
    * @param GoogleCloudContactcenterinsightsV1PhraseMatcher $postBody
    * @param array $optParams Optional parameters.
    * @return GoogleCloudContactcenterinsightsV1PhraseMatcher
+   * @throws \Google\Service\Exception
    */
   public function create($parent, GoogleCloudContactcenterinsightsV1PhraseMatcher $postBody, $optParams = [])
   {
@@ -53,6 +54,7 @@ class ProjectsLocationsPhraseMatchers extends \Google\Service\Resource
    * @param string $name Required. The name of the phrase matcher to delete.
    * @param array $optParams Optional parameters.
    * @return GoogleProtobufEmpty
+   * @throws \Google\Service\Exception
    */
   public function delete($name, $optParams = [])
   {
@@ -66,6 +68,7 @@ class ProjectsLocationsPhraseMatchers extends \Google\Service\Resource
    * @param string $name Required. The name of the phrase matcher to get.
    * @param array $optParams Optional parameters.
    * @return GoogleCloudContactcenterinsightsV1PhraseMatcher
+   * @throws \Google\Service\Exception
    */
   public function get($name, $optParams = [])
   {
@@ -90,12 +93,31 @@ class ProjectsLocationsPhraseMatchers extends \Google\Service\Resource
    * continuation of a prior `ListPhraseMatchers` call and that the system should
    * return the next page of data.
    * @return GoogleCloudContactcenterinsightsV1ListPhraseMatchersResponse
+   * @throws \Google\Service\Exception
    */
   public function listProjectsLocationsPhraseMatchers($parent, $optParams = [])
   {
     $params = ['parent' => $parent];
     $params = array_merge($params, $optParams);
     return $this->call('list', [$params], GoogleCloudContactcenterinsightsV1ListPhraseMatchersResponse::class);
+  }
+  /**
+   * Updates a phrase matcher. (phraseMatchers.patch)
+   *
+   * @param string $name The resource name of the phrase matcher. Format:
+   * projects/{project}/locations/{location}/phraseMatchers/{phrase_matcher}
+   * @param GoogleCloudContactcenterinsightsV1PhraseMatcher $postBody
+   * @param array $optParams Optional parameters.
+   *
+   * @opt_param string updateMask The list of fields to be updated.
+   * @return GoogleCloudContactcenterinsightsV1PhraseMatcher
+   * @throws \Google\Service\Exception
+   */
+  public function patch($name, GoogleCloudContactcenterinsightsV1PhraseMatcher $postBody, $optParams = [])
+  {
+    $params = ['name' => $name, 'postBody' => $postBody];
+    $params = array_merge($params, $optParams);
+    return $this->call('patch', [$params], GoogleCloudContactcenterinsightsV1PhraseMatcher::class);
   }
 }
 

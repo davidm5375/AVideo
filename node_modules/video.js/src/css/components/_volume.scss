@@ -35,27 +35,30 @@
 }
 
 .video-js .vjs-volume-panel {
+  @include transition(width 1s);
+
   &.vjs-hover .vjs-volume-control,
   &:active .vjs-volume-control,
   &:focus  .vjs-volume-control,
   & .vjs-volume-control:active,
   &.vjs-hover .vjs-mute-control  ~ .vjs-volume-control,
   & .vjs-volume-control.vjs-slider-active {
+    visibility: visible;
+    opacity: 1;
+    position: relative;
+    $transition-property: visibility 0.1s, opacity 0.1s, height 0.1s, width 0.1s, left 0s, top 0s;
+    @include transition($transition-property);
+
     &.vjs-volume-horizontal {
       width: 5em;
       height: 3em;
       margin-right: 0;
     }
-    visibility: visible;
-    opacity: 1;
-    position: relative;
 
     &.vjs-volume-vertical {
       left: -3.5em;
       @include transition(left 0s);
     }
-    $transition-property: visibility 0.1s, opacity 0.1s, height 0.1s, width 0.1s, left 0s, top 0s;
-    @include transition($transition-property);
   }
 
   &.vjs-volume-panel-horizontal {
@@ -70,8 +73,6 @@
       width: 4em;
     }
   }
-
-  @include transition(width 1s);
 }
 
 .video-js .vjs-volume-panel .vjs-volume-control.vjs-volume-vertical {
@@ -86,24 +87,6 @@
 .video-js .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal {
   $transition-property: visibility 1s, opacity 1s, height 1s 1s, width 1s, left 1s 1s, top 1s 1s;
   @include transition($transition-property)
-}
-
-.video-js.vjs-no-flex .vjs-volume-panel .vjs-volume-control.vjs-volume-horizontal {
-  width: 5em;
-  height: 3em;
-
-  visibility: visible;
-  opacity: 1;
-  position: relative;
-
-  @include transition(none);
-}
-
-.video-js.vjs-no-flex .vjs-volume-control.vjs-volume-vertical,
-.video-js.vjs-no-flex .vjs-volume-panel .vjs-volume-control.vjs-volume-vertical {
-  position: absolute;
-  bottom: 3em;
-  left: 0.5em;
 }
 
 .video-js .vjs-volume-panel {
@@ -152,14 +135,39 @@
     z-index: 1;
   }
 }
+// Remove content from volume-level when using SVGs.
+.vjs-svg-icons-enabled .vjs-volume-level {
+  &:before {
+    content: none;
+  }
+}
+
+.vjs-volume-level .vjs-svg-icon {
+  position: absolute;
+  width: 0.9em;
+  height: 0.9em;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .vjs-slider-horizontal .vjs-volume-level {
   height: 0.3em;
 
   // Volume handle
   &:before {
-    top: -0.3em;
+    line-height: .35em;
     right: -0.5em;
   }
+}
+
+// Update placement of circle icon when using SVG icons
+.vjs-slider-horizontal .vjs-volume-level .vjs-svg-icon {
+  right: -0.3em;
+  transform: translateY(-50%);
+}
+.vjs-slider-vertical .vjs-volume-level .vjs-svg-icon {
+  top: -0.55em;
+  transform: translateX(-50%);
 }
 
 .video-js .vjs-volume-panel.vjs-volume-panel-vertical {
@@ -243,10 +251,6 @@
   height: 100%;
 }
 
-.vjs-no-flex .vjs-volume-control .vjs-mouse-display {
-  z-index: 0;
-}
-
 .video-js .vjs-volume-control:hover .vjs-mouse-display {
   display: block;
 }
@@ -256,10 +260,6 @@
   opacity: 0;
   $trans: visibility 1.0s, opacity 1.0s;
   @include transition($trans);
-}
-
-.video-js.vjs-user-inactive.vjs-no-flex .vjs-volume-control .vjs-mouse-display {
-  display: none;
 }
 
 .vjs-mouse-display .vjs-volume-tooltip {

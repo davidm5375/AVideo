@@ -5,7 +5,7 @@ require_once $global['systemRootPath'] . 'plugin/YPTSocket/Message.php';
 require_once $global['systemRootPath'] . 'objects/autoload.php';
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+error_reporting(E_ALL & ~E_DEPRECATED);
 if (!isCommandLineInterface()) {
     die();
 }
@@ -20,7 +20,34 @@ $socketobj = AVideoPlugin::getDataObject("YPTSocket");
 $address = $socketobj->host;
 $port = $socketobj->port;
 $socketobj->forceNonSecure = false;
-        
+
+if (!isPortOpen('127.0.0.1', $port)) {
+    _log("Port {$port} is not open on localhost");
+    die();
+}else{
+    _log("Sucess: Port {$port} is open on localhost");
+}
+
+if (!isDomainResolving($address)) {
+    _log("Domain {$address} is not resolving");
+    die();
+}else{
+    _log("Sucess: Domain {$address} is resolving");
+}
+
+if (!isPortOpen($address, $port)) {
+    _log("Port {$port} is not open on {$address}");
+    die();
+}else{
+    _log("Sucess: Port {$port} is open on {$address}");
+}
+
+// Use the function
+checkSSL($address);  // For the domain's SSL check
+checkSSL('127.0.0.1');  // For the localhost SSL check
+
+_log("Testing Socket connection");
+
 $url = "://localhost:{$port}";
 $SocketURL = 'ws' . $url;
 _test_send($SocketURL, 'ws');
@@ -45,6 +72,26 @@ if (empty($socketobj->forceNonSecure)) {
     _test_send($SocketURL, 'wss');
 }
 
+function isPortOpen($host, $port) {
+    $output = [];
+    $result = null;
+    exec("nc -zv {$host} {$port} 2>&1", $output, $result);
+    foreach ($output as $line) {
+        _log($line);
+    }
+    return $result === 0;
+}
+
+function isDomainResolving($domain) {
+    $output = [];
+    $result = null;
+    exec("nslookup {$domain} 2>&1", $output, $result);
+    foreach ($output as $line) {
+        _log($line);
+    }
+    return $result === 0;
+}
+
 function _test_send($SocketURL, $msg) {
     global $SocketSendObj, $count;
     $_count = $count;
@@ -59,12 +106,17 @@ function _test_send($SocketURL, $msg) {
         global $SocketSendObj;
         $conn->on('message', function($msg) use ($conn, $_count) {
             global $responses;
-            $json = _json_decode($msg->getPayload());
+            $payload = $msg->getPayload();
+            $json = _json_decode($payload);
             //var_dump($json);
-            $parts = explode(':', $json->msg->test_msg);
-            $c = new AVideoSocketConfiguration($parts[0], $parts[2], $parts[1], true);
-            $responses[] = $c;
-            $c->log();
+            if(!empty($json->msg) && !is_object($json->msg)){
+                $parts = explode(':', $json->msg->test_msg);
+                $c = new AVideoSocketConfiguration($parts[0], $parts[2], $parts[1], true);
+                $responses[] = $c;
+                $c->log();
+            }else{
+                $responses[] = "Could not decode response {$payload}";
+            }
             printIfComplete();
         });
 
@@ -214,3 +266,34 @@ function printIfComplete() {
         _log($msg);
     }
 }
+
+function checkSSL($host) {
+    $url = "https://{$host}";
+    _log("Checking SSL for {$host}");
+    
+    // Initialize a cURL session
+    $ch = curl_init();
+    
+    // Set options for the cURL request
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_NOBODY, true); // we only want the headers
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true); // verify SSL cert
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2); // verify if SSL matches hostname
+
+    // Execute the request
+    $response = curl_exec($ch);
+    
+    if ($response === false) {
+        // Handle SSL error
+        $error = curl_error($ch);
+        _log("SSL issue detected: {$error}");
+    } else {
+        // SSL appears to be fine
+        _log("SSL is valid for {$host}");
+    }
+    
+    // Close the cURL session
+    curl_close($ch);
+}
+

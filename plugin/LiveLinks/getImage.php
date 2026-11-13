@@ -25,12 +25,20 @@ if (file_exists($cacheFileImageName) && (time() - $lifetime <= filemtime($cacheF
     if(!empty($content)){
         echo $content;
         exit;
-    } 
+    }
 }
 
 require_once dirname(__FILE__) . '/../../videos/configuration.php';
-session_write_close();
-$filename = $global['systemRootPath'] . 'plugin/Live/view/OnAir.jpg';
+_session_write_close();
+
+if(!empty($f)){
+    $filename = $global['systemRootPath'] . "videos/LiveLinks/img_{$f}.png";
+}
+
+if(empty($filename) || !file_exists($filename)){
+    $filename = $global['systemRootPath'] . 'plugin/Live/view/OnAir.jpg';
+}
+
 //echo file_get_contents($filename);exit;
 
 require_once $global['systemRootPath'] . 'objects/user.php';
@@ -38,7 +46,7 @@ require_once $global['systemRootPath'] . 'objects/subscribe.php';
 require_once $global['systemRootPath'] . 'objects/functions.php';
 require_once $global['systemRootPath'] . 'plugin/LiveLinks/Objects/LiveLinksTable.php';
 
-if(empty($_GET['id'])){
+if(empty($_GET['id']) || !LiveLinks::isLiveLinkDateValid($_GET['id'])){
     header('Content-Type: image/jpg');
     echo file_get_contents($filename);
     exit;
@@ -59,24 +67,24 @@ if(LiveLinks::isLiveThumbsDisabled()){
 $video = $liveLink->getLink();
 
 if (preg_match("/\b(?:(?:https?):\/\/|www\.)[-a-z0-9+&@#\/%?=~_|!:,.;]*[-a-z0-9+&@#\/%=~_|]/i", $video)) {
-    
+
     $encoderURL = $config->_getEncoderURL();
     //$encoderURL = $config->getEncoderURL();
-    
+
     //$url = "{$encoderURL}getImage/" . base64_encode($video) . "/{$_REQUEST['format']}";
     $url = "{$encoderURL}objects/getImage.php";
     $url = addQueryStringParameter($url, 'base64Url', base64_encode($video));
     $url = addQueryStringParameter($url, 'format', $_REQUEST['format']);
-    
+
     $name = "liveLinks_getImage_".md5($url);
     $content = ObjectYPT::getCache($name, $lifetime);
     if(Live::isDefaultImage($content)){
         $content = '';
     }
     if(empty($content)){
-        session_write_close();
+        _session_write_close();
         _mysql_close();
-        $content = url_get_contents($url, "", 2);
+        $content = url_get_contents($url, "", 4, false, false, false);
         if(!empty($content)){
             ObjectYPT::setCache($name, $content);
         }

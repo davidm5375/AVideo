@@ -26,7 +26,7 @@ use Google\Service\CloudBuild\Operation;
  * Typical usage is:
  *  <code>
  *   $cloudbuildService = new Google\Service\CloudBuild(...);
- *   $githubEnterpriseConfigs = $cloudbuildService->githubEnterpriseConfigs;
+ *   $githubEnterpriseConfigs = $cloudbuildService->projects_githubEnterpriseConfigs;
  *  </code>
  */
 class ProjectsGithubEnterpriseConfigs extends \Google\Service\Resource
@@ -40,6 +40,12 @@ class ProjectsGithubEnterpriseConfigs extends \Google\Service\Resource
    * @param GitHubEnterpriseConfig $postBody
    * @param array $optParams Optional parameters.
    *
+   * @opt_param string gheConfigId Optional. The ID to use for the
+   * GithubEnterpriseConfig, which will become the final component of the
+   * GithubEnterpriseConfig's resource name. ghe_config_id must meet the following
+   * requirements: + They must contain only alphanumeric characters and dashes. +
+   * They can be 1-64 characters long. + They must begin and end with an
+   * alphanumeric character
    * @opt_param string projectId ID of the project.
    * @return Operation
    */
@@ -54,8 +60,8 @@ class ProjectsGithubEnterpriseConfigs extends \Google\Service\Resource
    * (githubEnterpriseConfigs.delete)
    *
    * @param string $name This field should contain the name of the enterprise
-   * config resource. For example:
-   * "projects/{$project_id}/githubEnterpriseConfigs/{$config_id}"
+   * config resource. For example: "projects/{$project_id}/locations/{$location_id
+   * }/githubEnterpriseConfigs/{$config_id}"
    * @param array $optParams Optional parameters.
    *
    * @opt_param string configId Unique identifier of the `GitHubEnterpriseConfig`
@@ -72,8 +78,8 @@ class ProjectsGithubEnterpriseConfigs extends \Google\Service\Resource
    * Retrieve a GitHubEnterpriseConfig. (githubEnterpriseConfigs.get)
    *
    * @param string $name This field should contain the name of the enterprise
-   * config resource. For example:
-   * "projects/{$project_id}/githubEnterpriseConfigs/{$config_id}"
+   * config resource. For example: "projects/{$project_id}/locations/{$location_id
+   * }/githubEnterpriseConfigs/{$config_id}"
    * @param array $optParams Optional parameters.
    *
    * @opt_param string configId Unique identifier of the `GitHubEnterpriseConfig`
@@ -108,8 +114,8 @@ class ProjectsGithubEnterpriseConfigs extends \Google\Service\Resource
    * (githubEnterpriseConfigs.patch)
    *
    * @param string $name Optional. The full resource name for the
-   * GitHubEnterpriseConfig For example:
-   * "projects/{$project_id}/githubEnterpriseConfigs/{$config_id}"
+   * GitHubEnterpriseConfig For example: "projects/{$project_id}/locations/{$locat
+   * ion_id}/githubEnterpriseConfigs/{$config_id}"
    * @param GitHubEnterpriseConfig $postBody
    * @param array $optParams Optional parameters.
    *

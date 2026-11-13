@@ -2,9 +2,9 @@
 global $global, $config;
 if (!isset($global['systemRootPath'])) {
     $configFile = '../videos/configuration.php';
-    if(file_exists($configFile)){
+    if (file_exists($configFile)) {
         require_once $configFile;
-    }else{
+    } else {
         header($_SERVER['SERVER_PROTOCOL'] . ' 500 Internal Server Error', true, 500);
         include '../view/maintanance.html';
         exit;
@@ -16,7 +16,7 @@ header("HTTP/1.0 404 Not Found");
 <html>
     <head>
         <style>
-            @import url(https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,300);
+            @import url("<?php echo getURL('view/css/custom/fonts/source-sans-pro.css'); ?>");
 
             body {
                 background-color: #335B67;
@@ -510,7 +510,7 @@ header("HTTP/1.0 404 Not Found");
                 </div>
 
                 <div id="navigation">
-                    <a class="navigation" href="<?php echo $global['webSiteRootURL']; ?>"><?php echo __("Home"); ?></a>
+                    <a class="navigation" href="<?php echo getHomePageURL(); ?>"><?php echo __("Home"); ?></a>
                     <a class="navigation" href="<?php echo $global['webSiteRootURL']; ?>about"><?php echo __("About Us"); ?></a>
                     <a class="navigation" href="<?php echo $global['webSiteRootURL']; ?>sitemap.xml"><?php echo __("Site Map"); ?></a>
                     <a class="navigation" href="<?php echo $global['webSiteRootURL']; ?>contact"><?php echo __("Contact"); ?></a>

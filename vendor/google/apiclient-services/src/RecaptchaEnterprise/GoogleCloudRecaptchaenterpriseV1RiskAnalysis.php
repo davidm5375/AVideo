@@ -19,25 +19,95 @@ namespace Google\Service\RecaptchaEnterprise;
 
 class GoogleCloudRecaptchaenterpriseV1RiskAnalysis extends \Google\Collection
 {
-  protected $collection_key = 'reasons';
+  protected $collection_key = 'verifiedBots';
+  /**
+   * @var string
+   */
+  public $challenge;
+  /**
+   * @var string[]
+   */
+  public $extendedVerdictReasons;
+  /**
+   * @var string[]
+   */
   public $reasons;
+  /**
+   * @var float
+   */
   public $score;
+  protected $verifiedBotsType = GoogleCloudRecaptchaenterpriseV1Bot::class;
+  protected $verifiedBotsDataType = 'array';
 
+  /**
+   * @param string
+   */
+  public function setChallenge($challenge)
+  {
+    $this->challenge = $challenge;
+  }
+  /**
+   * @return string
+   */
+  public function getChallenge()
+  {
+    return $this->challenge;
+  }
+  /**
+   * @param string[]
+   */
+  public function setExtendedVerdictReasons($extendedVerdictReasons)
+  {
+    $this->extendedVerdictReasons = $extendedVerdictReasons;
+  }
+  /**
+   * @return string[]
+   */
+  public function getExtendedVerdictReasons()
+  {
+    return $this->extendedVerdictReasons;
+  }
+  /**
+   * @param string[]
+   */
   public function setReasons($reasons)
   {
     $this->reasons = $reasons;
   }
+  /**
+   * @return string[]
+   */
   public function getReasons()
   {
     return $this->reasons;
   }
+  /**
+   * @param float
+   */
   public function setScore($score)
   {
     $this->score = $score;
   }
+  /**
+   * @return float
+   */
   public function getScore()
   {
     return $this->score;
+  }
+  /**
+   * @param GoogleCloudRecaptchaenterpriseV1Bot[]
+   */
+  public function setVerifiedBots($verifiedBots)
+  {
+    $this->verifiedBots = $verifiedBots;
+  }
+  /**
+   * @return GoogleCloudRecaptchaenterpriseV1Bot[]
+   */
+  public function getVerifiedBots()
+  {
+    return $this->verifiedBots;
   }
 }
 

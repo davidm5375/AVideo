@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `wallet` (
   `balance` DOUBLE(20,10) NOT NULL DEFAULT 0.0,
   `created` DATETIME NULL,
   `modified` DATETIME NULL,
-  `users_id` INT NOT NULL,
+  `users_id` INT NULL,
   `crypto_wallet_address` VARCHAR(255) NULL DEFAULT NULL,
   `information` TEXT NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -15,9 +15,10 @@ CREATE TABLE IF NOT EXISTS `wallet` (
   CONSTRAINT `fk_wallet_users`
     FOREIGN KEY (`users_id`)
     REFERENCES `users` (`id`)
-    ON DELETE NO ACTION
+    ON DELETE SET NULL
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
+
 
 CREATE TABLE IF NOT EXISTS `wallet_log` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -28,14 +29,17 @@ CREATE TABLE IF NOT EXISTS `wallet_log` (
   `wallet_id` INT NOT NULL,
   `status` ENUM('pending', 'success', 'canceled') NOT NULL DEFAULT 'success',
   `type` VARCHAR(45) NULL,
+  `information` TEXT NULL DEFAULT NULL,
+  `json_data` TEXT NULL DEFAULT NULL,
+  `previous_wallet_balance` DOUBLE(20,10) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   INDEX `fk_wallet_log_wallet1_idx` (`wallet_id` ASC),
   INDEX `wallet_log_type` (`type` ASC),
   CONSTRAINT `fk_wallet_log_wallet1`
     FOREIGN KEY (`wallet_id`)
     REFERENCES `wallet` (`id`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
 SET SQL_MODE=@OLD_SQL_MODE;

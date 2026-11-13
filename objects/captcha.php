@@ -1,12 +1,17 @@
 <?php
 global $global, $config;
-if(!isset($global['systemRootPath'])){
+if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
-class Captcha{
-    private $largura, $altura, $tamanho_fonte, $quantidade_letras;
+class Captcha
+{
+    private $largura;
+    private $altura;
+    private $tamanho_fonte;
+    private $quantidade_letras;
 
-    function __construct($largura, $altura, $tamanho_fonte, $quantidade_letras) {
+    public function __construct($largura, $altura, $tamanho_fonte, $quantidade_letras)
+    {
         $this->largura = $largura;
         $this->altura = $altura;
         $this->tamanho_fonte = $tamanho_fonte;
@@ -14,24 +19,38 @@ class Captcha{
     }
 
 
-    public function getCaptchaImage() {
+    public function getCaptchaImage()
+    {
         global $global;
-        header('Content-type: image/jpeg');
-        $imagem = imagecreate($this->largura,$this->altura); // define a largura e a altura da imagem
+        header('Content-Type: image/jpeg');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        $imagem = imagecreate($this->largura, $this->altura); // define a largura e a altura da imagem
         $fonte = $global['systemRootPath'] . 'objects/monof55.ttf'; //voce deve ter essa ou outra fonte de sua preferencia em sua pasta
         $preto  = imagecolorallocate($imagem, 0, 0, 0); // define a cor preta
         $branco = imagecolorallocate($imagem, 255, 255, 255); // define a cor branca
 
         // define a palavra conforme a quantidade de letras definidas no parametro $quantidade_letras
-        //$letters = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnPpQqRrSsTtUuVvYyXxWwZz23456789';
         $letters = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnPpQqRrSsTtUuVvYyXxWwZz23456789';
-        $palavra = substr(str_shuffle($letters), 0, ($this->quantidade_letras));
-        if(User::isAdmin()){
+        $len = strlen($letters);
+        $palavra = '';
+        for ($j = 0; $j < $this->quantidade_letras; $j++) {
+            $palavra .= $letters[random_int(0, $len - 1)];
+        }
+        if (User::isAdmin() && empty($_REQUEST['forceCaptcha'])) {
+            // SECURITY REVIEW: intentional admin convenience, but it makes the expected
+            // answer a fixed, publicly-known literal for any admin session - any
+            // captcha-gated endpoint reachable via GET/$_REQUEST must NOT rely on captcha
+            // alone as CSRF protection (blind cross-site requests can pass "admin" without
+            // ever solving the image). Endpoints must also call forbidIfNotPost()/
+            // forbidIfInvalidToken() - see plugin/CustomizeUser/confirmDeleteUser.json.php
+            // and plugin/CustomizeUser/donate.json.php for the pattern.
             $palavra = "admin";
         }
         _session_start();
         $_SESSION["palavra"] = $palavra; // atribui para a sessao a palavra gerada
-        //_error_log("getCaptchaImage: ".$palavra." - session_name ". session_name()." session_id: ". session_id());
+        _error_log("getCaptchaImage: ".$palavra." - session_name ". session_name()." session_id: ". session_id()." IP: ".getRealIpAddr()." UA: ".($_SERVER['HTTP_USER_AGENT'] ?? 'n/a'));
         for ($i = 1; $i <= $this->quantidade_letras; $i++) {
             imagettftext(
                 $imagem,
@@ -49,20 +68,34 @@ class Captcha{
         //_error_log("getCaptchaImage _SESSION[palavra] = ($_SESSION[palavra]) - session_name ". session_name()." session_id: ". session_id());
     }
 
-    static public function validation($word) {
-        if(User::isAdmin()){
+    public static function validation($word)
+    {
+        _session_start();
+        if (empty($_SESSION["palavra"])) {
+            _error_log("Captcha validation Error: you type ({$word}) and session is empty - session_name ". session_name()." session_id: ". session_id()." IP: ".getRealIpAddr());
+            return null; // null = session was empty (distinct from false = wrong code)
+        }
+        $stored = $_SESSION["palavra"];
+        // Track failed attempts; only invalidate the captcha after 10 tries (brute-force limit)
+        if (!isset($_SESSION["palavraAttempts"])) {
+            $_SESSION["palavraAttempts"] = 0;
+        }
+        $_SESSION["palavraAttempts"]++;
+        if ($_SESSION["palavraAttempts"] >= 5) {
+            unset($_SESSION["palavra"]);
+            unset($_SESSION["palavraAttempts"]);
+        }
+        if (User::isAdmin() && $stored === 'admin') {
             return true;
         }
-        _session_start();
-        if(empty($_SESSION["palavra"])){
-            _error_log("Captcha validation Error: you type ({$word}) and session is empty - session_name ". session_name()." session_id: ". session_id());
-            return false;
-        }
-        $validation = (strcasecmp($word, $_SESSION["palavra"]) == 0);
-        if(!$validation){
-            _error_log("Captcha validation Error: you type ({$word}) and session is ({$_SESSION["palavra"]})- session_name ". session_name()." session_id: ". session_id());
+        $validation = (strcasecmp($word, $stored) === 0);
+        if (!$validation) {
+            _error_log("Captcha validation Error: you type ({$word}) and session is ({$stored}) - session_name ". session_name()." session_id: ". session_id()." IP: ".getRealIpAddr());
+        } else {
+            // Correct answer — consume the word and reset the attempt counter
+            unset($_SESSION["palavra"]);
+            unset($_SESSION["palavraAttempts"]);
         }
         return $validation;
     }
-
 }

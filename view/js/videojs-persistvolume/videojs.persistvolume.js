@@ -12,7 +12,7 @@
   // checking that module is an object too because of umdjs/umd#35
   } else if (typeof exports === 'object' && typeof module === 'object') {
     factory(window, document, require('video.js'));
-  } else {
+  } else if(typeof videojs != 'undefined'){
     factory(window, document, videojs);
   }
 
@@ -103,21 +103,29 @@
     var muteKey = settings.namespace + '-' + 'mute';
 
     player.on("volumechange", function() {
-      setStorageItem(key, player.volume());
-      setStorageItem(muteKey, player.muted());
+      var currentVolume = player.volume();
+      var currentMuted = player.muted();
+      setStorageItem(key, currentVolume);
+      setStorageItem(muteKey, currentMuted);
     });
 
     var persistedVolume = getStorageItem(key);
     if(persistedVolume !== null){
-      player.volume(persistedVolume);
+      var volumeValue = parseFloat(persistedVolume);
+      if(!isNaN(volumeValue) && volumeValue >= 0 && volumeValue <= 1){
+        player.volume(volumeValue);
+      }
     }
 
     var persistedMute = getStorageItem(muteKey);
     if(persistedMute !== null){
-      player.muted('true' === persistedMute);
+      var isMuted = (persistedMute === 'true' || persistedMute === true);
+      player.muted(isMuted);
     }
+
+    console.debug('persistvolume: plugin initialized with namespace', settings.namespace);
   };
 
-  vjs.plugin("persistvolume", volumePersister);
+  vjs.registerPlugin("persistvolume", volumePersister);
 
 });

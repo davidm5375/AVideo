@@ -2,146 +2,188 @@
 
 require_once dirname(__FILE__) . '/../../../videos/configuration.php';
 
-class Live_servers extends ObjectYPT {
+class Live_servers extends ObjectYPT
+{
+    protected $id;
+    protected $name;
+    protected $url;
+    protected $status;
+    protected $rtmp_server;
+    protected $playerServer;
+    protected $stats_url;
+    protected $disableDVR;
+    protected $disableGifThumbs;
+    protected $useAadaptiveMode;
+    protected $protectLive;
+    protected $getRemoteFile;
+    protected $restreamerURL;
+    protected $controlURL;
 
-    protected $id, $name, $url, $status, $rtmp_server, $playerServer, $stats_url, $disableDVR, $disableGifThumbs, $useAadaptiveMode, $protectLive, $getRemoteFile, $restreamerURL, $controlURL, $webRTC_server;
-
-    static function getSearchFieldsNames() {
-        return array('name', 'url', 'rtmp_server', 'playerServer', 'stats_url', 'getRemoteFile');
+    public static function getSearchFieldsNames()
+    {
+        return ['name', 'url', 'rtmp_server', 'playerServer', 'stats_url', 'getRemoteFile'];
     }
 
-    static function getTableName() {
+    public static function getTableName()
+    {
         return 'live_servers';
     }
 
-    function setId($id) {
+    public function setId($id)
+    {
         $this->id = intval($id);
     }
 
-    function setName($name) {
-        $this->name = $name;
+    public function setName($name)
+    {
+        // stored raw name reaches the admin DataTable unescaped, so sanitize on write
+        $this->name = xss_esc($name);
     }
 
-    function setUrl($url) {
+    public function setUrl($url)
+    {
         $this->url = $url;
     }
 
-    function setStatus($status) {
+    public function setStatus($status)
+    {
         $this->status = $status;
     }
 
-    function setRtmp_server($rtmp_server) {
+    public function setRtmp_server($rtmp_server)
+    {
         $this->rtmp_server = $rtmp_server;
     }
 
-    function setPlayerServer($playerServer) {
+    public function setPlayerServer($playerServer)
+    {
         $this->playerServer = $playerServer;
     }
 
-    function setStats_url($stats_url) {
+    public function setStats_url($stats_url)
+    {
         $this->stats_url = $stats_url;
     }
 
-    function setDisableDVR($disableDVR) {
+    public function setDisableDVR($disableDVR)
+    {
         $this->disableDVR = intval($disableDVR);
     }
 
-    function setDisableGifThumbs($disableGifThumbs) {
+    public function setDisableGifThumbs($disableGifThumbs)
+    {
         $this->disableGifThumbs = intval($disableGifThumbs);
     }
 
-    function setUseAadaptiveMode($useAadaptiveMode) {
+    public function setUseAadaptiveMode($useAadaptiveMode)
+    {
         $this->useAadaptiveMode = intval($useAadaptiveMode);
     }
 
-    function setProtectLive($protectLive) {
+    public function setProtectLive($protectLive)
+    {
         $this->protectLive = intval($protectLive);
     }
 
-    function setGetRemoteFile($getRemoteFile) {
+    public function setGetRemoteFile($getRemoteFile)
+    {
         $this->getRemoteFile = $getRemoteFile;
     }
 
-    function getId() {
+    public function getId()
+    {
         return intval($this->id);
     }
 
-    function getName() {
+    public function getName()
+    {
         return $this->name;
     }
 
-    function getUrl() {
+    public function getUrl()
+    {
         return $this->url;
     }
 
-    function getStatus() {
+    public function getStatus()
+    {
         return $this->status;
     }
 
-    function getRtmp_server() {
+    public function getRtmp_server()
+    {
         return trim($this->rtmp_server);
     }
-
-    function getPlayerServer() {
+    /**
+     * @return string
+     */
+    public function getPlayerServer()
+    {
         return $this->playerServer;
     }
 
-    function getStats_url() {
+    public function getStats_url()
+    {
         return $this->stats_url;
     }
 
-    function getDisableDVR() {
+    public function getDisableDVR()
+    {
         return intval($this->disableDVR);
     }
 
-    function getDisableGifThumbs() {
+    public function getDisableGifThumbs()
+    {
         return intval($this->disableGifThumbs);
     }
 
-    function getUseAadaptiveMode() {
+    public function getUseAadaptiveMode()
+    {
         return intval($this->useAadaptiveMode);
     }
 
-    function getProtectLive() {
+    public function getProtectLive()
+    {
         return intval($this->protectLive);
     }
-
-    function getGetRemoteFile() {
+    /**
+     *
+     * @return string
+     */
+    public function getGetRemoteFile()
+    {
         return $this->getRemoteFile;
     }
-    
-    function getRestreamerURL() {
+
+    public function getRestreamerURL()
+    {
         return $this->restreamerURL;
     }
 
-    function setRestreamerURL($restreamerURL) {
+    public function setRestreamerURL($restreamerURL)
+    {
         $this->restreamerURL = $restreamerURL;
     }
-    
-    function getControlURL() {
+
+    public function getControlURL()
+    {
         return $this->controlURL;
     }
 
-    function setControlURL($controlURL) {
+    public function setControlURL($controlURL)
+    {
         $this->controlURL = $controlURL;
     }
-    
-    function getwebRTC_server() {
-        return $this->webRTC_server;
-    }
 
-    function setwebRTC_server($webRTC_server) {
-        $this->webRTC_server = addLastSlash($webRTC_server);
-    }
-            
-    static function getStatsFromId($live_servers_id, $force_recreate = false) {
+    public static function getStatsFromId($live_servers_id, $force_recreate = false)
+    {
         global $_getStatsFromId;
-        if(empty($force_recreate)){
-            if(!isset($_getStatsFromId)){
-                $_getStatsFromId = array();
+        if (empty($force_recreate)) {
+            if (!isset($_getStatsFromId)) {
+                $_getStatsFromId = [];
             }
 
-            if(isset($_getStatsFromId[$live_servers_id])){
+            if (isset($_getStatsFromId[$live_servers_id])) {
                 return $_getStatsFromId[$live_servers_id];
             }
         }
@@ -149,15 +191,16 @@ class Live_servers extends ObjectYPT {
         if (empty($ls->getStatus()) || $ls->getStatus()=='i') {
             _error_log("Live_servers:: getStatsFromId ERROR ".json_encode($ls));
             $_getStatsFromId[$live_servers_id] = false;
-        }else{
+        } else {
             $_getStatsFromId[$live_servers_id] = Live::_getStats($live_servers_id, $force_recreate);
         }
         return $_getStatsFromId[$live_servers_id];
     }
 
-    static function getAllActive() {
+    public static function getAllActive()
+    {
         global $global, $liveServersgetAllActive;
-        if(isset($liveServersgetAllActive)){
+        if (isset($liveServersgetAllActive)) {
             return $liveServersgetAllActive;
         }
         if (!static::isTableInstalled()) {
@@ -169,41 +212,37 @@ class Live_servers extends ObjectYPT {
         $res = sqlDAL::readSql($sql);
         $fullData = sqlDAL::fetchAllAssoc($res);
         sqlDAL::close($res);
-        $rows = array();
+        $rows = [];
         if ($res != false) {
             foreach ($fullData as $row) {
                 $rows[] = $row;
             }
-        } else {
-            die($sql . '\nError : (' . $global['mysqli']->errno . ') ' . $global['mysqli']->error);
         }
         $liveServersgetAllActive = $rows;
         return $rows;
     }
 
-    static function getServerFromRTMPHost($rtmpHostURI) {
+    public static function getServerFromRTMPHost($rtmpHostURI)
+    {
         $obj = AVideoPlugin::getObjectData('Live');
-        if(empty($obj->useLiveServers)){
+        if (empty($obj->useLiveServers)) {
             return 0;
         }
-        global $global;
         $host = trim($rtmpHostURI);
         $parts = parse_url($host);
         $host = "rtmp://{$parts["host"]}{$parts["path"]}";
-        $host = $global['mysqli']->real_escape_string($host);
-        $sql = "SELECT * FROM  " . static::getTableName() . " WHERE rtmp_server LIKE '%{$host}%' AND status = 'a' ";
-        $res = sqlDAL::readSql($sql);
-        $data = sqlDAL::fetchAssoc($res);
+        // Escape LIKE wildcards so the host is matched literally, then pass
+        // it as a bound parameter via sqlDAL to prevent SQL injection.
+        $likeParam = '%' . strtr($host, ['%' => '\%', '_' => '\_']) . '%';
+        $sql = "SELECT * FROM " . static::getTableName() . " WHERE rtmp_server LIKE ? AND status = 'a'";
+        $res = sqlDAL::readSql($sql, 's', [$likeParam]);
+        $row = sqlDAL::fetchAssoc($res);
         sqlDAL::close($res);
-        if ($res) {
-            $row = $data;
-        } else {
-            $row = false;
-        }
-        return $row;
+        return $res ? $row : false;
     }
 
-    static function getServerIdFromRTMPHost($rtmpHostURI) {
+    public static function getServerIdFromRTMPHost($rtmpHostURI)
+    {
         $data = self::getServerFromRTMPHost($rtmpHostURI);
         if ($data) {
             $row = $data['id'];
@@ -213,23 +252,23 @@ class Live_servers extends ObjectYPT {
         return intval($row);
     }
 
-    public function save() {
+    public function save()
+    {
         $id = parent::save();
-        if($id){            
+        if ($id) {
             _session_start();
-            $_SESSION['useAadaptiveMode'] = array();
-            $_SESSION['playerServer'] = array();
+            $_SESSION['useAadaptiveMode'] = [];
+            $_SESSION['playerServer'] = [];
         }
         return $id;
     }
 
-    public function delete() {
-        
-        if(!empty($this->id)){
+    public function delete()
+    {
+        if (!empty($this->id)) {
             LiveTransmitionHistory::deleteAllFromLiveServer($this->id);
         }
-        
+
         return parent::delete();
     }
-    
 }

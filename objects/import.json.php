@@ -13,6 +13,26 @@ if (!preg_match("/.*\\.mp4$/i", $_POST['fileURI'])) {
     return false;
 }
 
+// Restrict fileURI to the videos directory to prevent path traversal:
+// an authenticated user with upload permission must not be able to read,
+// copy, or delete files outside of the videos/ tree.
+$allowedBase = realpath($global['systemRootPath'] . 'videos');
+if ($allowedBase === false) {
+    http_response_code(500);
+    die(json_encode(['error' => true, 'msg' => 'Configuration error']));
+}
+$resolvedDir = realpath(dirname($_POST['fileURI']));
+if ($resolvedDir === false || strpos($resolvedDir . DIRECTORY_SEPARATOR, $allowedBase . DIRECTORY_SEPARATOR) !== 0) {
+    http_response_code(403);
+    die(json_encode(['error' => true, 'msg' => 'Path not allowed']));
+}
+// Reconstruct from resolved path + basename to eliminate any symlink tricks.
+$_POST['fileURI'] = $resolvedDir . DIRECTORY_SEPARATOR . basename($_POST['fileURI']);
+// Every video's media is inside videos/: do not read, copy or delete another user's video files.
+if (!Video::canImportFromVideosPath($allowedBase, $resolvedDir, basename($_POST['fileURI']))) {
+    forbiddenPage('Path not allowed');
+}
+
 $obj = new stdClass();
 
 $obj->error = true;
@@ -21,7 +41,7 @@ $obj->fileURI = pathinfo($_POST['fileURI']);
 
 //get description
 $filename = $obj->fileURI['dirname'] . DIRECTORY_SEPARATOR . $obj->fileURI['filename'];
-$extensions = array('txt', 'html', 'htm');
+$extensions = ['txt', 'html', 'htm'];
 
 $length = intval($_POST['length']);
 if (empty($length) || $length>100) {
@@ -29,11 +49,11 @@ if (empty($length) || $length>100) {
 }
 
 foreach ($extensions as $value) {
-    $_POST['description'] = "";
-    $_POST['title'] = "";
+    $_POST['description'] = '';
+    $_POST['title'] = '';
     if (file_exists("{$filename}.{$value}")) {
         $html = file_get_contents("{$filename}.{$value}");
-        $breaks = array("<br />","<br>","<br/>");
+        $breaks = ["<br />","<br>","<br/>"];
         $html = str_ireplace($breaks, "\r\n", $html);
         $_POST['description'] = $html;
         $cleanHTML = strip_tags($html);

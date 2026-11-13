@@ -19,11 +19,19 @@ namespace Google\Service\Contactcenterinsights;
 
 class GoogleCloudContactcenterinsightsV1RuntimeAnnotation extends \Google\Model
 {
+  /**
+   * @var string
+   */
   public $annotationId;
   protected $answerFeedbackType = GoogleCloudContactcenterinsightsV1AnswerFeedback::class;
   protected $answerFeedbackDataType = '';
   protected $articleSuggestionType = GoogleCloudContactcenterinsightsV1ArticleSuggestionData::class;
   protected $articleSuggestionDataType = '';
+  protected $conversationSummarizationSuggestionType = GoogleCloudContactcenterinsightsV1ConversationSummarizationSuggestionData::class;
+  protected $conversationSummarizationSuggestionDataType = '';
+  /**
+   * @var string
+   */
   public $createTime;
   protected $dialogflowInteractionType = GoogleCloudContactcenterinsightsV1DialogflowInteractionData::class;
   protected $dialogflowInteractionDataType = '';
@@ -37,11 +45,19 @@ class GoogleCloudContactcenterinsightsV1RuntimeAnnotation extends \Google\Model
   protected $smartReplyDataType = '';
   protected $startBoundaryType = GoogleCloudContactcenterinsightsV1AnnotationBoundary::class;
   protected $startBoundaryDataType = '';
+  protected $userInputType = GoogleCloudContactcenterinsightsV1RuntimeAnnotationUserInput::class;
+  protected $userInputDataType = '';
 
+  /**
+   * @param string
+   */
   public function setAnnotationId($annotationId)
   {
     $this->annotationId = $annotationId;
   }
+  /**
+   * @return string
+   */
   public function getAnnotationId()
   {
     return $this->annotationId;
@@ -74,10 +90,30 @@ class GoogleCloudContactcenterinsightsV1RuntimeAnnotation extends \Google\Model
   {
     return $this->articleSuggestion;
   }
+  /**
+   * @param GoogleCloudContactcenterinsightsV1ConversationSummarizationSuggestionData
+   */
+  public function setConversationSummarizationSuggestion(GoogleCloudContactcenterinsightsV1ConversationSummarizationSuggestionData $conversationSummarizationSuggestion)
+  {
+    $this->conversationSummarizationSuggestion = $conversationSummarizationSuggestion;
+  }
+  /**
+   * @return GoogleCloudContactcenterinsightsV1ConversationSummarizationSuggestionData
+   */
+  public function getConversationSummarizationSuggestion()
+  {
+    return $this->conversationSummarizationSuggestion;
+  }
+  /**
+   * @param string
+   */
   public function setCreateTime($createTime)
   {
     $this->createTime = $createTime;
   }
+  /**
+   * @return string
+   */
   public function getCreateTime()
   {
     return $this->createTime;
@@ -165,6 +201,20 @@ class GoogleCloudContactcenterinsightsV1RuntimeAnnotation extends \Google\Model
   public function getStartBoundary()
   {
     return $this->startBoundary;
+  }
+  /**
+   * @param GoogleCloudContactcenterinsightsV1RuntimeAnnotationUserInput
+   */
+  public function setUserInput(GoogleCloudContactcenterinsightsV1RuntimeAnnotationUserInput $userInput)
+  {
+    $this->userInput = $userInput;
+  }
+  /**
+   * @return GoogleCloudContactcenterinsightsV1RuntimeAnnotationUserInput
+   */
+  public function getUserInput()
+  {
+    return $this->userInput;
   }
 }
 

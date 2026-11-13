@@ -1,18 +1,26 @@
 var Button = videojs.getComponent('Button');
 
-var socialButton = videojs.extend(Button, {
-    //constructor: function(player, options) {
-    constructor: function () {
-        Button.apply(this, arguments);
+class SocialButton extends Button {
+    constructor() {
+        super(...arguments);
         this.addClass('social-button');
         this.controlText("social");
         setTimeout(function(){avideoTooltip(".social-button","Share");},1000);
-    },
-    handleClick: function () {
-        console.log('socialButton clicked');
-        tooglePlayersocial();
     }
-});
 
-videojs.registerComponent('socialButton', socialButton);
-player.getChild('controlBar').addChild('socialButton', {}, getPlayerButtonIndex('fullscreenToggle') - 1);
+    handleClick() {
+        console.log('socialButton clicked');
+        togglePlayerSocial();
+    }
+}
+
+videojs.registerComponent('SocialButton', SocialButton);
+
+function addSocialButton() {
+    if (typeof player !== 'undefined') {
+        player.getChild('controlBar').addChild('SocialButton', {}, getPlayerButtonIndex('fullscreenToggle') - 1);
+    } else {
+        setTimeout(() => { addSocialButton() }, 1000);
+    }
+}
+addSocialButton();

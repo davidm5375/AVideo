@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json');
+
 if (!isset($global['systemRootPath'])) {
     $configFile = '../../videos/configuration.php';
     if (file_exists($configFile)) {
@@ -11,24 +12,28 @@ $objM = AVideoPlugin::getObjectDataIfEnabled("Meet");
 if (empty($objM)) {
     die("Plugin disabled");
 }
+
+// Only admins may probe whether a secret matches — this endpoint is a
+// confirmation oracle and must not be reachable by unauthenticated callers.
+if (!User::isAdmin()) {
+    forbiddenPage('Admin only');
+}
+
 $obj = new stdClass();
 $obj->error = true;
 $obj->msg = "";
 $obj->match = false;
-$obj->secret = $_GET['secret'];
 
-if(empty($_GET['secret'])){
+if (empty($_GET['secret'])) {
     $obj->msg = "Empty Token";
     die(json_encode($obj));
 }
 
-if($objM->secret === $_GET['secret']){
-    $obj->msg = "Token and secret match {$_GET['secret']}";
+// Constant-time comparison to prevent byte-by-byte timing analysis.
+// No message difference between match and no-match to avoid an oracle.
+if (hash_equals($objM->secret, $_GET['secret'])) {
     $obj->error = false;
     $obj->match = true;
-}else{
-    $obj->msg = "Different token and secret ";
 }
 
 die(json_encode($obj));
-?>

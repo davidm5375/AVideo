@@ -3,26 +3,30 @@ global $global, $config;
 if (!isset($global['systemRootPath'])) {
     require_once '../../../videos/configuration.php';
 }
-session_write_close();
+_session_write_close();
 require_once $global['systemRootPath'] . 'objects/video.php';
 require_once $global['systemRootPath'] . 'objects/category.php';
 
 $_REQUEST['rowCount'] = 2;
 if (empty($_GET['current'])) {
-    $_REQUEST['current'] = 1;
+    unsetCurrentPage();
 } else {
     $_REQUEST['current'] = intval($_GET['current']);
 }
 
 $uid = '{serie_uid}';
 
-$cacheName = "modeFlixCategory" . md5(json_encode($_GET)) . User::getId();
-$cache = ObjectYPT::getCache($cacheName, 600);
+$cacheName = "modeFlixCategory" . md5(json_encode($_GET)) . getVideoListVisibilityCacheKey();
+$cacheName .= isForKidsSet()?'forKids':'';
+
+$cacheLifetime = User::isLogged() ? 600 : 1800;
+
+$cache = ObjectYPT::getCache($cacheName, $cacheLifetime);
 if (!empty($cache)) {
     echo str_replace('{serie_uid}', uniqid(), $cache);
     return false;
 }
-ob_start();
+_ob_start();
 $obj = AVideoPlugin::getObjectData("YouPHPFlix2");
 $timeLog = __FILE__ . " - modeFlixCategory";
 
@@ -56,13 +60,19 @@ $videosCounter = 0;
             unset($_POST['searchPhrase']);
         }
         unset($_POST['sort']);
-        $_REQUEST['rowCount'] = 2;
+
+        if (!empty($_REQUEST['search'])) {
+            $_REQUEST['rowCount'] = 1000;
+        } else {
+            $_REQUEST['rowCount'] = 2;
+        }
+        $categoriesRequestedCount = $_REQUEST['rowCount'];
         if (!empty($_REQUEST['catName'])) {
             $hideTitle = 1;
             $categories = array(Category::getCategoryByName($_REQUEST['catName']));
         } else {
-            $categories = Category::getAllCategories(false, true);
-            $_REQUEST['current'] = 1;
+            $categories = Category::getAllCategories(false, true, $obj->CategoriesShowOnlySuggested);
+            unsetCurrentPage();
         }
         if (empty($categories)) {
             echo "</div>";
@@ -75,23 +85,23 @@ $videosCounter = 0;
             $obj2 = AVideoPlugin::getObjectData("YouPHPFlix2");
             $timeLog2 = __FILE__ . " - Category {$value['clean_name']}";
             TimeLogStart($timeLog2);
-            $oldCatName = @$_GET['catName'];
-            if (!empty($_GET['catName']) && $value['clean_name'] !== $_GET['catName']) {
+            $oldCatName = @$_REQUEST['catName'];
+            if (!empty($_REQUEST['catName']) && $value['clean_name'] !== $_REQUEST['catName']) {
                 continue;
             } else {
-                $_GET['catName'] = $value['clean_name'];
+                $_REQUEST['catName'] = $value['clean_name'];
             }
             unset($_POST['sort']);
             $_POST['sort']['v.created'] = "DESC";
             $_POST['sort']['likes'] = "DESC";
 
             TimeLogStart("modeFlixCategory.php getAllVideos");
-            $videos = Video::getAllVideos("viewableNotUnlisted", false, !$obj2->hidePrivateVideos);
+            $videos = Video::getAllVideos(Video::SORT_TYPE_VIEWABLENOTUNLISTED, false, !isToHidePrivateVideos());
             TimeLogEnd("modeFlixCategory.php getAllVideos", __LINE__);
 
             TimeLogEnd($timeLog2, __LINE__);
             if (empty($videos)) {
-                $_GET['catName'] = $oldCatName;
+                $_REQUEST['catName'] = $oldCatName;
                 continue;
             }
             if (!empty($ads2)) {
@@ -102,6 +112,7 @@ $videosCounter = 0;
                 <?php
             }
             ?>
+            <!-- mode flix category -->
             <div class="row topicRow">
                 <span class="md-col-12">&nbsp;</span>
                 <?php
@@ -121,25 +132,52 @@ $videosCounter = 0;
                 ?>
             </div>
             <?php
-            $_GET['catName'] = $oldCatName;
+            $_REQUEST['catName'] = $oldCatName;
             TimeLogEnd($timeLog2, __LINE__);
         }
     }
     TimeLogEnd($timeLog, __LINE__);
-    if(empty($videosCounter)){
+    // Category::getAllCategories()'s "has videos" pre-check does not use the exact same
+    // viewable/group filters as the Video::getAllVideos() call above, so a returned batch of
+    // categories can legitimately render zero videos. Only stop the infinite-scroll (and show
+    // the "not found" message) once there are no more categories left to fetch; otherwise keep
+    // emitting the pagination link below so the front-end infiniteScroll() keeps requesting the
+    // next batch instead of stopping prematurely.
+    $hasMoreCategories = !empty($categories) && count($categories) >= $categoriesRequestedCount;
+    if (empty($videosCounter) && !$hasMoreCategories) {
+        // This is category browsing (infinite scroll), not a search: a batch with zero visible
+        // videos should just stop silently. Only show the "no results found" component when the
+        // user actually typed a search phrase, otherwise every install without a full category
+        // in the last batch renders a bogus "No results found for ()" at the end of the homepage.
+        if (isSearch()) {
+            include_once __DIR__.'/notFoundHTML.php';
+        }
         echo "</div>";
         return false;
     }
     ?>
     <script>
-        startModeFlix('#<?php echo $divUUID; ?> .topicRow div');
+        startModeFlix('#<?php echo $divUUID; ?> ');
     </script>
 </div>
 <p class="pagination">
-    <a class="pagination__next" href="<?php echo $global['webSiteRootURL']; ?>plugin/YouPHPFlix2/view/modeFlixCategory.php?current=<?php echo count($categories) ? $_REQUEST['current'] + 1 : $_REQUEST['current']; ?>&rrating=<?php echo @$_GET['rrating']; ?>"></a>
+    <?php
+    $url = "{$global['webSiteRootURL']}plugin/YouPHPFlix2/view/modeFlixCategory.php";
+    if (!empty($_REQUEST['catName'])) {
+        $url = addQueryStringParameter($url, 'catName', $_REQUEST['catName']);
+    }
+    $search = getSearchVar();
+    if (!empty($search)) {
+        $url = addQueryStringParameter($url, 'search', $search);
+    }
+    $url = addQueryStringParameter($url, 'rrating', @$_GET['rrating']);
+    $url = addQueryStringParameter($url, 'tags_id', intval(@$_GET['tags_id']));
+    $url = addQueryStringParameter($url, 'current', count($categories) ? $_REQUEST['current'] + 1 : $_REQUEST['current']);
+    ?>
+    <a class="pagination__next" href="<?php echo $url; ?>"></a>
 </p>
 <?php
-$cache = ob_get_clean();
+$cache = _ob_get_clean();
 
 ObjectYPT::setCache($cacheName, $cache);
 

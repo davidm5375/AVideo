@@ -1,6 +1,6 @@
 <?php
-
 header('Content-Type: application/json');
+
 if (!isset($global['systemRootPath'])) {
     $configFile = '../../videos/configuration.php';
     if (file_exists($configFile)) {
@@ -29,6 +29,13 @@ if (!User::canCreateMeet()) {
     _error_log("Meet:User::canCreateMeet error GET: " . json_encode($_GET));
     _error_log("Meet:User::canCreateMeet error php://input" . file_get_contents("php://input"));
     die(json_encode($obj));
+}
+
+// $calledFromTrustedApiInclude is set by plugin/API/API.php::set_api_meet() before including this
+// file, since that request path already authenticated via APISecret/login and has no globalToken.
+if (empty($calledFromTrustedApiInclude)) {
+    forbidIfNotPost();
+    forbidIfInvalidToken();
 }
 
 if (!empty($_REQUEST['id'])) {
@@ -63,7 +70,7 @@ if (!isset($_REQUEST['live_stream'])) {
 }
 
 if (empty($_REQUEST['userGroups']) || !empty($_REQUEST['public'])) {
-    $_REQUEST['userGroups'] = array();
+    $_REQUEST['userGroups'] = [];
 }
 
 $o = new Meet_schedule($obj->meet_schedule_id);
@@ -75,10 +82,12 @@ $o->setPassword(@$_REQUEST['RoomPasswordNew']);
 $o->setTopic(@$_REQUEST['RoomTopic']);
 $o->setStarts($_REQUEST['starts']);
 $o->setName($obj->roomName);
-$o->setMeet_code(uniqid());
+$o->setMeet_code(_uniqid()); // SECURITY: CSPRNG value, not clock-based uniqid()
 $meet_schedule_id = $o->save();
 if ($meet_schedule_id) {
     Meet_schedule_has_users_groups::saveUsergroupsToMeet($meet_schedule_id, $_REQUEST['userGroups']);
+    $createdMeet = new Meet_schedule($meet_schedule_id);
+    $obj->RoomPassword = $createdMeet->getPassword();
 }
 $obj->meet_schedule_id = $meet_schedule_id;
 $obj->password = @$_REQUEST['RoomPasswordNew'];
@@ -98,7 +107,18 @@ $obj->domain = Meet::getDomainURL();
 $obj->joinURL = Meet::getJoinURL();
 $obj->roomID = Meet::getRoomID($meet_schedule_id);
 $obj->invitation = Meet::getInvitation($meet_schedule_id);
+$obj->iframeURL = Meet::getIframeURL($meet_schedule_id);
+$obj->linkAndPassword = addQueryStringParameter($obj->link, 'meet_password', $obj->password);
+
+$obj->RTMPLink = false;
+$obj->LinkToLive = false;
+
+if(AVideoPlugin::isEnabledByName('Live')){
+    $obj->RTMPLink = Live::getRTMPLink(User::getId());
+    $obj->LinkToLive = Live::getLinkToLiveFromUsers_id(User::getId());
+    $obj->LinkToLiveEmbed = addQueryStringParameter($obj->LinkToLive, 'embed', 1);
+}
+
 //var_dump($obj->domain);
 
 die(json_encode($obj));
-?>

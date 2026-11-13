@@ -11,6 +11,8 @@
 import window from 'global/window';
 import * as Ranges from './ranges';
 import logger from './util/logger';
+import { createTimeRanges } from './util/vjs-compat';
+import videojs from 'video.js';
 
 // Set of events that reset the playback-watcher time check logic and clear the timeout
 const timerCancelEvents = [
@@ -22,48 +24,9 @@ const timerCancelEvents = [
 ];
 
 /**
- * Returns whether or not the current time should be considered close to buffered content,
- * taking into consideration whether there's enough buffered content for proper playback.
- *
- * @param {Object} options
- *        Options object
- * @param {TimeRange} options.buffered
- *        Current buffer
- * @param {number} options.targetDuration
- *        The active playlist's target duration
- * @param {number} options.currentTime
- *        The current time of the player
- * @return {boolean}
- *         Whether the current time should be considered close to the buffer
- */
-export const closeToBufferedContent = ({ buffered, targetDuration, currentTime }) => {
-  if (!buffered.length) {
-    return false;
-  }
-
-  // At least two to three segments worth of content should be buffered before there's a
-  // full enough buffer to consider taking any actions.
-  if (buffered.end(0) - buffered.start(0) < targetDuration * 2) {
-    return false;
-  }
-
-  // It's possible that, on seek, a remove hasn't completed and the buffered range is
-  // somewhere past the current time. In that event, don't consider the buffered content
-  // close.
-  if (currentTime > buffered.start(0)) {
-    return false;
-  }
-
-  // Since target duration generally represents the max (or close to max) duration of a
-  // segment, if the buffer is within a segment of the current time, the gap probably
-  // won't be closed, and current time should be considered close to buffered content.
-  return buffered.start(0) - currentTime < targetDuration;
-};
-
-/**
  * @class PlaybackWatcher
  */
-export default class PlaybackWatcher {
+export default class PlaybackWatcher extends videojs.EventTarget {
   /**
    * Represents an PlaybackWatcher object.
    *
@@ -71,16 +34,17 @@ export default class PlaybackWatcher {
    * @param {Object} options an object that includes the tech and settings
    */
   constructor(options) {
-    this.masterPlaylistController_ = options.masterPlaylistController;
+    super();
+    this.playlistController_ = options.playlistController;
     this.tech_ = options.tech;
     this.seekable = options.seekable;
     this.allowSeeksWithinUnsafeLiveWindow = options.allowSeeksWithinUnsafeLiveWindow;
     this.liveRangeSafeTimeDelta = options.liveRangeSafeTimeDelta;
     this.media = options.media;
+    this.playedRanges_ = [];
 
     this.consecutiveUpdates = 0;
     this.lastRecordedTime = null;
-    this.timer_ = null;
     this.checkCurrentTimeTimeout_ = null;
     this.logger_ = logger('PlaybackWatcher');
 
@@ -89,10 +53,9 @@ export default class PlaybackWatcher {
     const playHandler = () => this.monitorCurrentTime_();
     const canPlayHandler = () => this.monitorCurrentTime_();
     const waitingHandler = () => this.techWaiting_();
-    const cancelTimerHandler = () => this.cancelTimer_();
-    const fixesBadSeeksHandler = () => this.fixesBadSeeks_();
+    const cancelTimerHandler = () => this.resetTimeUpdate_();
 
-    const mpc = this.masterPlaylistController_;
+    const pc = this.playlistController_;
 
     const loaderTypes = ['main', 'subtitle', 'audio'];
     const loaderChecks = {};
@@ -103,11 +66,11 @@ export default class PlaybackWatcher {
         updateend: () => this.checkSegmentDownloads_(type)
       };
 
-      mpc[`${type}SegmentLoader_`].on('appendsdone', loaderChecks[type].updateend);
+      pc[`${type}SegmentLoader_`].on('appendsdone', loaderChecks[type].updateend);
       // If a rendition switch happens during a playback stall where the buffer
       // isn't changing we want to reset. We cannot assume that the new rendition
       // will also be stalled, until after new appends.
-      mpc[`${type}SegmentLoader_`].on('playlistupdate', loaderChecks[type].reset);
+      pc[`${type}SegmentLoader_`].on('playlistupdate', loaderChecks[type].reset);
       // Playback stalls should not be detected right after seeking.
       // This prevents one segment playlists (single vtt or single segment content)
       // from being detected as stalling. As the buffer will not change in those cases, since
@@ -115,7 +78,38 @@ export default class PlaybackWatcher {
       this.tech_.on(['seeked', 'seeking'], loaderChecks[type].reset);
     });
 
-    this.tech_.on('seekablechanged', fixesBadSeeksHandler);
+    /**
+     * We check if a seek was into a gap through the following steps:
+     * 1. We get a seeking event and we do not get a seeked event. This means that
+     *    a seek was attempted but not completed.
+     * 2. We run `fixesBadSeeks_` on segment loader appends. This means that we already
+     *    removed everything from our buffer and appended a segment, and should be ready
+     *    to check for gaps.
+     */
+    const setSeekingHandlers = (fn) => {
+      ['main', 'audio'].forEach((type) => {
+        pc[`${type}SegmentLoader_`][fn]('appended', this.seekingAppendCheck_);
+      });
+    };
+
+    this.seekingAppendCheck_ = () => {
+      if (this.fixesBadSeeks_()) {
+        this.consecutiveUpdates = 0;
+        this.lastRecordedTime = this.tech_.currentTime();
+        setSeekingHandlers('off');
+      }
+    };
+
+    this.clearSeekingAppendCheck_ = () => setSeekingHandlers('off');
+
+    this.watchForBadSeeking_ = () => {
+      this.clearSeekingAppendCheck_();
+      setSeekingHandlers('on');
+    };
+
+    this.tech_.on('seeked', this.clearSeekingAppendCheck_);
+    this.tech_.on('seeking', this.watchForBadSeeking_);
+
     this.tech_.on('waiting', waitingHandler);
     this.tech_.on(timerCancelEvents, cancelTimerHandler);
     this.tech_.on('canplay', canPlayHandler);
@@ -135,22 +129,24 @@ export default class PlaybackWatcher {
 
     // Define the dispose function to clean up our events
     this.dispose = () => {
+      this.clearSeekingAppendCheck_();
       this.logger_('dispose');
-      this.tech_.off('seekablechanged', fixesBadSeeksHandler);
       this.tech_.off('waiting', waitingHandler);
       this.tech_.off(timerCancelEvents, cancelTimerHandler);
       this.tech_.off('canplay', canPlayHandler);
       this.tech_.off('play', playHandler);
+      this.tech_.off('seeking', this.watchForBadSeeking_);
+      this.tech_.off('seeked', this.clearSeekingAppendCheck_);
 
       loaderTypes.forEach((type) => {
-        mpc[`${type}SegmentLoader_`].off('appendsdone', loaderChecks[type].updateend);
-        mpc[`${type}SegmentLoader_`].off('playlistupdate', loaderChecks[type].reset);
+        pc[`${type}SegmentLoader_`].off('appendsdone', loaderChecks[type].updateend);
+        pc[`${type}SegmentLoader_`].off('playlistupdate', loaderChecks[type].reset);
         this.tech_.off(['seeked', 'seeking'], loaderChecks[type].reset);
       });
       if (this.checkCurrentTimeTimeout_) {
         window.clearTimeout(this.checkCurrentTimeTimeout_);
       }
-      this.cancelTimer_();
+      this.resetTimeUpdate_();
     };
   }
 
@@ -182,7 +178,7 @@ export default class PlaybackWatcher {
    * @listens Tech#seeked
    */
   resetSegmentDownloads_(type) {
-    const loader = this.masterPlaylistController_[`${type}SegmentLoader_`];
+    const loader = this.playlistController_[`${type}SegmentLoader_`];
 
     if (this[`${type}StalledDownloads_`] > 0) {
       this.logger_(`resetting possible stalled download count for ${type} loader`);
@@ -194,7 +190,7 @@ export default class PlaybackWatcher {
   /**
    * Checks on every segment `appendsdone` to see
    * if segment appends are making progress. If they are not
-   * and we are still downloading bytes. We blacklist the playlist.
+   * and we are still downloading bytes. We exclude the playlist.
    *
    * @param {string} type
    *        The segment loader type to check.
@@ -202,8 +198,8 @@ export default class PlaybackWatcher {
    * @listens SegmentLoader#appendsdone
    */
   checkSegmentDownloads_(type) {
-    const mpc = this.masterPlaylistController_;
-    const loader = mpc[`${type}SegmentLoader_`];
+    const pc = this.playlistController_;
+    const loader = pc[`${type}SegmentLoader_`];
     const buffered = loader.buffered_();
     const isBufferedDifferent = Ranges.isRangeDifferent(this[`${type}Buffered_`], buffered);
 
@@ -213,6 +209,11 @@ export default class PlaybackWatcher {
     // the buffered value for this loader changed
     // appends are working
     if (isBufferedDifferent) {
+      const metadata = {
+        bufferedRanges: buffered
+      };
+
+      pc.trigger({ type: 'bufferedrangeschanged', metadata });
       this.resetSegmentDownloads_(type);
       return;
     }
@@ -240,9 +241,10 @@ export default class PlaybackWatcher {
 
     // TODO: should we exclude audio tracks rather than main tracks
     // when type is audio?
-    mpc.blacklistCurrentPlaylist({
-      message: `Excessive ${type} segment downloading detected.`
-    }, Infinity);
+    pc.excludePlaylist({
+      error: { message: `Excessive ${type} segment downloading detected.` },
+      playlistExclusionDuration: Infinity
+    });
   }
 
   /**
@@ -253,12 +255,6 @@ export default class PlaybackWatcher {
    * @private
    */
   checkCurrentTime_() {
-    if (this.tech_.seeking() && this.fixesBadSeeks_()) {
-      this.consecutiveUpdates = 0;
-      this.lastRecordedTime = this.tech_.currentTime();
-      return;
-    }
-
     if (this.tech_.paused() || this.tech_.seeking()) {
       return;
     }
@@ -284,26 +280,24 @@ export default class PlaybackWatcher {
     } else if (currentTime === this.lastRecordedTime) {
       this.consecutiveUpdates++;
     } else {
+      this.playedRanges_.push(createTimeRanges([this.lastRecordedTime, currentTime]));
+      const metadata = {
+        playedRanges: this.playedRanges_
+      };
+
+      this.playlistController_.trigger({ type: 'playedrangeschanged', metadata });
       this.consecutiveUpdates = 0;
       this.lastRecordedTime = currentTime;
     }
   }
 
   /**
-   * Cancels any pending timers and resets the 'timeupdate' mechanism
-   * designed to detect that we are stalled
+   * Resets the 'timeupdate' mechanism designed to detect that we are stalled
    *
    * @private
    */
-  cancelTimer_() {
+  resetTimeUpdate_() {
     this.consecutiveUpdates = 0;
-
-    if (this.timer_) {
-      this.logger_('cancelTimer_');
-      clearTimeout(this.timer_);
-    }
-
-    this.timer_ = null;
   }
 
   /**
@@ -319,6 +313,10 @@ export default class PlaybackWatcher {
       return false;
     }
 
+    // TODO: It's possible that these seekable checks should be moved out of this function
+    // and into a function that runs on seekablechange. It's also possible that we only need
+    // afterSeekableWindow as the buffered check at the bottom is good enough to handle before
+    // seekable range.
     const seekable = this.seekable();
     const currentTime = this.tech_.currentTime();
     const isAfterSeekableRange = this.afterSeekableWindow_(
@@ -356,24 +354,52 @@ export default class PlaybackWatcher {
       return true;
     }
 
+    const sourceUpdater = this.playlistController_.sourceUpdater_;
     const buffered = this.tech_.buffered();
+    const audioBuffered = sourceUpdater.audioBuffer ? sourceUpdater.audioBuffered() : null;
+    const videoBuffered = sourceUpdater.videoBuffer ? sourceUpdater.videoBuffered() : null;
+    const media = this.media();
 
-    if (
-      closeToBufferedContent({
-        buffered,
-        targetDuration: this.media().targetDuration,
-        currentTime
-      })
-    ) {
-      seekTo = buffered.start(0) + Ranges.SAFE_TIME_DELTA;
-      this.logger_(`Buffered region starts (${buffered.start(0)}) ` +
-                   ` just beyond seek point (${currentTime}). Seeking to ${seekTo}.`);
+    // verify that at least two segment durations or one part duration have been
+    // appended before checking for a gap.
+    const minAppendedDuration = media.partTargetDuration ? media.partTargetDuration :
+      (media.targetDuration - Ranges.TIME_FUDGE_FACTOR) * 2;
 
-      this.tech_.setCurrentTime(seekTo);
-      return true;
+    // verify that at least two segment durations have been
+    // appended before checking for a gap.
+    const bufferedToCheck = [audioBuffered, videoBuffered];
+
+    for (let i = 0; i < bufferedToCheck.length; i++) {
+      // skip null buffered
+      if (!bufferedToCheck[i]) {
+        continue;
+      }
+
+      const timeAhead = Ranges.timeAheadOf(bufferedToCheck[i], currentTime);
+
+      // if we are less than two video/audio segment durations or one part
+      // duration behind we haven't appended enough to call this a bad seek.
+      if (timeAhead < minAppendedDuration) {
+        return false;
+      }
     }
 
-    return false;
+    const nextRange = Ranges.findNextRange(buffered, currentTime);
+
+    // we have appended enough content, but we don't have anything buffered
+    // to seek over the gap
+    if (nextRange.length === 0) {
+      return false;
+    }
+
+    seekTo = nextRange.start(0) + Ranges.SAFE_TIME_DELTA;
+
+    this.logger_(`Buffered region starts (${nextRange.start(0)}) ` +
+      ` just beyond seek point (${currentTime}). Seeking to ${seekTo}.`);
+
+    this.tech_.setCurrentTime(seekTo);
+
+    return true;
   }
 
   /**
@@ -400,7 +426,7 @@ export default class PlaybackWatcher {
     // make sure there is ~3 seconds of forward buffer before taking any corrective action
     // to avoid triggering an `unknownwaiting` event when the network is slow.
     if (currentRange.length && currentTime + 3 <= currentRange.end(0)) {
-      this.cancelTimer_();
+      this.resetTimeUpdate_();
       this.tech_.setCurrentTime(currentTime);
 
       this.logger_(`Stopped at ${currentTime} while inside a buffered region ` +
@@ -409,7 +435,6 @@ export default class PlaybackWatcher {
 
       // unknown waiting corrections may be useful for monitoring QoS
       this.tech_.trigger({type: 'usage', name: 'vhs-unknown-waiting'});
-      this.tech_.trigger({type: 'usage', name: 'hls-unknown-waiting'});
       return;
     }
   }
@@ -426,12 +451,7 @@ export default class PlaybackWatcher {
     const seekable = this.seekable();
     const currentTime = this.tech_.currentTime();
 
-    if (this.tech_.seeking() && this.fixesBadSeeks_()) {
-      // Tech is seeking or bad seek fixed, no action needed
-      return true;
-    }
-
-    if (this.tech_.seeking() || this.timer_ !== null) {
+    if (this.tech_.seeking()) {
       // Tech is seeking or already waiting on another action, no action needed
       return true;
     }
@@ -441,16 +461,15 @@ export default class PlaybackWatcher {
 
       this.logger_(`Fell out of live window at time ${currentTime}. Seeking to ` +
                    `live point (seekable end) ${livePoint}`);
-      this.cancelTimer_();
+      this.resetTimeUpdate_();
       this.tech_.setCurrentTime(livePoint);
 
       // live window resyncs may be useful for monitoring QoS
       this.tech_.trigger({type: 'usage', name: 'vhs-live-resync'});
-      this.tech_.trigger({type: 'usage', name: 'hls-live-resync'});
       return true;
     }
 
-    const sourceUpdater = this.tech_.vhs.masterPlaylistController_.sourceUpdater_;
+    const sourceUpdater = this.tech_.vhs.playlistController_.sourceUpdater_;
     const buffered = this.tech_.buffered();
     const videoUnderflow = this.videoUnderflow_({
       audioBuffered: sourceUpdater.audioBuffered(),
@@ -463,30 +482,21 @@ export default class PlaybackWatcher {
       // the gap, leading currentTime into a buffered range. Seeking to currentTime
       // allows the video to catch up to the audio position without losing any audio
       // (only suffering ~3 seconds of frozen video and a pause in audio playback).
-      this.cancelTimer_();
+      this.resetTimeUpdate_();
       this.tech_.setCurrentTime(currentTime);
 
       // video underflow may be useful for monitoring QoS
       this.tech_.trigger({type: 'usage', name: 'vhs-video-underflow'});
-      this.tech_.trigger({type: 'usage', name: 'hls-video-underflow'});
       return true;
     }
     const nextRange = Ranges.findNextRange(buffered, currentTime);
 
     // check for gap
     if (nextRange.length > 0) {
-      const difference = nextRange.start(0) - currentTime;
+      this.logger_(`Stopped at ${currentTime} and seeking to ${nextRange.start(0)}`);
 
-      this.logger_(`Stopped at ${currentTime}, setting timer for ${difference}, seeking ` +
-        `to ${nextRange.start(0)}`);
-
-      this.cancelTimer_();
-
-      this.timer_ = setTimeout(
-        this.skipTheGap_.bind(this),
-        difference * 1000,
-        currentTime
-      );
+      this.resetTimeUpdate_();
+      this.skipTheGap_(currentTime);
       return true;
     }
 
@@ -502,8 +512,9 @@ export default class PlaybackWatcher {
 
     let allowedEnd = seekable.end(seekable.length - 1) + Ranges.SAFE_TIME_DELTA;
     const isLive = !playlist.endList;
+    const isLLHLS = typeof playlist.partTargetDuration === 'number';
 
-    if (isLive && allowSeeksWithinUnsafeLiveWindow) {
+    if (isLive && (isLLHLS || allowSeeksWithinUnsafeLiveWindow)) {
       allowedEnd = seekable.end(seekable.length - 1) + (playlist.targetDuration * 3);
     }
 
@@ -577,7 +588,7 @@ export default class PlaybackWatcher {
     const currentTime = this.tech_.currentTime();
     const nextRange = Ranges.findNextRange(buffered, currentTime);
 
-    this.cancelTimer_();
+    this.resetTimeUpdate_();
 
     if (nextRange.length === 0 ||
         currentTime !== scheduledCurrentTime) {
@@ -593,9 +604,15 @@ export default class PlaybackWatcher {
 
     // only seek if we still have not played
     this.tech_.setCurrentTime(nextRange.start(0) + Ranges.TIME_FUDGE_FACTOR);
+    const metadata = {
+      gapInfo: {
+        from: currentTime,
+        to: nextRange.start(0)
+      }
+    };
 
+    this.playlistController_.trigger({type: 'gapjumped', metadata});
     this.tech_.trigger({type: 'usage', name: 'vhs-gap-skip'});
-    this.tech_.trigger({type: 'usage', name: 'hls-gap-skip'});
   }
 
   gapFromVideoUnderflow_(buffered, currentTime) {

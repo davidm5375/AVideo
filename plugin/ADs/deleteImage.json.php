@@ -9,11 +9,13 @@ $result = new stdClass();
 $result->error = true;
 $result->msg = '';
 
+$is_admin = User::isAdmin();
 
-if (!User::isAdmin()) {
-    $result->msg = __("You can not do this");
-    die(json_encode($result));
+if (empty($is_admin) && !ADs::canHaveCustomAds()) {
+    gotToLoginAndComeBackHere(__("You can not do this"));
+    exit;
 }
+forbidIfIsUntrustedRequest('ADs::deleteImage');
 
 require_once $global['systemRootPath'] . 'plugin/API/API.php';
 $obj = AVideoPlugin::getObjectDataIfEnabled("ADs");
@@ -29,8 +31,8 @@ if (empty($type)) {
 }
 
 $typeFound = false;
-foreach (ADs::$AdsPositions as $key => $value) {
-    if($type===$value[0]){
+foreach (ADs::AdsPositions as $key => $value) {
+    if ($type === $value[0]) {
         $typeFound = true;
         break;
     }
@@ -48,15 +50,20 @@ if (empty($fileName)) {
     die(json_encode($result));
 }
 
-
-$paths = ADs::getAdsPath($type);
+$is_regular_user = ADs::getEditableAdsUsersId();
+$paths = ADs::getAdsPath($type, $is_regular_user);
 
 $files = _glob($paths['path'], "/{$fileName}/");
 foreach ($files as $value) {
+
+    _error_log("deleteImage.json.php ($value) unlink line=".__LINE__);
     unlink($value);
 }
 $result->type = $type;
-$result->save = ADs::saveAdsHTML($type);
+$result->save = false;
+if (empty($is_regular_user)) {
+    $result->save = ADs::saveAdsHTML($type);
+}
 
 $result->error = false;
 die(json_encode($result));

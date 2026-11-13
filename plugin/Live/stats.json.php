@@ -1,54 +1,83 @@
 <?php
+//exit;
 header('Content-Type: application/json');
+$closeSessionEarlyIncludeConfig = 1;
 require_once '../../videos/configuration.php';
 
 /*
-if(!requestComesFromSafePlace()){
-    _error_log("Why are you requesting this ".getSelfURI()." ".json_encode($_SERVER));
-    die();
-}
- * 
+  if(!requestComesFromSafePlace()) {
+  _error_log("Why are you requesting this ".getSelfURI()." ".json_encode($_SERVER));
+  die();
+  }
+ *
  */
 
 ini_set('max_execution_time', 10);
 set_time_limit(10);
-session_write_close();
+// read-only endpoint, polled frequently; release the session lock early so it
+// doesn't queue up behind/behind other requests from the same browser session
+_session_write_close();
 $pobj = AVideoPlugin::getDataObjectIfEnabled("Live");
-if(empty($pobj->server_type->value)){
+if (empty($pobj->server_type->value)) {
     ini_set('max_execution_time', 180);
     set_time_limit(180);
 }
 if (empty($pobj)) {
     die(json_encode("Plugin disabled"));
 }
-$live_servers_id = Live::getLiveServersIdRequest();
-$cacheName = "getStats".DIRECTORY_SEPARATOR."live_servers_id_{$live_servers_id}".DIRECTORY_SEPARATOR."_statsCache_".md5($global['systemRootPath']. json_encode($_REQUEST));
 
-$json = ObjectYPT::getCache($cacheName, $pobj->cacheStatsTimout, true);
-if(empty($json)){
-    $json = getStatsNotifications();
-    ObjectYPT::setCache($cacheName, $json);
-}
+$timeName = "stats.json.php";
+TimeLogStart($timeName);
+$json = getStatsNotifications();
+//var_dump($json);exit;
+TimeLogEnd($timeName, __LINE__);
 $json = object_to_array($json);
-// check if application is online
-if(!empty($_REQUEST['name'])){
+TimeLogEnd($timeName, __LINE__);
+
+if (!empty($_REQUEST['name'])) {
+    TimeLogEnd($timeName, __LINE__);
     $json['msg'] = 'OFFLINE';
-    if(!empty($json['applications'])){
+    $json['name'] = $_REQUEST['name'];
+    if (!empty($json['applications'])) {
         foreach ($json['applications'] as $value) {
-            if(!empty($value['key']) && $value['key']==$_REQUEST['name']){
+            if (!empty($value['key']) && $value['key'] == $_REQUEST['name']) {
                 $json['msg'] = 'ONLINE';
                 break;
             }
         }
     }
-    if(!empty($json['hidden_applications'])){
+    TimeLogEnd($timeName, __LINE__);
+    if (!empty($json['hidden_applications'])) {
         foreach ($json['hidden_applications'] as $value) {
-            if(!empty($value['key']) && $value['key']==$_REQUEST['name']){
+            if (!empty($value['key']) && $value['key'] == $_REQUEST['name']) {
                 $json['msg'] = 'ONLINE';
                 break;
             }
         }
     }
+    TimeLogEnd($timeName, __LINE__);
 }
 
+// hidden_applications is an internal working list of streams the current (possibly anonymous)
+// requester isn't authorized to see - no known JS consumer reads it from this endpoint, so it must
+// not be serialised at all (title/channel/masked-key metadata is still a disclosure otherwise).
+unset($json['hidden_applications']);
+
+// applications are publicly listed (unlike hidden_applications above), but a password-protected
+// transmission still requires Live::passwordIsGood() before it can actually be watched - strip the
+// raw key/m3u8 here too unless the caller already satisfied that check (or owns/administers it).
+// SECURITY REVIEW (2026-11-12, GHSA-h76m-5xfg-rj28): this does not hide the key (it stays in className/class/html of
+// the same entry, scheduled entries have no isPasswordProtected) — known and kept, see objects/notifications.json.php.
+if (!empty($json['applications'])) {
+    foreach ($json['applications'] as &$app) {
+        if (is_array($app) && !empty($app['isPasswordProtected']) && !empty($app['key'])) {
+            $isOwnStream = User::isLogged() && !empty($app['users_id']) && ((int) $app['users_id'] === (int) User::getId());
+            if (!User::isAdmin() && !$isOwnStream && !Live::passwordIsGood($app['key'])) {
+                unset($app['key'], $app['m3u8']);
+            }
+        }
+    }
+    unset($app);
+}
+//var_dump($json);exit;
 echo json_encode($json);

@@ -1,18 +1,35 @@
 <?php
 header('Content-Type: application/json');
 global $global, $config;
-if(!isset($global['systemRootPath'])){
+if (!isset($global['systemRootPath'])) {
     require_once '../videos/configuration.php';
 }
 require_once $global['systemRootPath'] . 'objects/user.php';
 require_once $global['systemRootPath'] . 'objects/playlist.php';
+// filename does not end in .json.php, so autoCSRFGuard() never runs for this endpoint
+forbidIfIsUntrustedRequest('playlistRemoveVideo');
+enforceRateLimit('playlist_remove_video_legacy', 120, 60);
 if (!User::isLogged()) {
-    die('{"error":"'.__("Permission denied").'"}');
+    forbiddenPage('Permission denied', true);
 }
 $obj = new PlayList($_POST['playlist_id']);
-if(User::getId() != $obj->getUsers_id()){
-    die('{"error":"'.__("Permission denied").'"}');
+if (!PlayLists::canManageAllPlaylists()) {
+    if (User::getId() !== $obj->getUsers_id()) {
+        forbiddenPage('Permission denied', true);
+    }
 }
-$result = $obj->addVideo($_POST['video_id'], false);
+$usersId = User::getId();
+$playlistId = intval($_POST['playlist_id']);
+$videoId = intval($_POST['video_id']);
+$duplicateActionCacheKey = 'playlist/remove/legacy/' . $usersId . '/' . $playlistId . '/' . $videoId;
+if (!empty(ObjectYPT::getCacheGlobal($duplicateActionCacheKey, 4, true))) {
+    _error_log("playlist legacy remove duplicate suppressed users_id={$usersId} playlists_id={$playlistId} videos_id={$videoId} ip=" . getRealIpAddr(), AVideoLog::$SECURITY);
+    echo '{"status":"1"}';
+    exit;
+}
+$result = $obj->addVideo($videoId, false);
+if (!empty($result)) {
+    ObjectYPT::setCacheGlobal($duplicateActionCacheKey, 1);
+}
 
 echo '{"status":"'.$result.'"}';

@@ -19,24 +19,112 @@ namespace Google\Service\AccessApproval;
 
 class ApproveDecision extends \Google\Model
 {
+  /**
+   * @var string
+   */
   public $approveTime;
+  /**
+   * @var bool
+   */
+  public $autoApproved;
+  /**
+   * @var string
+   */
   public $expireTime;
+  /**
+   * @var string
+   */
+  public $invalidateTime;
+  /**
+   * @var bool
+   */
+  public $policyApproved;
+  protected $signatureInfoType = SignatureInfo::class;
+  protected $signatureInfoDataType = '';
 
+  /**
+   * @param string
+   */
   public function setApproveTime($approveTime)
   {
     $this->approveTime = $approveTime;
   }
+  /**
+   * @return string
+   */
   public function getApproveTime()
   {
     return $this->approveTime;
   }
+  /**
+   * @param bool
+   */
+  public function setAutoApproved($autoApproved)
+  {
+    $this->autoApproved = $autoApproved;
+  }
+  /**
+   * @return bool
+   */
+  public function getAutoApproved()
+  {
+    return $this->autoApproved;
+  }
+  /**
+   * @param string
+   */
   public function setExpireTime($expireTime)
   {
     $this->expireTime = $expireTime;
   }
+  /**
+   * @return string
+   */
   public function getExpireTime()
   {
     return $this->expireTime;
+  }
+  /**
+   * @param string
+   */
+  public function setInvalidateTime($invalidateTime)
+  {
+    $this->invalidateTime = $invalidateTime;
+  }
+  /**
+   * @return string
+   */
+  public function getInvalidateTime()
+  {
+    return $this->invalidateTime;
+  }
+  /**
+   * @param bool
+   */
+  public function setPolicyApproved($policyApproved)
+  {
+    $this->policyApproved = $policyApproved;
+  }
+  /**
+   * @return bool
+   */
+  public function getPolicyApproved()
+  {
+    return $this->policyApproved;
+  }
+  /**
+   * @param SignatureInfo
+   */
+  public function setSignatureInfo(SignatureInfo $signatureInfo)
+  {
+    $this->signatureInfo = $signatureInfo;
+  }
+  /**
+   * @return SignatureInfo
+   */
+  public function getSignatureInfo()
+  {
+    return $this->signatureInfo;
   }
 }
 

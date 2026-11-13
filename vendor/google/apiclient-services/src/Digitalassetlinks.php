@@ -39,6 +39,7 @@ class Digitalassetlinks extends \Google\Service
 
   public $assetlinks;
   public $statements;
+  public $rootUrlTemplate;
 
   /**
    * Constructs the internal representation of the Digitalassetlinks service.
@@ -51,6 +52,7 @@ class Digitalassetlinks extends \Google\Service
   {
     parent::__construct($clientOrConfig);
     $this->rootUrl = $rootUrl ?: 'https://digitalassetlinks.googleapis.com/';
+    $this->rootUrlTemplate = $rootUrl ?: 'https://digitalassetlinks.UNIVERSE_DOMAIN/';
     $this->servicePath = '';
     $this->batchPath = 'batch';
     $this->version = 'v1';
@@ -62,13 +64,21 @@ class Digitalassetlinks extends \Google\Service
         'assetlinks',
         [
           'methods' => [
-            'check' => [
+            'bulkCheck' => [
+              'path' => 'v1/assetlinks:bulkCheck',
+              'httpMethod' => 'POST',
+              'parameters' => [],
+            ],'check' => [
               'path' => 'v1/assetlinks:check',
               'httpMethod' => 'GET',
               'parameters' => [
                 'relation' => [
                   'location' => 'query',
                   'type' => 'string',
+                ],
+                'returnRelationExtensions' => [
+                  'location' => 'query',
+                  'type' => 'boolean',
                 ],
                 'source.androidApp.certificate.sha256Fingerprint' => [
                   'location' => 'query',
@@ -112,6 +122,10 @@ class Digitalassetlinks extends \Google\Service
                 'relation' => [
                   'location' => 'query',
                   'type' => 'string',
+                ],
+                'returnRelationExtensions' => [
+                  'location' => 'query',
+                  'type' => 'boolean',
                 ],
                 'source.androidApp.certificate.sha256Fingerprint' => [
                   'location' => 'query',

@@ -2,6 +2,7 @@
 
 namespace Socket;
 
+use React\EventLoop\Loop;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 
@@ -11,15 +12,28 @@ require_once $global['systemRootPath'] . 'plugin/YPTSocket/functions.php';
 class Message implements MessageComponentInterface {
 
     protected $clients;
+    protected $totalUsersOnLives;
+    protected $clientsWatchinLive;
+    protected $clientsWatchVideosId;
+    protected $clientsUsersId;
+    protected $clientsChatRoom;
+    protected $loop;
+    protected $timeout;
 
-    public function __construct() {
-        //$this->clients = new \SplObjectStorage;
+    public function __construct($loop) {
         $this->clients = [];
+        $this->clientsWatchinLive = [];
+        $this->clientsWatchVideosId = [];
+        $this->clientsUsersId = [];
+        $this->clientsChatRoom = [];
+        $this->loop = $loop;
+        $this->timeout = 600; // 10 minutes timeout
         _log_message("Construct");
     }
 
     public function onOpen(ConnectionInterface $conn) {
         global $onMessageSentTo, $SocketGetTotals;
+        global $global;
         $SocketGetTotals = null;
         $onMessageSentTo = array();
         $query = $conn->httpRequest->getUri()->getQuery();
@@ -33,11 +47,10 @@ class Message implements MessageComponentInterface {
         }
         $json = getDecryptedInfo($wsocketGetVars['webSocketToken']);
         if (empty($json)) {
-            _log_message("Invalid websocket token ");
+            _log_message("Invalid websocket token [{$global['webSiteRootURL']}] [{$wsocketGetVars['webSocketToken']}]");
             return false;
         }
-        // Store the new connection to send messages to later
-        //$this->clients->attach($conn);
+
         $client = array();
         $client['conn'] = $conn;
         $client['resourceId'] = $conn->resourceId;
@@ -47,57 +60,100 @@ class Message implements MessageComponentInterface {
         $client['browser'] = $json->browser;
         $client['yptDeviceId'] = $json->yptDeviceId;
         $client['client'] = deviceIdToObject($json->yptDeviceId);
-        if (!empty($wsocketGetVars['webSocketSelfURI'])) {
-            $client['selfURI'] = $wsocketGetVars['webSocketSelfURI'];
-        } else {
-            $client['selfURI'] = $json->selfURI;
-        }
+        $client['selfURI'] = !empty($wsocketGetVars['webSocketSelfURI']) ? $wsocketGetVars['webSocketSelfURI'] : $json->selfURI;
         $client['isCommandLine'] = @$wsocketGetVars['isCommandLine'];
-        $client['page_title'] = utf8_encode(@$wsocketGetVars['page_title']);
+        $client['page_title'] = @utf8_encode(@$wsocketGetVars['page_title']);
         $client['videos_id'] = $json->videos_id;
         $client['live_key'] = object_to_array(@$json->live_key);
         $client['ip'] = $json->ip;
         $client['location'] = $json->location;
 
+        if (!empty($client['live_key']['key'])) {
+            $this->clientsWatchinLive[$client['live_key']['key']][$client['resourceId']] = $client['users_id'];
+        } else if (!empty($client['live_key']['liveLink'])) {
+            $this->clientsWatchinLive[$client['live_key']['liveLink']][$client['resourceId']] = $client['users_id'];
+        } else if (!empty($client['videos_id'])) {
+            $this->clientsWatchVideosId[$client['videos_id']][$client['resourceId']] = $client['users_id'];
+        }
+        if (!empty($client['users_id'])) {
+            if (!isset($this->clientsUsersId[$client['users_id']])) {
+                $this->clientsUsersId[$client['users_id']] = array(
+                    "users_id" => $client['users_id'],
+                    "isAdmin" => $client['isAdmin'],
+                    "user_name" => $client['user_name']
+                );
+                $this->clientsUsersId[$client['users_id']]['resourceId'] = array();
+            }
+
+            if (!in_array($client['resourceId'], $this->clientsUsersId[$client['users_id']]['resourceId'])) {
+                $this->clientsUsersId[$client['users_id']]['resourceId'][$client['resourceId']] = $client['resourceId'];
+            }
+        }
+
         _log_message("New connection ($conn->resourceId) {$json->yptDeviceId} {$client['selfURI']} {$client['browser']}");
 
         $this->clients[$conn->resourceId] = $client;
-        /*
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $limit = 250;
-        } else {
-            $limit = 900;
-        }
-        //$limit = 99999;
-        if(count($this->clients)>$limit){
-            $resourceId = array_key_first($this->clients);
-            _log_message("\e[1;32;40m*** Closing connection {$resourceId} ***\e[0m");
-            //$this->clients[$resourceId]->close();
-            //$this->clients->detach($this->clients[$resourceId]['conn']);
-            $this->clients[$resourceId]['conn']->close();
-            unset($resourceId);
-        }
-        */
+
         if ($client['browser'] == \SocketMessageType::TESTING) {
             _log_message("Test detected and received from ($conn->resourceId) " . PHP_EOL . "\e[1;32;40m*** SUCCESS TEST CONNECION {$json->test_msg} ***\e[0m");
             $this->msgToResourceId($json, $conn->resourceId, \SocketMessageType::TESTING);
         } else if ($this->shouldPropagateInfo($client)) {
-            //_log_message("shouldPropagateInfo {$json->yptDeviceId}");
-            $this->msgToAll($conn, array('users_id' => $client['users_id'], 'yptDeviceId' => $client['yptDeviceId']), \SocketMessageType::NEW_CONNECTION, true);
-        } else {
-            //_log_message("NOT shouldPropagateInfo ");
+            $this->msgToAll($conn, array('users_id' => $client['users_id'], 'user_name' => $client['user_name'], 'yptDeviceId' => $client['yptDeviceId']), \SocketMessageType::NEW_CONNECTION, true);
         }
+
         if (!empty($json->videos_id)) {
-            //_log_message("msgToAllSameVideo ");
             $this->msgToAllSameVideo($json->videos_id, "");
-        } else {
-            //_log_message("NOT msgToAllSameVideo ");
         }
+
         if (!empty($json->live_key)) {
-            //_log_message("msgToAllSameLive ");
+            if ($this->isLiveUsersEnabled()) {
+                $live_key = object_to_array($json->live_key);
+                if (!empty($live_key['key'])) {
+                    \_mysql_connect(true);
+                    $lt = \LiveTransmitionHistory::getLatest($live_key['key']);
+                    if (!empty($lt['id'])) {
+                        $l = new \LiveTransmitionHistory($lt['id']);
+                        $total_viewers = \LiveUsers::getTotalUsers($lt['key'], $lt['live_servers_id']);
+                        $max_viewers_sametime = $l->getMax_viewers_sametime();
+                        $viewers_now = !empty($live_key['key']) ? count($this->clientsWatchinLive[$live_key['key']]) : count($this->clientsWatchinLive[$live_key['liveLink']]);
+                        if ($viewers_now > $max_viewers_sametime) {
+                            $l->setMax_viewers_sametime($viewers_now);
+                        }
+                        $l->setTotal_viewers($total_viewers);
+                        _log_message("onOpen Connection viewers_now = {$viewers_now} => total_viewers = {$total_viewers}");
+                        $l->save();
+                    }
+                }
+            }
             $this->msgToAllSameLive($json->live_key, "");
-        } else {
-            //_log_message("NOT msgToAllSameLive ");
+        }
+
+        // Set a timeout to close inactive connections
+        $this->setTimeout($conn);
+    }
+
+    protected function setTimeout(ConnectionInterface $conn) {
+        if (isset($conn->timeout)) {
+            $this->loop->cancelTimer($conn->timeout);
+        }
+
+        $conn->timeout = $this->loop->addTimer($this->timeout, function() use ($conn) {
+            _log_message("Closing inactive connection ({$conn->resourceId}) due to timeout\n");
+            $conn->close();
+        });
+    }
+
+    private function removeAutoEvalCodeOnHTMLRecursive(&$data) {
+        if (!is_array($data)) {
+            return;
+        }
+        if (array_key_exists('autoEvalCodeOnHTML', $data)) {
+            unset($data['autoEvalCodeOnHTML']);
+        }
+        foreach ($data as &$value) {
+            if (is_array($value)) {
+                $this->removeAutoEvalCodeOnHTMLRecursive($value);
+            }
         }
     }
 
@@ -106,22 +162,35 @@ class Message implements MessageComponentInterface {
         $SocketGetTotals = null;
         $onMessageSentTo = array();
 
-        unset($getStatsLive);
-        unset($_getStats);
-        // The connection is closed, remove it, as we can no longer send it messages
-        //$this->clients->detach($conn);
         if (empty($this->clients[$conn->resourceId])) {
             _log_message("onClose Connection {$conn->resourceId} not found");
             return false;
         }
+
         $client = $this->clients[$conn->resourceId];
+
+        if (!empty($client['live_key'])) {
+            if (!empty($client['live_key']['key'])) {
+                unset($this->clientsWatchinLive[$client['live_key']['key']][$conn->resourceId]);
+            }
+            if (!empty($client['live_key']['liveLink'])) {
+                unset($this->clientsWatchinLive[$client['live_key']['liveLink']][$conn->resourceId]);
+            }
+        }
+        if (!empty($client['users_id'])) {
+            unset($this->clientsUsersId[$client['users_id']]['resourceId'][$conn->resourceId]);
+            if (empty($this->clientsUsersId[$client['users_id']]['resourceId'])) {
+                unset($this->clientsUsersId[$client['users_id']]);
+            }
+        }
+
         unset($this->clients[$conn->resourceId]);
         $users_id = $client['users_id'];
         $videos_id = $client['videos_id'];
         $live_key = $client['live_key'];
+
         if ($this->shouldPropagateInfo($client)) {
-            $this->msgToAll($conn, array('users_id' => $client['users_id']), \SocketMessageType::NEW_DISCONNECTION);
-            //\AVideoPlugin::onUserSocketDisconnect($users_id, $this->clients[$conn->resourceId]);
+            $this->msgToAll($conn, array('users_id' => $users_id), \SocketMessageType::NEW_DISCONNECTION);
             if (!empty($videos_id)) {
                 $this->msgToAllSameVideo($videos_id, "");
             }
@@ -129,6 +198,7 @@ class Message implements MessageComponentInterface {
                 $this->msgToAllSameLive($live_key, "");
             }
         }
+        $conn->close();
         _log_message("Connection {$conn->resourceId} has disconnected");
     }
 
@@ -136,7 +206,7 @@ class Message implements MessageComponentInterface {
         global $onMessageSentTo, $SocketGetTotals;
         $SocketGetTotals = null;
         $onMessageSentTo = array();
-        //_log_message("onMessage: {$msg}");
+
         $json = _json_decode($msg);
         if (empty($json)) {
             _log_message("onMessage ERROR: JSON is empty ");
@@ -160,14 +230,38 @@ class Message implements MessageComponentInterface {
                     $this->clients[$from->resourceId]['yptDeviceId'] = $msgObj->yptDeviceId;
                 }
                 break;
+            case "getClientsList":
+                if (empty($this->clientsUsersId)) {
+                    return false;
+                }
+                $this->msgToResourceId(array('json' => $this->clientsUsersId, 'callback' => 'loadCallerPanel'), $from->resourceId);
+                break;
             case \SocketMessageType::TESTING:
                 $this->msgToResourceId($json, $from->resourceId, \SocketMessageType::TESTING);
                 break;
             default:
                 $this->msgToArray($json);
-                //_log_message("onMessage:msgObj: " . json_encode($json));
+                // Enforce authoritative sender identity from the validated token.
+                // Prevents injection of arbitrary HTML/script into from_identification,
+                // since the WebSocket server relays messages as-is without re-validating fields.
+                if (isset($json['from_identification'])) {
+                    $json['from_identification'] = strip_tags((string)($msgObj->user_name ?? ''));
+                }
+                // Strip eval-able fields from browser/guest messages.
+                // autoEvalCodeOnHTML is a server-to-client feature (e.g. Live/getImage.php);
+                // browser clients must not inject it into broadcasts.
+                // callback must be a valid JS identifier to prevent eval injection on clients.
+                if (empty($msgObj->isCommandLineInterface) && ($msgObj->sentFrom ?? '') !== 'php') {
+                    // Remove from any nested carrier so msgToResourceId cannot relay it via msg/json/fallback paths.
+                    $this->removeAutoEvalCodeOnHTMLRecursive($json);
+                    if (isset($json['callback']) && !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', (string)$json['callback'])) {
+                        unset($json['callback']);
+                    }
+                }
                 if (!empty($msgObj->send_to_uri_pattern)) {
                     $this->msgToSelfURI($json, $msgObj->send_to_uri_pattern);
+                } else if (!empty($json['resourceId'])) {
+                    $this->msgToResourceId($json, $json['resourceId']);
                 } else if (!empty($json['to_users_id'])) {
                     $this->msgToUsers_id($json, $json['to_users_id']);
                 } else {
@@ -175,6 +269,9 @@ class Message implements MessageComponentInterface {
                 }
                 break;
         }
+
+        // Reset the timeout on new message
+        $this->setTimeout($from);
     }
 
     private function shouldPropagateInfo($client) {
@@ -197,7 +294,7 @@ class Message implements MessageComponentInterface {
             return false;
         }
 
-        // do not sent duplicated messages
+        // do not send duplicated messages
         $onMessageSentTo[] = $resourceId;
 
         if (!$this->shouldPropagateInfo($this->clients[$resourceId])) {
@@ -257,9 +354,11 @@ class Message implements MessageComponentInterface {
         $obj['autoUpdateOnHTML'] = array_merge($totals, $return['class_to_update']);
 
         $obj['users_uri'] = $return['users_uri'];
+        $obj['resourceId'] = $resourceId;
+        $obj['users_id_online'] = $this->clientsUsersId;
 
         $msgToSend = json_encode($obj);
-        //_log_message("msgToResourceId: resourceId=({$resourceId}) {$type}");
+        _log_message("msgToResourceId: resourceId=({$resourceId}) {$type}");
         $this->clients[$resourceId]['conn']->send($msgToSend);
     }
 
@@ -274,17 +373,32 @@ class Message implements MessageComponentInterface {
     }
 
     public function msgToUsers_id($msg, $users_id, $type = "") {
-        if (empty($users_id)) {
+        if (empty($users_id) || empty($this->clientsUsersId)) {
             return false;
         }
-        $count = 0;
-        foreach ($this->clients as $resourceId => $value) {
-            if ($value['users_id'] == $users_id) {
-                $count++;
-                $this->msgToResourceId($msg, $resourceId, $type);
+        try {
+            $count = 0;
+            if (!is_array($users_id)) {
+                $users_id = array($users_id);
             }
+            foreach ($users_id as $user_id) {
+                $user_id = intval($user_id);
+                if (empty($user_id)) {
+                    continue;
+                }
+                if ($this->isUserLive($user_id)) {
+                    foreach ($this->clientsUsersId[$user_id]['resourceId'] as $resourceId) {
+                        $count++;
+                        $this->msgToResourceId($msg, $resourceId, $type);
+                    }
+                }
+            }
+        } catch (\Exception $exc) {
+            echo $exc->getTraceAsString();
+            var_dump($users_id, $this->clientsUsersId);
         }
-        _log_message("msgToUsers_id: sent to ($count) clients users_id={$users_id}");
+
+        _log_message("msgToUsers_id: sent to ($count) clients users_id=" . json_encode($users_id));
     }
 
     public function msgToSelfURI($msg, $pattern, $type = "") {
@@ -377,10 +491,51 @@ class Message implements MessageComponentInterface {
                 }
             }
         }
+        $return['LivesTotals'] = $this->getLivesTotal();
         if (!$isAdmin) {
             $SocketGetTotals = $return;
         }
         return $return;
+    }
+
+    function getLivesTotal() {
+        if (!isset($this->totalUsersOnLives) || $this->totalUsersOnLives['updated'] < strtotime('- 1 minute')) {
+
+            $stats = getStatsNotifications();
+            // never surface a hidden/restricted stream's key or viewer count to an unauthorized socket client
+            unset($stats['hidden_applications']);
+
+            $statsList = array();
+
+            foreach ($stats as $server) {
+                if (is_array($server) || is_object($server)) {
+                    foreach ($server as $lt) {
+                        if (!empty($lt['key'])) {
+                            $statsList[$lt['key']] = ['total_viewers' => $this->isLiveUsersEnabled() ? \LiveUsers::getTotalUsers($lt['key'], $lt['live_servers_id']) : 0];
+                        }
+                    }
+                }
+            }
+
+            $this->totalUsersOnLives = array('updated' => time(), 'statsList' => $statsList);
+        }
+
+        foreach ($this->totalUsersOnLives['statsList'] as $key => $lt) {
+            if(!empty($lt['key']) && $lt['key'] !== 'key' && isset($this->clientsWatchinLive[$lt['key']]) && is_array($this->clientsWatchinLive[$lt['key']])){
+                $this->totalUsersOnLives['statsList'][$key]['watching_now'] = count($this->clientsWatchinLive[$lt['key']]);
+            }else{
+                $this->totalUsersOnLives['statsList'][$key]['watching_now'] = 0;
+            }
+        }
+        return $this->totalUsersOnLives;
+    }
+
+    private function isLiveUsersEnabled() {
+        global $_isLiveUsersEnabled;
+        if (!isset($_isLiveUsersEnabled)) {
+            $_isLiveUsersEnabled = \AVideoPlugin::isEnabledByName('LiveUsers') && method_exists('LiveUsers', 'getTotalUsers');
+        }
+        return $_isLiveUsersEnabled;
     }
 
     public function msgToDevice_id($msg, $yptDeviceId) {
@@ -398,12 +553,9 @@ class Message implements MessageComponentInterface {
     }
 
     public function msgToAll(ConnectionInterface $from, $msg, $type = "", $includeMe = false) {
-        _log_message("msgToAll FROM ({$from->resourceId}) {$type} Total Clients: ".count($this->clients));
+        _log_message("msgToAll FROM ({$from->resourceId}) {$type} Total Clients: " . count($this->clients));
         foreach ($this->clients as $key => $client) {
-            if (!empty($includeMe) || $from !== $client['conn']) {
-                //_log_message("msgToAll FROM ({$from->resourceId}) TO {$key} {$type}");
-                $this->msgToResourceId($msg, $key, $type);
-            }
+            $this->msgToResourceId($msg, $key, $type);
         }
     }
 
@@ -433,9 +585,8 @@ class Message implements MessageComponentInterface {
         if (!is_array($msg)) {
             $this->msgToArray($msg);
         }
-        _mysql_connect();
+        \_mysql_connect(true);
         $msg['is_live'] = \Live::isLiveAndIsReadyFromKey($live_key['key'], $live_key['live_servers_id'], true);
-        _mysql_close();
         _log_message("msgToAllSameLive: key={$live_key['key']} live_servers_id={$live_key['live_servers_id']} liveLink={$live_key['liveLink']}");
         foreach ($this->clients as $key => $client) {
             if (empty($client['live_key']) || (empty($client['live_key']['key']) && empty($client['live_key']['liveLink']))) {
@@ -475,12 +626,15 @@ class Message implements MessageComponentInterface {
         return array('free', 'live');
     }
 
+    public function isUserLive($users_id) {
+        return !empty($this->clientsUsersId[$users_id]) && !empty($this->clientsUsersId[$users_id]['resourceId']);
+    }
+
 }
 
 function _log_message($msg, $type = "") {
     global $SocketDataObj;
     if (!empty($SocketDataObj->debugAllUsersSocket) || !empty($SocketDataObj->debugSocket)) {
-        //_error_log($msg, \AVideoLog::$SOCKET);
         echo date('Y-m-d H:i:s') . ' ' . $msg . PHP_EOL;
     } else if ($type == \AVideoLog::$ERROR) {
         _error_log($msg, \AVideoLog::$SOCKET);

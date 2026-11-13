@@ -19,15 +19,61 @@ namespace Google\Service\BigtableAdmin;
 
 class Table extends \Google\Model
 {
+  protected $automatedBackupPolicyType = AutomatedBackupPolicy::class;
+  protected $automatedBackupPolicyDataType = '';
+  protected $changeStreamConfigType = ChangeStreamConfig::class;
+  protected $changeStreamConfigDataType = '';
   protected $clusterStatesType = ClusterState::class;
   protected $clusterStatesDataType = 'map';
   protected $columnFamiliesType = ColumnFamily::class;
   protected $columnFamiliesDataType = 'map';
+  /**
+   * @var bool
+   */
+  public $deletionProtection;
+  /**
+   * @var string
+   */
   public $granularity;
+  /**
+   * @var string
+   */
   public $name;
   protected $restoreInfoType = RestoreInfo::class;
   protected $restoreInfoDataType = '';
+  protected $rowKeySchemaType = GoogleBigtableAdminV2TypeStruct::class;
+  protected $rowKeySchemaDataType = '';
+  protected $statsType = TableStats::class;
+  protected $statsDataType = '';
 
+  /**
+   * @param AutomatedBackupPolicy
+   */
+  public function setAutomatedBackupPolicy(AutomatedBackupPolicy $automatedBackupPolicy)
+  {
+    $this->automatedBackupPolicy = $automatedBackupPolicy;
+  }
+  /**
+   * @return AutomatedBackupPolicy
+   */
+  public function getAutomatedBackupPolicy()
+  {
+    return $this->automatedBackupPolicy;
+  }
+  /**
+   * @param ChangeStreamConfig
+   */
+  public function setChangeStreamConfig(ChangeStreamConfig $changeStreamConfig)
+  {
+    $this->changeStreamConfig = $changeStreamConfig;
+  }
+  /**
+   * @return ChangeStreamConfig
+   */
+  public function getChangeStreamConfig()
+  {
+    return $this->changeStreamConfig;
+  }
   /**
    * @param ClusterState[]
    */
@@ -56,18 +102,44 @@ class Table extends \Google\Model
   {
     return $this->columnFamilies;
   }
+  /**
+   * @param bool
+   */
+  public function setDeletionProtection($deletionProtection)
+  {
+    $this->deletionProtection = $deletionProtection;
+  }
+  /**
+   * @return bool
+   */
+  public function getDeletionProtection()
+  {
+    return $this->deletionProtection;
+  }
+  /**
+   * @param string
+   */
   public function setGranularity($granularity)
   {
     $this->granularity = $granularity;
   }
+  /**
+   * @return string
+   */
   public function getGranularity()
   {
     return $this->granularity;
   }
+  /**
+   * @param string
+   */
   public function setName($name)
   {
     $this->name = $name;
   }
+  /**
+   * @return string
+   */
   public function getName()
   {
     return $this->name;
@@ -85,6 +157,34 @@ class Table extends \Google\Model
   public function getRestoreInfo()
   {
     return $this->restoreInfo;
+  }
+  /**
+   * @param GoogleBigtableAdminV2TypeStruct
+   */
+  public function setRowKeySchema(GoogleBigtableAdminV2TypeStruct $rowKeySchema)
+  {
+    $this->rowKeySchema = $rowKeySchema;
+  }
+  /**
+   * @return GoogleBigtableAdminV2TypeStruct
+   */
+  public function getRowKeySchema()
+  {
+    return $this->rowKeySchema;
+  }
+  /**
+   * @param TableStats
+   */
+  public function setStats(TableStats $stats)
+  {
+    $this->stats = $stats;
+  }
+  /**
+   * @return TableStats
+   */
+  public function getStats()
+  {
+    return $this->stats;
   }
 }
 

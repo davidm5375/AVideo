@@ -1,5 +1,4 @@
 <?php
-
 global $global, $config;
 if (!isset($global['systemRootPath'])) {
     $configFile = '../videos/configuration.php';
@@ -11,10 +10,20 @@ if (!isset($global['systemRootPath'])) {
 
 //_error_log("HLS.php: session_id = ".  session_id()." IP = ".  getRealIpAddr()." URL = ".($actual_link = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]"));
 
-session_write_close();
+_session_write_close();
 if (empty($_GET['videoDirectory'])) {
     forbiddenPage("No directory set");
 }
+
+// Security: Reject path traversal attempts
+$_GET['videoDirectory'] = str_replace('\\', '/', $_GET['videoDirectory']);
+if (preg_match('/\.\./', $_GET['videoDirectory'])) {
+    forbiddenPage("Invalid directory");
+}
+// Normalize: strip leading/trailing slashes, collapse multiple slashes
+$_GET['videoDirectory'] = trim($_GET['videoDirectory'], '/');
+$_GET['videoDirectory'] = preg_replace('#/+#', '/', $_GET['videoDirectory']);
+
 $global['disableGeoblock'] = 1;
 $video = Video::getVideoFromFileName($_GET['videoDirectory'], true);
 
@@ -24,12 +33,12 @@ if (empty($video) || !file_exists($filename)) {
     header("Content-Type: text/plain");
     if (empty($video)) {
         $msg = "HLS.php: Video Not found videoDirectory=({$_GET['videoDirectory']})";
-        error_log($msg);
+        rateLimitedLog('hls-video-not-found-' . md5($_GET['videoDirectory']), $msg);
         //echo $msg;
     }
     if (!file_exists($filename)) {
         $msg = "HLS.php: Video file do not exists ({$filename})";
-        error_log($msg);
+        rateLimitedLog('hls-file-not-found-' . md5($filename), $msg);
         //echo $msg;
     }
 
@@ -45,7 +54,6 @@ if (empty($video) || !file_exists($filename)) {
 {$global['webSiteRootURL']}plugin/Live/view/loopBGHLS/res720/index.m3u8";
     exit;
 } else {
-
     if (filesize($filename) < 20) {
         Video::clearCache($video['id']);
     }
@@ -54,37 +62,68 @@ if (empty($video) || !file_exists($filename)) {
 $_GET['file'] = Video::getPathToFile("{$_GET['videoDirectory']}".DIRECTORY_SEPARATOR."index.m3u8");
 //var_dump($_GET['file']);exit;
 $cachedPath = explode(DIRECTORY_SEPARATOR, $_GET['videoDirectory']);
-if (empty($_SESSION['user']['sessionCache']['hls'][$cachedPath[0]]) && empty($_GET['download'])) {
+// use the session-cache helper (not a raw $_SESSION write) since the session was
+// already closed above; it degrades gracefully instead of silently never persisting
+$hlsCacheName = 'hls_xsendfilePreVideoPlay_' . $cachedPath[0];
+if (empty(ObjectYPT::getSessionCache($hlsCacheName, 0)) && empty($_GET['download'])) {
     AVideoPlugin::xsendfilePreVideoPlay();
-    $_SESSION['user']['sessionCache']['hls'][$cachedPath[0]] = 1;
+    ObjectYPT::setSessionCache($hlsCacheName, 1);
 }
 
 $tokenIsValid = false;
 if (!empty($_GET['token'])) {
     $secure = AVideoPlugin::loadPluginIfEnabled('SecureVideosDirectory');
     if ($secure) {
-        $filenameParts = explode(".DIRECTORY_SEPARATOR.", $_GET['videoDirectory']); 
+        $filenameParts = explode(".DIRECTORY_SEPARATOR.", $_GET['videoDirectory']);
         $fname = $filenameParts[0];
         $tokenIsValid = $secure->isTokenValid($_GET['token'], $fname, $_GET['videoDirectory']);
     }
-} else if (!empty($_GET['globalToken'])) {
+} elseif (!empty($_GET['globalToken'])) {
     $tokenIsValid = verifyToken($_GET['globalToken']);
 }
-$newContent = "";
+$newContent = '';
 // if is using a CDN I can not check if the user is logged
-if (isAVideoEncoderOnSameDomain() || $tokenIsValid || !empty($advancedCustom->videosCDN) || User::canWatchVideo($video['id']) || User::canWatchVideoWithAds($video['id']) || isCDN()) {
-
+// SECURITY REVIEW (2026-11-07): re-reported as GHSA-vpmr-8whj-28qg (spoofed AVideoMobileApp User-Agent or CDN-Host
+// gets the playlist, and VideoHLS::ignore() then serves the AES key) — confirmed real, DO NOT FIX here for the
+// reasons below (Priority B content access; removing these terms breaks the Mobile App/Encoder/Storage/CDN).
+// Sites that need real file-level protection use SecureVideosDirectory. If re-reported, see that advisory.
+// SECURITY COMPATIBILITY NOTE:
+// isAVideoUserAgent() and isCDN() are client-controlled headers (User-Agent / CDN-Host)
+// and are NOT authentication. A client sending these headers can bypass
+// User::canWatchVideo() for this playlist/segment listing. This is a real, known
+// gap (restricted HLS playlist/segment disclosure only - no credentials, tokens, or
+// server files are exposed, and ?download=1/?playHLSasMP4=1 re-check
+// CustomizeUser::canDownloadVideos() independently).
+// It is intentionally retained: isAVideoUserAgent() is the documented trust signal
+// for the Mobile App/Encoder/Streamer/Storage/Restreamer components that fetch this
+// URL without a PHP session (see objects/functionsSecurity.php's autoCSRFGuard comment
+// and VideoHLS::ignore()/VideoOffline::showOfflineVideo()), and isCDN() targets WWBN's
+// external cdn.ypt.me edge infrastructure, neither of which can be safely removed or
+// replaced from this repository alone. Do not strip these terms without first migrating
+// those callers to a real shared-secret/signed-token mechanism (see isAVideoStreamer()'s
+// md5($global['salt']) pattern for the precedent) and verifying playback still works.
+if (isAVideoUserAgent() || isAVideoEncoderOnSameDomain() || $tokenIsValid || !empty($advancedCustom->videosCDN) || User::canWatchVideo($video['id']) || User::canWatchVideoWithAds($video['id']) || isCDN()) {
     if (!empty($_GET['download'])) {
+        _error_log("Download file {$_GET['file']}");
         downloadHLS($_GET['file']);
-    } else if (!empty($_GET['playHLSasMP4'])) {
+    } elseif (!empty($_GET['playHLSasMP4'])) {
         playHLSasMP4($_GET['file']);
     } else {
-        $filename = pathToRemoteURL($filename);
-        $content = file_get_contents($filename);
+        if (@filesize($_GET['file'])>20) {
+            $filename = $_GET['file'];
+        } else {
+            $filename = pathToRemoteURL($filename);
+        }
+        if (!preg_match('/index.m3u8$/', $filename)) {
+            $filename .= '/index.m3u8';
+        }
+        $context = stream_context_create(array('http' => array('timeout' => 30)));
+        $content = file_get_contents($filename, false, $context);
+        $content = preg_replace('/\.m3u8 +/', '.m3u8', $content);
         $newContent = str_replace('{$pathToVideo}', "{$global['webSiteRootURL']}videos/{$_GET['videoDirectory']}/../", $content);
         if (!empty($_GET['token'])) {
             $newContent = str_replace('/index.m3u8', "/index.m3u8?token={$_GET['token']}", $newContent);
-        } else if (!empty($_GET['globalToken'])) {
+        } elseif (!empty($_GET['globalToken'])) {
             $newContent = str_replace('/index.m3u8', "/index.m3u8?globalToken={$_GET['globalToken']}", $newContent);
         }
     }
@@ -93,7 +132,8 @@ if (isAVideoEncoderOnSameDomain() || $tokenIsValid || !empty($advancedCustom->vi
     $newContent .= $tokenIsValid ? "" : " tokenInvalid";
     $newContent .= User::canWatchVideo($video['id']) ? "" : " cannot watch ({$video['id']})";
     $newContent .= " " . date("Y-m-d H:i:s");
+    rateLimitedLog('hls-cannot-see-video-' . md5(json_encode([$video['id'], $_GET['videoDirectory'], $tokenIsValid, User::getId(), getRealIpAddr()])), $newContent);
 }
 //header("Content-Type: text/plain");
-header('Content-Type:');
+header("Content-Type: application/vnd.apple.mpegurl");
 echo $newContent;

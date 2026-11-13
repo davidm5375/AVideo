@@ -28,7 +28,7 @@ require_once $global['systemRootPath'] . 'objects/configuration.php';
         include $global['systemRootPath'] . 'view/include/bootstrap.css.php';
         ?>
         <link href="<?php echo getCDN(); ?>view/css/custom/cyborg.css" rel="stylesheet" type="text/css"/>
-        <link href="<?php echo getCDN(); ?>node_modules/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css"/>
+        <link href="<?php echo getURL('node_modules/@fortawesome/fontawesome-free/css/all.min.css'); ?>" rel="stylesheet" type="text/css"/>
         <link href="<?php echo getCDN(); ?>view/css/font-awesome-animation.min.css" rel="stylesheet" type="text/css"/>
         <script src="<?php echo getURL('node_modules/jquery/dist/jquery.min.js'); ?>"></script>
         <script>
@@ -504,7 +504,7 @@ require_once $global['systemRootPath'] . 'objects/configuration.php';
 
             function loadBody() {
                 $.ajax({
-                    url: '<?php echo $global['webSiteRootURL']; ?>plugin/PlayLists/tv_body.php',
+                    url: webSiteRootURL+'plugin/PlayLists/tv_body.php',
                     success: function (response) {
                         $(response).find('.videoLinkDiv').each(function (index) {
                             var bodyTabindex = parseInt($(this).attr('tabindex'));

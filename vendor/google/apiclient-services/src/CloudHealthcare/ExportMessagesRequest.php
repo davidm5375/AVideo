@@ -19,18 +19,50 @@ namespace Google\Service\CloudHealthcare;
 
 class ExportMessagesRequest extends \Google\Model
 {
+  /**
+   * @var string
+   */
   public $endTime;
+  /**
+   * @var string
+   */
+  public $filter;
   protected $gcsDestinationType = GcsDestination::class;
   protected $gcsDestinationDataType = '';
+  protected $pubsubDestinationType = PubsubDestination::class;
+  protected $pubsubDestinationDataType = '';
+  /**
+   * @var string
+   */
   public $startTime;
 
+  /**
+   * @param string
+   */
   public function setEndTime($endTime)
   {
     $this->endTime = $endTime;
   }
+  /**
+   * @return string
+   */
   public function getEndTime()
   {
     return $this->endTime;
+  }
+  /**
+   * @param string
+   */
+  public function setFilter($filter)
+  {
+    $this->filter = $filter;
+  }
+  /**
+   * @return string
+   */
+  public function getFilter()
+  {
+    return $this->filter;
   }
   /**
    * @param GcsDestination
@@ -46,10 +78,30 @@ class ExportMessagesRequest extends \Google\Model
   {
     return $this->gcsDestination;
   }
+  /**
+   * @param PubsubDestination
+   */
+  public function setPubsubDestination(PubsubDestination $pubsubDestination)
+  {
+    $this->pubsubDestination = $pubsubDestination;
+  }
+  /**
+   * @return PubsubDestination
+   */
+  public function getPubsubDestination()
+  {
+    return $this->pubsubDestination;
+  }
+  /**
+   * @param string
+   */
   public function setStartTime($startTime)
   {
     $this->startTime = $startTime;
   }
+  /**
+   * @return string
+   */
   public function getStartTime()
   {
     return $this->startTime;
